@@ -1,0 +1,64 @@
+# ─── Personal / Private Data ────────────────────────────────────────────────
+# Master resume files (contain real name, contact details, work history)
+resume_master.md
+resume_master_de.md
+
+# Template files contain personal details — ignore content but keep folder structure
+templates/**/*.docx
+templates/**/*.pdf
+
+# Generated application output folders (contain tailored docs with PII)
+Application/
+applications/
+
+# ─── macOS ──────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ─── Python ─────────────────────────────────────────────────────────────────
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# ─── Editors & IDEs ─────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── App data (PII) ─────────────────────────────────────────────────────────
+data/persona.md
+data/skills.json
+app/backend/app.db
+app/backend/*.db
+
+# Temporary unpacked DOCX folders (contain personal template content)
+unpacked_cv/
+unpacked_cl/
+unpacked_*/
+
+# Local Claude Code config (personal slash commands, settings)
+.claude/
+
+# Local audit/cache directories
+outputs/
+*.bak
+
+# ─── Frontend build ──────────────────────────────────────────────────────────
+app/frontend/.next/
+app/frontend/node_modules/
+
+# ─── Secrets / Env ──────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.key
+*.pem

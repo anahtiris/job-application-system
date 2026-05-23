@@ -1,0 +1,21 @@
+{
+  "last_updated": "2026-01-01",
+  "skills": {
+    "TypeScript": {
+      "tier": 1,
+      "evidence": "Continuous use across multiple production projects."
+    },
+    "React": {
+      "tier": 2,
+      "evidence": "Used in several customer-facing applications; comfortable but not the architect."
+    },
+    "Python": {
+      "tier": 3,
+      "evidence": "Used in side projects with AI assistance; not yet independently fluent."
+    },
+    "Kubernetes": {
+      "tier": 4,
+      "evidence": "Brief exposure several years ago; ecosystem has moved on."
+    }
+  }
+}
