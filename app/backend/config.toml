@@ -1,0 +1,15 @@
+[models]
+parser   = "ollama/qwen3.6:latest"   # 22 GB — high context, best for resume parsing
+writer   = "ollama/qwen3.6:latest"   # 22 GB
+reviewer = "ollama/qwen3.6:latest"   # 22 GB
+research = "ollama/gemma4:latest"    # 8 GB
+
+[paths]
+resume_master_en      = "resume_master.md"
+resume_master_de      = "resume_master_de.md"
+persona               = "data/persona.md"
+skills                = "data/skills.json"
+templates_resume_en   = "templates/resume/resume_en.docx"
+templates_resume_de   = "templates/resume/resume_de.docx"
+templates_cover_letter = "templates/cover-letter/cover_letter.docx"
+applications_dir      = "applications/"
