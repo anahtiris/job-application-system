@@ -1,12 +1,27 @@
 # Job Application System
 
-A local AI-assisted pipeline that produces a tailored one-page CV and cover letter (DOCX + PDF) for each job application. Runs entirely on-device using Ollama models.
+An AI-assisted pipeline that produces a tailored one-page CV and cover letter (DOCX + PDF) for each job application. Works with any combination of Ollama (local), Anthropic, OpenAI, Gemini, and Perplexity — assign a different model to each role (parser, writer, reviewer, research) and swap them from the UI without restarting.
+
+---
+
+## Screenshots
+
+**Dashboard — application tracker with status filters**
+![Dashboard](docs/screenshots/dashboard.png)
+
+**Job Analysis — STRONG / HONEST / GAP breakdown per JD skill**
+![Job Analysis](docs/screenshots/job-analysis.png)
+
+**Settings — model assignment per role + API key status**
+![Settings](docs/screenshots/settings.png)
+
+---
 
 ## Requirements
 
 - Python 3.11+
 - Node.js 18+
-- [Ollama](https://ollama.ai) with the models configured in `app/backend/config.toml`
+- At least one LLM provider: [Ollama](https://ollama.ai) (local) or an API key for Anthropic / OpenAI / Gemini / Perplexity
 - LibreOffice (for PDF export): `brew install --cask libreoffice`
 - `pdfinfo` (for page count check): `brew install poppler`
 
@@ -22,10 +37,11 @@ pip install -r app/backend/requirements.txt
 cd app/frontend && npm install
 ```
 
-Edit `app/backend/config.toml`:
-- Set `[person] name` to `FirstName_LastName` (used for output filenames)
-- Set Ollama model names under `[models]` to match what you have pulled
-- Set `[paths]` if your resume master files live elsewhere
+Copy `.env.example` to `.env` and fill in any API keys you want to use:
+
+```bash
+cp .env.example .env
+```
 
 ## Running
 
@@ -43,9 +59,10 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## First-time setup
 
-1. Go to **Settings** → paste your resume master (EN and/or DE) and persona description.
-2. Go to **Skills** → add your skills with tier ratings (1=Core, 2=Proficient, 3=Familiar, 4=Exposure) and evidence snippets.
-3. Drop your CV and cover letter DOCX templates into `templates/resume/` and `templates/cover-letter/`. The expected filenames are in `config.toml`.
+1. Go to **Settings** → configure which model handles each role (parser / writer / reviewer / research) using `provider/model` format (e.g. `anthropic/claude-sonnet-4-6`, `ollama/qwen3.6:latest`).
+2. Go to **Settings** → paste your persona description (your personal review guardrails).
+3. Go to **Skills** → add your skills with tier ratings (1=Core, 2=Proficient, 3=Familiar, 4=Exposure) and evidence snippets.
+4. Drop your CV and cover letter DOCX templates into `templates/resume/` and `templates/cover-letter/`.
 
 ## Workflow (5-step wizard)
 
@@ -64,24 +81,21 @@ app/
   backend/          FastAPI + SQLite
     routers/        API routes (application, tracker, resume, settings)
     services/       analyzer, generator, reviewer, researcher, interview, pdf
+      providers/    ollama, anthropic, openai, perplexity, gemini
     office/         unpack.py / pack.py — DOCX ZIP editing helpers
-    config.toml     Model names, paths, person name
+    config.toml     Default model slugs and file paths
   frontend/         Next.js 14
     app/            Pages: /, /setup, /skills, /apply/new, /apply/[id], /settings
     components/     ReviewPanel, Nav, shared UI
-data/               persona.md, skills.json  (gitignored)
+data/               persona.md, skills.json  (gitignored — see examples/)
 templates/          Base DOCX files  (gitignored, .gitkeep preserves folders)
 applications/       Per-company output folders  (gitignored)
-resume_master.md    Canonical EN resume  (source of truth, never edit)
+resume_master.md    Canonical EN resume  (source of truth, never modify)
 resume_master_de.md Canonical DE resume
-skills/             Manual Claude Code skill files (legacy workflow)
-workflows/          End-to-end orchestration guide (legacy workflow)
 ```
 
 ## Notes
 
 - The CV **must be exactly 1 page**. The backend enforces this with a `pdfinfo` check and returns HTTP 422 if it overflows.
-- Only the **Profile Summary** section of the CV DOCX is replaced from the markdown editor. Job history and bullets come from the template.
-- The cover letter body is fully replaced from the markdown editor.
-- Restart the backend after editing `config.toml` — it is read once at startup.
-- `data/` and `applications/` are gitignored. Templates are gitignored but folder structure is preserved via `.gitkeep`.
+- Model assignments are stored in the database and editable from **Settings** — no restart required.
+- `data/` and `applications/` are gitignored. See `data/persona.example.md` and `data/skills.example.json` for the expected format.
