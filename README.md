@@ -7,12 +7,15 @@ An AI-assisted pipeline that produces a tailored one-page CV and cover letter (D
 ## Screenshots
 
 **Dashboard — application tracker with status filters**
+
 ![Dashboard](docs/screenshots/dashboard.png)
 
 **Job Analysis — STRONG / HONEST / GAP breakdown per JD skill**
+
 ![Job Analysis](docs/screenshots/job-analysis.png)
 
 **Settings — model assignment per role + API key status**
+
 ![Settings](docs/screenshots/settings.png)
 
 ---
