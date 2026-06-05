@@ -11,7 +11,7 @@ Output JSON only — no markdown fences, no explanation:
   "must_haves": [{"skill": "...", "status": "STRONG|HONEST|GAP|UNKNOWN", "tier": 1|2|3|4|null, "evidence": "..."}],
   "nice_to_haves": [{"skill": "...", "status": "STRONG|HONEST|GAP|UNKNOWN", "tier": 1|2|3|4|null, "evidence": "..."}],
   "ats_keywords": ["top 5-8 keywords an ATS will scan for"],
-  "match_score": 1,
+  "match_score": 85,
   "strongest_angle": "what makes this candidate genuinely competitive for this role",
   "weakest_point": "what the interviewer will push back on most",
   "is_poor_match": false
@@ -23,7 +23,9 @@ Classify each required/optional skill from the JD against SKILLS_INVENTORY:
 - GAP: not in inventory, Tier 4, or skill clearly needed but absent
 - UNKNOWN: no SKILLS_INVENTORY provided (use this for all skills when inventory is missing)
 
-is_poor_match = true if ≥50% of must_haves are GAP"""
+is_poor_match = true if ≥50% of must_haves are GAP
+
+match_score is an integer from 0 to 100 (not a decimal)."""
 
 _TIER_LABELS = {1: "Core", 2: "Proficient", 3: "Familiar", 4: "Exposure"}
 

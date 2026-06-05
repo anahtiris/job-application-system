@@ -47,6 +47,21 @@ def update_models(body: ModelsUpdate):
     return {"saved": True}
 
 
+@router.get("/profile")
+def get_profile():
+    return {"name": get_setting("person.name", "")}
+
+
+class ProfileUpdate(BaseModel):
+    name: str
+
+
+@router.put("/profile")
+def update_profile(body: ProfileUpdate):
+    set_setting("person.name", body.name.strip())
+    return {"saved": True}
+
+
 @router.get("/api-keys")
 def get_api_keys():
     return {

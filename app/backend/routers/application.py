@@ -176,6 +176,8 @@ def save_drafts(body: SaveDraftsRequest, session: Session = Depends(get_session)
         raise HTTPException(404, "Application not found")
     app.resume_draft_md = body.resume_md
     app.cover_letter_draft_md = body.cover_letter_md
+    if app.status == "New":
+        app.status = "Draft"
     session.add(app)
     session.commit()
     return {"saved": True}
@@ -231,6 +233,8 @@ def save_finals(body: SaveFinalsRequest, session: Session = Depends(get_session)
     if body.company_address is not None:
         app.company_address = body.company_address
     app.review_completed = True
+    if app.status == "New":
+        app.status = "Draft"
     session.add(app)
     session.commit()
     return {"saved": True}
@@ -252,7 +256,33 @@ async def generate_pdf(body: PdfRequest, session: Session = Depends(get_session)
     if not app.resume_final_md or not app.cover_letter_final_md:
         raise HTTPException(400, "Final documents not found")
 
-    out_dir = APPS_DIR / app.company.replace(" ", "_")
+    import re as _re
+    def _slug(s: str) -> str:
+        return _re.sub(r"[^\w-]", "_", s.strip()).strip("_") or "unknown"
+
+    company_dir = APPS_DIR / _slug(app.company)
+    position_slug = _slug(app.job_title or "unknown")
+    out_dir = company_dir / position_slug
+
+    # Move any existing top-level files (from a previous application or old format)
+    # to a subfolder named after the other application's position
+    if company_dir.exists():
+        top_files = [f for f in company_dir.iterdir() if f.is_file() and f.suffix in (".docx", ".pdf")]
+        if top_files:
+            from sqlmodel import select as _select
+            other = session.exec(
+                _select(Application)
+                .where(Application.company == app.company)
+                .where(Application.id != app.id)
+                .where(Application.resume_pdf_path != None)  # noqa: E711
+                .order_by(Application.created_at.desc())
+            ).first()
+            old_slug = _slug(other.job_title if other and other.job_title else "unknown")
+            old_dir = company_dir / old_slug
+            old_dir.mkdir(parents=True, exist_ok=True)
+            for f in top_files:
+                f.rename(old_dir / f.name)
+
     tmpl_cv = TMPL_CV_DE if app.language == "de" else TMPL_CV_EN
 
     try:
@@ -266,6 +296,7 @@ async def generate_pdf(body: PdfRequest, session: Session = Depends(get_session)
             template_resume=tmpl_cv,
             template_cover=TMPL_CL,
             output_dir=out_dir,
+            person_name=get_setting("person.name", ""),
         )
     except (ValueError, RuntimeError) as e:
         raise HTTPException(422, str(e))

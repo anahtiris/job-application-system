@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Job Capture</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      width: 260px;
+      background: #fff;
+      color: #111;
+    }
+
+    .header {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-title { font-weight: 600; font-size: 14px; }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #d1d5db;
+    }
+    .status-dot.online  { background: #22c55e; }
+    .status-dot.offline { background: #ef4444; }
+
+    .body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+
+    .capture-btn {
+      width: 100%;
+      padding: 10px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .capture-btn:hover:not(:disabled) { background: #333; }
+    .capture-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .message {
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      display: none;
+    }
+    .message.info    { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; display: block; }
+    .message.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; display: block; }
+    .message.error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; display: block; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="header-title">Job Capture</span>
+    <div class="status-dot" id="statusDot" title="Checking backend…"></div>
+  </div>
+
+  <div class="body">
+    <div class="message" id="message"></div>
+    <button class="capture-btn" id="captureBtn">Capture Job</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,6 +1,7 @@
-export const STATUS_ORDER = ["Draft", "Applied", "Interview", "Offer", "Rejected"] as const;
+export const STATUS_ORDER = ["New", "Draft", "Applied", "Interview", "Offer", "Rejected"] as const;
 
 export const STATUS_CLASSES: Record<string, string> = {
+  New:       "bg-indigo-50 text-indigo-700 border border-indigo-200",
   Draft:     "bg-muted/60 text-muted-foreground border border-border",
   Applied:   "bg-blue-100 text-blue-700 border border-blue-200",
   Interview: "bg-amber-100 text-amber-700 border border-amber-200",

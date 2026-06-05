@@ -75,9 +75,12 @@ def _page_count(pdf_path: Path) -> int:
     return int(match.group(1)) if match else -1
 
 
-_BOILERPLATE_PATTERNS = [
+_GREETING_PATTERNS = [
     r"sehr geehrte",
     r"dear ",
+]
+
+_CLOSING_PATTERNS = [
     r"mit freundlichen grüßen",
     r"kind regards",
     r"freundliche grüße",
@@ -86,15 +89,36 @@ _BOILERPLATE_PATTERNS = [
     r"hochachtungsvoll",
 ]
 
+_CONTACT_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.\w+|[\+\d][\d\s\(\)\-\.]{6,}")
+
 
 def _strip_letter_boilerplate(text: str) -> str:
-    """Remove greeting/closing lines the LLM may include in the body output."""
+    """Remove greeting, truncate at the closing salutation, but preserve any
+    contact/availability line that appears after the closing (LLMs sometimes
+    place it there)."""
     lines = text.split("\n")
-    filtered = [
-        line for line in lines
-        if not any(re.match(p, line.strip().lower()) for p in _BOILERPLATE_PATTERNS)
-    ]
-    return "\n".join(filtered)
+    body_lines: list[str] = []
+    tail_lines: list[str] = []  # lines after the closing
+    hit_closing = False
+
+    for line in lines:
+        lower = line.strip().lower()
+        if any(re.match(p, lower) for p in _GREETING_PATTERNS):
+            continue
+        if any(re.match(p, lower) for p in _CLOSING_PATTERNS):
+            hit_closing = True
+            continue  # skip the closing line itself
+        if hit_closing:
+            tail_lines.append(line)
+        else:
+            body_lines.append(line)
+
+    # Rescue any line after the closing that contains an email or phone
+    rescued = [l for l in tail_lines if _CONTACT_PATTERN.search(l)]
+    if rescued:
+        body_lines.extend([""] + rescued)
+
+    return "\n".join(body_lines)
 
 
 def _md_to_xml_map(resume_md: str) -> dict[str, str]:

@@ -6,7 +6,7 @@ import tomllib
 from fastapi import APIRouter, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from db import get_setting
+from db import get_setting, set_setting
 from services.parser import parse_resume
 
 router = APIRouter()
@@ -42,6 +42,15 @@ async def parse(file: UploadFile, language: str = "en"):
     path = _master_path(language)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(markdown, encoding="utf-8")
+
+    # Auto-save person name from # Contact section if not already set
+    if not get_setting("person.name"):
+        import re
+        m = re.search(r"#\s*Contact\s*\n([^\n]+)", markdown)
+        if m:
+            raw_name = m.group(1).strip().lstrip("#").strip()
+            if raw_name and "@" not in raw_name and "+" not in raw_name:
+                set_setting("person.name", raw_name.replace(" ", "_"))
 
     return {"markdown": markdown, "saved_to": str(path)}
 

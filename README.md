@@ -1,6 +1,6 @@
 # Job Application System
 
-An AI-assisted pipeline that produces a tailored one-page CV and cover letter (DOCX + PDF) for each job application. Works with any combination of Ollama (local), Anthropic, OpenAI, Gemini, and Perplexity — assign a different model to each role (parser, writer, reviewer, research) and swap them from the UI without restarting.
+An AI-assisted pipeline that captures job leads from any job board, analyzes fit before you commit, and produces a tailored one-page CV and cover letter (DOCX + PDF) for each application. Works with any combination of Ollama (local), Anthropic, OpenAI, Gemini, and Perplexity — assign a different model to each role (parser, writer, reviewer, research) and swap them from the UI without restarting.
 
 ---
 
@@ -66,8 +66,23 @@ Open [http://localhost:3000](http://localhost:3000).
 2. Go to **Settings** → paste your persona description (your personal review guardrails).
 3. Go to **Skills** → add your skills with tier ratings (1=Core, 2=Proficient, 3=Familiar, 4=Exposure) and evidence snippets.
 4. Drop your CV and cover letter DOCX templates into `templates/resume/` and `templates/cover-letter/`.
+5. Go to **Setup** → upload your master resume (EN and/or DE). Your name is auto-extracted for PDF file naming.
 
-## Workflow (5-step wizard)
+## Browser extension
+
+Load `browser-extension/` as an unpacked extension in Chrome (`chrome://extensions` → Load unpacked).
+
+On any job board page, click the extension icon → **Capture Job**. The raw page text is saved instantly to the backend (no LLM delay). Run **Leads → Process captured** (or tell Claude Code to run `POST /api/leads/extract-captured`) to extract structured data in batch.
+
+## Leads pipeline
+
+Before committing to a full application, triage jobs in **Leads**:
+
+1. Capture from the browser extension (or add manually).
+2. **Analyze** — runs fit gap analysis (STRONG / HONEST / GAP per JD skill) + company tone research in parallel. Score 0–100, verdict strong / maybe / skip.
+3. **Approve** → creates an Application in the tracker. **Reject** → dismisses.
+
+## Application workflow (5-step wizard)
 
 1. **Job Details** — paste the job description, set language and cover letter notes.
 2. **Job Analysis** — auto-runs gap analysis (STRONG / HONEST / GAP) per JD skill against your skills inventory, ATS keywords, match score.
@@ -82,14 +97,16 @@ Output lands in `applications/[Company]/`.
 ```
 app/
   backend/          FastAPI + SQLite
-    routers/        API routes (application, tracker, resume, settings)
+    routers/        API routes (application, tracker, resume, settings, leads)
     services/       analyzer, generator, reviewer, researcher, interview, pdf
       providers/    ollama, anthropic, openai, perplexity, gemini
     office/         unpack.py / pack.py — DOCX ZIP editing helpers
     config.toml     Default model slugs and file paths
   frontend/         Next.js 14
-    app/            Pages: /, /setup, /skills, /apply/new, /apply/[id], /settings
+    app/            Pages: /, /setup, /skills, /leads, /leads/[id],
+                           /apply/new, /apply/[id], /settings
     components/     ReviewPanel, Nav, shared UI
+browser-extension/  Chrome Manifest V3 — one-click job capture
 data/               persona.md, skills.json  (gitignored — see examples/)
 templates/          Base DOCX files  (gitignored, .gitkeep preserves folders)
 applications/       Per-company output folders  (gitignored)

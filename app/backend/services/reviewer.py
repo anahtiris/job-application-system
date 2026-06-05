@@ -3,6 +3,7 @@
 Always runs the user's persona (data/persona.md) plus 2 randomly selected
 from the 4 standard personas. Returns structured review output.
 """
+import asyncio
 import json
 import random
 from pathlib import Path
@@ -191,29 +192,25 @@ async def run_review(
     persona_text = persona_path.read_text(encoding="utf-8") if persona_path.exists() else ""
 
     selected_keys = random.sample(list(PERSONAS.keys()), 2)
-    reviews = []
 
-    # Always run user persona first
     persona_system = PERSONA_REVIEW_SYSTEM
     if persona_text:
         persona_system = f"Additional personal guidelines:\n{persona_text}\n\n" + PERSONA_REVIEW_SYSTEM
 
-    user_review = await _run_review(
-        "user", "You (Personal Reviewer)", persona_system,
-        resume_md, cover_letter_md, master_md, model,
-    )
-    reviews.append(user_review)
+    coros = [
+        _run_review("user", "You (Personal Reviewer)", persona_system,
+                    resume_md, cover_letter_md, master_md, model),
+        *[
+            _run_review(key, PERSONAS[key]["name"], REVIEW_SYSTEM,
+                        resume_md, cover_letter_md, master_md, model)
+            for key in selected_keys
+        ],
+    ]
+    results = await asyncio.gather(*coros)
 
-    # Run 2 random standard personas
-    standard_reviews = []
-    for key in selected_keys:
-        p = PERSONAS[key]
-        review = await _run_review(
-            key, p["name"], REVIEW_SYSTEM,
-            resume_md, cover_letter_md, master_md, model,
-        )
-        reviews.append(review)
-        standard_reviews.append(review)
+    user_review = results[0]
+    standard_reviews = list(results[1:])
+    reviews = list(results)
 
     return {
         "reviewers": [r["persona"] for r in reviews],

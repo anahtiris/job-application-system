@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from db import create_db
-from routers import application, resume, settings, tracker
+from routers import application, leads, resume, settings, tracker
 
 BASE_DIR = Path(__file__).parent.parent.parent  # repo root
 
@@ -31,6 +31,7 @@ app.include_router(resume.router, prefix="/api/resume", tags=["resume"])
 app.include_router(application.router, prefix="/api/application", tags=["application"])
 app.include_router(tracker.router, prefix="/api/tracker", tags=["tracker"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
+app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
 
 
 @app.exception_handler(Exception)

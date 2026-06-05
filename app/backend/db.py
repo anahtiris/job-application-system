@@ -31,6 +31,25 @@ def set_setting(key: str, value: str) -> None:
         session.commit()
 
 
+class JobLead(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    company: str = ""
+    job_title: str = ""
+    language: str = "en"
+    job_description: str = ""
+    raw_text: Optional[str] = None
+    source_url: Optional[str] = None
+    status: str = "new"           # captured | new | analyzing | analyzed | approved | rejected
+    fit_score: Optional[int] = None
+    fit_verdict: Optional[str] = None   # strong | maybe | skip
+    fit_analysis_json: Optional[str] = None
+    company_tone: Optional[str] = None
+    company_research: Optional[str] = None
+    application_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class Application(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
     company: str
@@ -65,6 +84,12 @@ def create_db():
         for col_def in ["resume_docx_path TEXT", "cover_letter_docx_path TEXT", "cover_letter_notes TEXT", "interview_prep_md TEXT", "interview_debrief_md TEXT"]:
             try:
                 conn.execute(text(f"ALTER TABLE application ADD COLUMN {col_def}"))
+                conn.commit()
+            except Exception:
+                pass
+        for col_def in ["raw_text TEXT"]:
+            try:
+                conn.execute(text(f"ALTER TABLE joblead ADD COLUMN {col_def}"))
                 conn.commit()
             except Exception:
                 pass
