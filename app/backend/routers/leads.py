@@ -19,6 +19,7 @@ with open(Path(__file__).parent.parent / "config.toml", "rb") as f:
 
 BASE = Path(__file__).parent.parent.parent.parent
 SKILLS = BASE / _cfg["paths"]["skills"]
+CAREER_GOAL = BASE / _cfg["paths"]["career_goal"]
 
 
 def _model(role: str) -> str:
@@ -122,9 +123,36 @@ async def analyze_lead(lead_id: str, session: Session = Depends(get_session)):
         except Exception:
             pass
 
+    goal_text = ""
+    if CAREER_GOAL.exists():
+        try:
+            goal_text = CAREER_GOAL.read_text(encoding="utf-8").strip()
+        except Exception:
+            pass
+
+    recent = session.exec(
+        select(JobLead)
+        .where(JobLead.status.in_(["approved", "rejected"]))
+        .order_by(JobLead.updated_at.desc())
+        .limit(10)
+    ).all()
+    approved_titles = [l.job_title for l in recent if l.status == "approved" and l.job_title]
+    rejected_titles = [l.job_title for l in recent if l.status == "rejected" and l.job_title]
+    past_decisions = ""
+    parts = []
+    if approved_titles:
+        parts.append(f"Approved: {', '.join(approved_titles)}")
+    if rejected_titles:
+        parts.append(f"Rejected: {', '.join(rejected_titles)}")
+    if parts:
+        past_decisions = ". ".join(parts)
+
     import asyncio
     fit_result, research_result = await asyncio.gather(
-        analyzer.analyze_jd(lead.job_description, skills_inventory, _model("research")),
+        analyzer.analyze_jd(
+            lead.job_description, skills_inventory, _model("research"),
+            career_goal=goal_text, past_decisions=past_decisions,
+        ),
         researcher.research_company(lead.company, _model("research"), lead.source_url or ""),
     )
 

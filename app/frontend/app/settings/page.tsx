@@ -24,6 +24,9 @@ export default function SettingsPage() {
   const [persona, setPersona] = useState("");
   const [savingPersona, setSavingPersona] = useState(false);
 
+  const [goal, setGoal] = useState("");
+  const [savingGoal, setSavingGoal] = useState(false);
+
   const [models, setModels] = useState<Record<string, string>>({});
   const [savingModels, setSavingModels] = useState(false);
 
@@ -31,6 +34,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     api.get("/api/resume/persona").then((r) => { if (r?.content) setPersona(r.content); }).catch(() => {});
+    api.get("/api/settings/goal").then((r) => { if (r?.content) setGoal(r.content); }).catch(() => {});
     api.get("/api/settings/models").then((r) => { if (r) setModels(r); }).catch(() => {});
     api.get("/api/settings/api-keys").then((r) => { if (r) setApiKeys(r); }).catch(() => {});
   }, []);
@@ -40,6 +44,13 @@ export default function SettingsPage() {
     await api.put("/api/resume/persona", { content: persona });
     toast.success("Persona saved.");
     setSavingPersona(false);
+  };
+
+  const saveGoal = async () => {
+    setSavingGoal(true);
+    await api.put("/api/settings/goal", { content: goal });
+    toast.success("Career goal saved.");
+    setSavingGoal(false);
   };
 
   const saveModels = async () => {
@@ -107,6 +118,31 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Career goal */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Career Goal <span className="text-sm font-normal text-muted-foreground">(optional)</span></CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Describe where you want to take your career. When set, each job analysis will include a
+            goal alignment signal — <span className="font-medium text-green-700">aligns</span>,{" "}
+            <span className="font-medium text-muted-foreground">neutral</span>, or{" "}
+            <span className="font-medium text-amber-700">detours</span> — based on your stated direction
+            and your recent approve/reject decisions.
+          </p>
+          <textarea
+            className="w-full border rounded p-3 text-sm font-mono min-h-[160px] resize-y"
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            placeholder={`Example:\nMove from fullstack engineering toward AI/ML engineering roles.\nPrioritise: LLM-backed products, RAG systems, agentic tooling.\nDe-prioritise: pure frontend, e-commerce, Shopify, CMS work.\nOpen to: startup or scale-up, Munich or remote.`}
+          />
+          <Button onClick={saveGoal} disabled={savingGoal}>
+            {savingGoal ? "Saving…" : "Save Career Goal"}
+          </Button>
         </CardContent>
       </Card>
 

@@ -25,12 +25,28 @@ Classify each required/optional skill from the JD against SKILLS_INVENTORY:
 
 is_poor_match = true if ≥50% of must_haves are GAP
 
-match_score is an integer from 0 to 100 (not a decimal)."""
+match_score is an integer from 0 to 100 (not a decimal).
+
+If CAREER_GOAL is provided in the input, add these two fields to the output:
+  "goal_alignment": "aligns" | "neutral" | "detours",
+  "goal_alignment_note": "one sentence citing the specific goal element matched or missed"
+
+- aligns: role moves clearly toward the stated goal
+- detours: role moves away from the goal or locks into an unwanted direction
+- neutral: insufficient overlap to judge, or goal is not relevant to this role type
+
+If CAREER_GOAL is absent, omit goal_alignment and goal_alignment_note entirely."""
 
 _TIER_LABELS = {1: "Core", 2: "Proficient", 3: "Familiar", 4: "Exposure"}
 
 
-async def analyze_jd(job_description: str, skills_inventory: dict, model: str) -> dict:
+async def analyze_jd(
+    job_description: str,
+    skills_inventory: dict,
+    model: str,
+    career_goal: str = "",
+    past_decisions: str = "",
+) -> dict:
     if skills_inventory:
         lines = [
             f"- {name}: Tier {s['tier']} ({_TIER_LABELS.get(s['tier'], s['tier'])}) — {s.get('evidence', '')}"
@@ -41,6 +57,10 @@ async def analyze_jd(job_description: str, skills_inventory: dict, model: str) -
         skills_block = "SKILLS_INVENTORY: (none provided)"
 
     prompt = f"JOB_DESCRIPTION:\n{job_description}\n\n{skills_block}"
+    if career_goal:
+        prompt += f"\n\nCAREER_GOAL:\n{career_goal}"
+    if past_decisions:
+        prompt += f"\n\nRECENT_DECISIONS:\n{past_decisions}"
     raw = await generate(model, prompt, system=ANALYSIS_SYSTEM)
     text = raw.strip()
     # Strip markdown fences

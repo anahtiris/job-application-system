@@ -12,6 +12,9 @@ router = APIRouter()
 with open(Path(__file__).parent.parent / "config.toml", "rb") as f:
     _cfg = tomllib.load(f)
 
+BASE = Path(__file__).parent.parent.parent.parent
+CAREER_GOAL = BASE / _cfg["paths"]["career_goal"]
+
 _ROLES = ("parser", "writer", "reviewer", "research")
 
 _API_KEY_ENV = {
@@ -59,6 +62,24 @@ class ProfileUpdate(BaseModel):
 @router.put("/profile")
 def update_profile(body: ProfileUpdate):
     set_setting("person.name", body.name.strip())
+    return {"saved": True}
+
+
+@router.get("/goal")
+def get_goal():
+    if not CAREER_GOAL.exists():
+        return {"content": ""}
+    return {"content": CAREER_GOAL.read_text(encoding="utf-8")}
+
+
+class GoalUpdate(BaseModel):
+    content: str
+
+
+@router.put("/goal")
+def update_goal(body: GoalUpdate):
+    CAREER_GOAL.parent.mkdir(parents=True, exist_ok=True)
+    CAREER_GOAL.write_text(body.content, encoding="utf-8")
     return {"saved": True}
 
 

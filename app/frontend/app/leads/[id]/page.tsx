@@ -21,6 +21,8 @@ type FitAnalysis = {
   strongest_angle: string;
   weakest_point: string;
   is_poor_match: boolean;
+  goal_alignment?: "aligns" | "neutral" | "detours";
+  goal_alignment_note?: string;
 };
 
 type Lead = {
@@ -178,12 +180,26 @@ export default function LeadDetailPage() {
         <div className="space-y-4">
           {/* Score card */}
           <div className="border rounded-lg p-4 space-y-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <span className="text-3xl font-bold">{fit.match_score}</span>
               <span className="text-muted-foreground text-sm">/100</span>
               {lead.fit_verdict && (
                 <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${VERDICT_CLASSES[lead.fit_verdict] ?? ""}`}>
                   {lead.fit_verdict}
+                </span>
+              )}
+              {fit.goal_alignment && (
+                <span
+                  title={fit.goal_alignment_note ?? ""}
+                  className={`px-2 py-1 rounded text-xs font-medium cursor-default ${
+                    fit.goal_alignment === "aligns"
+                      ? "bg-green-50 text-green-700 border border-green-200"
+                      : fit.goal_alignment === "detours"
+                      ? "bg-amber-50 text-amber-700 border border-amber-200"
+                      : "bg-muted text-muted-foreground border border-border"
+                  }`}
+                >
+                  {fit.goal_alignment === "aligns" ? "→ aligns" : fit.goal_alignment === "detours" ? "← detours" : "⟳ neutral"}
                 </span>
               )}
               {lead.company_tone && (

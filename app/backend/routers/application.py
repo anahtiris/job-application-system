@@ -25,6 +25,7 @@ TMPL_CV_DE = BASE / _cfg["paths"]["templates_resume_de"]
 TMPL_CL = BASE / _cfg["paths"]["templates_cover_letter"]
 APPS_DIR = BASE / _cfg["paths"]["applications_dir"]
 SKILLS = BASE / _cfg["paths"]["skills"]
+CAREER_GOAL = BASE / _cfg["paths"]["career_goal"]
 
 
 def _model(role: str) -> str:
@@ -75,7 +76,34 @@ async def analyze_jd_endpoint(body: AnalyzeRequest, session: Session = Depends(g
         except Exception:
             pass
 
-    return await analyzer.analyze_jd(app.job_description, skills_inventory, _model("research"))
+    goal_text = ""
+    if CAREER_GOAL.exists():
+        try:
+            goal_text = CAREER_GOAL.read_text(encoding="utf-8").strip()
+        except Exception:
+            pass
+
+    from db import JobLead
+    from sqlmodel import select as _select
+    recent = session.exec(
+        _select(JobLead)
+        .where(JobLead.status.in_(["approved", "rejected"]))
+        .order_by(JobLead.updated_at.desc())
+        .limit(10)
+    ).all()
+    parts = []
+    approved_titles = [l.job_title for l in recent if l.status == "approved" and l.job_title]
+    rejected_titles = [l.job_title for l in recent if l.status == "rejected" and l.job_title]
+    if approved_titles:
+        parts.append(f"Approved: {', '.join(approved_titles)}")
+    if rejected_titles:
+        parts.append(f"Rejected: {', '.join(rejected_titles)}")
+    past_decisions = ". ".join(parts) if parts else ""
+
+    return await analyzer.analyze_jd(
+        app.job_description, skills_inventory, _model("research"),
+        career_goal=goal_text, past_decisions=past_decisions,
+    )
 
 
 # ── Research ──────────────────────────────────────────────────────────────────
