@@ -62,11 +62,24 @@ export default function LeadDetailPage() {
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [copying, setCopying] = useState(false);
 
   const load = () => {
     api.get(`/api/leads/${id}`).then((data) => { setLead(data); setLoading(false); });
   };
   useEffect(() => { load(); }, [id]);
+
+  const copyForClaude = async () => {
+    setCopying(true);
+    const result = await api.get(`/api/leads/${id}/claude-prompt`);
+    if (result?.prompt) {
+      await navigator.clipboard.writeText(result.prompt);
+      toast.success("Copied — paste into Claude to analyze");
+    } else {
+      toast.error("Could not build prompt");
+    }
+    setCopying(false);
+  };
 
   const runAnalysis = async () => {
     setAnalyzing(true);
@@ -153,24 +166,37 @@ export default function LeadDetailPage() {
             </a>
           )}
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 flex-wrap justify-end">
           {lead.status === "approved" && lead.application_id ? (
-            <Button variant="outline" onClick={() => router.push(`/apply/${lead.application_id}`)}>
-              View Application →
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={copyForClaude} disabled={copying}>
+                {copying ? "Copying…" : "Copy for Claude"}
+              </Button>
+              <Button variant="outline" onClick={() => router.push(`/apply/${lead.application_id}`)}>
+                View Application →
+              </Button>
+            </>
           ) : lead.status === "rejected" ? (
             <span className="text-sm text-muted-foreground">Rejected</span>
           ) : fit ? (
             <>
+              <Button variant="outline" size="sm" onClick={copyForClaude} disabled={copying}>
+                {copying ? "Copying…" : "Copy for Claude"}
+              </Button>
               <Button variant="outline" onClick={reject}>Reject</Button>
               <Button onClick={approve} disabled={approving}>
                 {approving ? "Creating…" : "Approve & Create Application"}
               </Button>
             </>
           ) : (
-            <Button onClick={runAnalysis} disabled={analyzing}>
-              {analyzing ? "Analyzing…" : "Analyze"}
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={copyForClaude} disabled={copying}>
+                {copying ? "Copying…" : "Copy for Claude"}
+              </Button>
+              <Button onClick={runAnalysis} disabled={analyzing}>
+                {analyzing ? "Analyzing…" : "Analyze"}
+              </Button>
+            </>
           )}
         </div>
       </div>

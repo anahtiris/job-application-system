@@ -122,6 +122,13 @@ export default function ApplicationDetailPage() {
   const [interviewDebrief, setInterviewDebrief] = useState("");
   const [generatingDebrief, setGeneratingDebrief] = useState(false);
 
+  const copyJdForClaude = async () => {
+    if (!app?.job_description) return;
+    const header = `I'm preparing my application for ${app.job_title || "this role"} at ${app.company || "this company"}.${app.cover_letter_notes ? `\n\nNotes on what to emphasise:\n${app.cover_letter_notes}` : ""}\n\nHere's the job description:\n\n`;
+    await navigator.clipboard.writeText(header + app.job_description);
+    toast.success("Copied — paste into Claude");
+  };
+
   useEffect(() => {
     api.get(`/api/tracker/${id}`).then((a) => {
       setApp(a);
@@ -231,7 +238,12 @@ export default function ApplicationDetailPage() {
         </TabsList>
 
         <TabsContent value="jd">
-          <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed border rounded-lg p-4 bg-muted/20 mt-3">{app.job_description}</pre>
+          <div className="flex justify-end mt-3 mb-2">
+            <Button variant="outline" size="sm" onClick={copyJdForClaude} disabled={!app.job_description}>
+              Copy for Claude
+            </Button>
+          </div>
+          <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed border rounded-lg p-4 bg-muted/20">{app.job_description}</pre>
         </TabsContent>
 
         <TabsContent value="resume">
