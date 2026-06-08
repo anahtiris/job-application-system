@@ -63,24 +63,27 @@ async def generate_skills_debrief(
 
 INTERVIEW_SYSTEM = """You are preparing a candidate for a job interview.
 
-Output markdown with EXACTLY these five section headers (## level), in this order:
+Output markdown with EXACTLY these seven section headers (## level), in this order:
 
-## Technical Questions
-## Company Background
+## Company Analysis
 ## Introduction Script
-## STAR Stories
+## Common Questions
+## Job-Specific Questions
+## Weak Spots
 ## Questions to Ask
+## Salary & Negotiation
 
 RULES (violations are failures):
-- Technical Questions: 10-12 numbered questions; mix conceptual and practical; drawn directly from JD keywords and stack mentioned; adapt depth to INTERVIEW_ROUND (Screening = broader, Technical = deeper, Final = system design + culture)
-- Company Background: 3-5 bullet points covering what the company builds, their tech stack if mentioned, company size/stage, and mission; infer from JD if no direct facts are given; do not fabricate specifics
-- Introduction Script: 60-90 seconds when read aloud at natural pace; open with a concrete hook (a shipped result or a problem you solved), pivot to why this role, close with one forward-looking sentence; adapt register to INTERVIEWER_TYPE (HR = simpler language, Hiring Manager = impact focus, Technical Peer = technical credibility)
-- STAR Stories: exactly 4 stories; each story has four labelled sub-points: **S:** (Situation), **T:** (Task), **A:** (Action), **R:** (Result); draw only from facts in MASTER_RESUME; map each story to a likely interview theme (e.g. "Leadership", "Technical challenge", "Conflict resolution", "Delivery under pressure")
-- Questions to Ask: 8-10 lines; each line starts with `- ` (plain bullet, no checkbox); questions should be thoughtful and specific to the company/role; if INTERVIEWER_TYPE is HR focus on culture/process, if Technical Peer focus on engineering practices, if Hiring Manager focus on team/vision
-- If FOCUS_SKILLS is provided, weight Technical Questions and STAR story selection toward those skills
-- Language: write everything in the language specified by LANGUAGE (EN = English, DE = German)
-- Do NOT fabricate resume facts, metrics, or company details not derivable from the inputs
-- Do NOT add any sections beyond the five listed above"""
+- Company Analysis: 4-6 bullets — what the company builds, stage/size, tech stack if mentioned, and culture signals. Base it on the JOB_DESCRIPTION and COMPANY_TYPE. You have NO web access here, so do not invent reviews, funding, headcount, or salary numbers — if a fact is not derivable from the inputs, append "(inferred — verify)" or omit it.
+- Introduction Script: 60-90 seconds read aloud; open with a concrete hook (a shipped result from TAILORED_CV / MASTER_RESUME), pivot to why this role, close with one forward-looking line. Draw on TAILORED_CV and COVER_LETTER so the pitch matches what was actually submitted. Adapt register to INTERVIEWER_TYPE (HR = simpler, Hiring Manager = impact, Technical Peer = technical credibility).
+- Common Questions: the 6-8 near-universal questions ("tell me about yourself", "why this company", "greatest strength", "biggest weakness", "where in 5 years", "why leaving / why now", "a conflict or failure"). For each: the question as a **bold** line, then a 2-4 sentence sample answer grounded ONLY in facts from TAILORED_CV / MASTER_RESUME.
+- Job-Specific Questions: 8-10 numbered technical/role questions drawn directly from JD keywords and the stack; adapt depth to INTERVIEW_ROUND (Screening = broader, Technical = deeper, Final = system design + culture). If FOCUS_SKILLS is provided, weight toward those.
+- Weak Spots: 3-5 places where the JD asks for something the resume does not strongly support (a missing skill, thin or recent experience, a gap). For each: **Likely probe:** "[question]" then **Honest answer:** "[a truthful framing that owns the gap and names a transferable strength]". Never suggest bluffing or upgrading a claim. Skills that are recent (<12 months) or from a side project must be described as "recent" / "exploring", never as deep experience.
+- Questions to Ask: 8-10 lines, each starting with `- ` (plain bullet, no checkbox); thoughtful and specific to the company/role; adapt to INTERVIEWER_TYPE (HR = culture/process, Technical Peer = engineering practices, Hiring Manager = team/vision).
+- Salary & Negotiation: a brief market-range note (state plainly it is a rough estimate to verify — do not invent a precise figure) and a 2-3 sentence script for answering "what are your salary expectations?" with a range and one anchoring sentence.
+- Language: write everything in the language specified by LANGUAGE (EN = English, DE = German).
+- Do NOT fabricate resume facts, metrics, company details, or salary numbers not derivable from the inputs.
+- Do NOT add any sections beyond the seven listed above."""
 
 
 async def generate_interview_prep(
@@ -93,11 +96,15 @@ async def generate_interview_prep(
     interviewer_type: str,
     focus_skills: str,
     model: str,
+    resume_final: str = "",
+    cover_letter: str = "",
 ) -> str:
     master_md = master_path.read_text(encoding="utf-8")
     prompt = (
         f"MASTER_RESUME:\n{master_md}\n\n"
-        f"JOB_DESCRIPTION:\n{job_description}\n\n"
+        + (f"TAILORED_CV:\n{resume_final}\n\n" if resume_final.strip() else "")
+        + (f"COVER_LETTER:\n{cover_letter}\n\n" if cover_letter.strip() else "")
+        + f"JOB_DESCRIPTION:\n{job_description}\n\n"
         f"COMPANY: {company_name}\n"
         f"COMPANY_TYPE: {company_tone}\n"
         f"LANGUAGE: {language.upper()}\n"

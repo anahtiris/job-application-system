@@ -164,6 +164,16 @@ export default function ApplicationDetailPage() {
     setGeneratingPrep(false);
   };
 
+  const copyInterviewPromptForClaude = async () => {
+    const prompt =
+      `Prepare interview prep for application ${id} ` +
+      `(Round: ${prepRound}, Interviewer: ${prepInterviewer}${prepFocus.trim() ? `, Focus: ${prepFocus.trim()}` : ""}).\n` +
+      `Fetch details from http://localhost:8000/api/tracker/${id}, follow the "Interview prep — Claude path" steps in CLAUDE.md ` +
+      `(web-research the company, draft all sections), then save with PUT /api/application/${id}/interview-prep.`;
+    await navigator.clipboard.writeText(prompt);
+    toast.success("Copied — paste into Claude Code");
+  };
+
   const handleGenerateDebrief = async () => {
     setGeneratingDebrief(true);
     const result = await api
@@ -189,9 +199,11 @@ export default function ApplicationDetailPage() {
         <Link href="/" className="text-sm text-muted-foreground hover:underline">← Dashboard</Link>
         <div className="flex items-start justify-between mt-1 gap-4">
           <h1 className="text-2xl font-bold">{app.company} — {app.job_title}</h1>
-          <Link href={`/apply/new?id=${id}&regen=1`} className="shrink-0">
-            <Button size="sm" variant="outline">Regenerate</Button>
-          </Link>
+          {(app.status === "New" || app.status === "Draft") && (
+            <Link href={`/apply/new?id=${id}&regen=1`} className="shrink-0">
+              <Button size="sm" variant="outline">Regenerate</Button>
+            </Link>
+          )}
         </div>
         {isIncomplete && (
           <div className="mt-3">
@@ -229,12 +241,12 @@ export default function ApplicationDetailPage() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="jd">
+      <Tabs defaultValue={isInterview ? "prep" : "jd"}>
         <TabsList className="w-full">
+          {isInterview && <TabsTrigger value="prep" className="flex-1">Interview Prep</TabsTrigger>}
           <TabsTrigger value="jd" className="flex-1">Job Description</TabsTrigger>
           <TabsTrigger value="resume" className="flex-1" disabled={!app.resume_final_md}>Resume</TabsTrigger>
           <TabsTrigger value="cl" className="flex-1" disabled={!app.cover_letter_final_md}>Cover Letter</TabsTrigger>
-          <TabsTrigger value="prep" className="flex-1" disabled={!isInterview}>Interview Prep</TabsTrigger>
         </TabsList>
 
         <TabsContent value="jd">
@@ -258,6 +270,7 @@ export default function ApplicationDetailPage() {
           </div>
         </TabsContent>
 
+        {isInterview && (
         <TabsContent value="prep">
           <div className="mt-3 space-y-8">
             {/* General interview prep */}
@@ -266,8 +279,9 @@ export default function ApplicationDetailPage() {
                 <p className="text-sm text-muted-foreground py-6 text-center">Generating interview prep… (this may take a minute)</p>
               ) : interviewPrep && !showPrepControls ? (
                 <>
-                  <div className="flex justify-end mb-2">
-                    <Button size="sm" variant="outline" onClick={() => setShowPrepControls(true)}>Regenerate</Button>
+                  <div className="flex justify-end gap-2 mb-2">
+                    <Button size="sm" variant="outline" onClick={copyInterviewPromptForClaude}>Copy prompt for Claude</Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowPrepControls(true)}>Options</Button>
                   </div>
                   <InterviewPrepDisplay markdown={interviewPrep} />
                 </>
@@ -294,10 +308,14 @@ export default function ApplicationDetailPage() {
                     {showPrepControls && (
                       <Button variant="ghost" size="sm" onClick={() => setShowPrepControls(false)}>Cancel</Button>
                     )}
+                    <Button variant="outline" onClick={copyInterviewPromptForClaude}>Copy prompt for Claude</Button>
                     <Button onClick={handleGeneratePrep} className="flex-1">
-                      {interviewPrep ? "Regenerate Interview Prep" : "Generate Interview Prep"}
+                      {interviewPrep ? "Regenerate with Ollama" : "Generate with Ollama"}
                     </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Claude</strong> web-researches the company (real reviews/salary where available); <strong>Ollama</strong> runs offline with company analysis inferred from the JD.
+                  </p>
                 </div>
               )}
             </div>
@@ -326,6 +344,7 @@ export default function ApplicationDetailPage() {
             </div>
           </div>
         </TabsContent>
+        )}
       </Tabs>
 
       {/* Notes */}

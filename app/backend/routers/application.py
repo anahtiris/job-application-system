@@ -396,8 +396,26 @@ async def generate_interview_prep(body: InterviewPrepRequest, session: Session =
         interviewer_type=body.interviewer_type,
         focus_skills=body.focus_skills,
         model=_model("writer"),
+        resume_final=app.resume_final_md or app.resume_draft_md or "",
+        cover_letter=app.cover_letter_final_md or app.cover_letter_draft_md or "",
     )
     app.interview_prep_md = md
     session.add(app)
     session.commit()
     return {"markdown": md}
+
+
+class SaveInterviewPrepRequest(BaseModel):
+    markdown: str
+
+
+@router.put("/{app_id}/interview-prep")
+def save_interview_prep(app_id: str, body: SaveInterviewPrepRequest, session: Session = Depends(get_session)):
+    """Write-back endpoint for the Claude 'Copy prompt for Claude' interview-prep path."""
+    app = session.get(Application, app_id)
+    if not app:
+        raise HTTPException(404, "Application not found")
+    app.interview_prep_md = body.markdown
+    session.add(app)
+    session.commit()
+    return {"saved": True}
