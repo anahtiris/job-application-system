@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from "react-markdown";
@@ -122,11 +123,10 @@ export default function ApplicationDetailPage() {
   const [interviewDebrief, setInterviewDebrief] = useState("");
   const [generatingDebrief, setGeneratingDebrief] = useState(false);
 
-  const copyJdForClaude = async () => {
+  const copyJd = async () => {
     if (!app?.job_description) return;
-    const header = `I'm preparing my application for ${app.job_title || "this role"} at ${app.company || "this company"}.${app.cover_letter_notes ? `\n\nNotes on what to emphasise:\n${app.cover_letter_notes}` : ""}\n\nHere's the job description:\n\n`;
-    await navigator.clipboard.writeText(header + app.job_description);
-    toast.success("Copied — paste into Claude");
+    await navigator.clipboard.writeText(`${app.company || ""}\n${app.job_title || ""}\n\n${app.job_description}`);
+    toast.success("Copied");
   };
 
   useEffect(() => {
@@ -250,12 +250,16 @@ export default function ApplicationDetailPage() {
         </TabsList>
 
         <TabsContent value="jd">
-          <div className="flex justify-end mt-3 mb-2">
-            <Button variant="outline" size="sm" onClick={copyJdForClaude} disabled={!app.job_description}>
-              Copy for Claude
-            </Button>
+          <div className="relative mt-3">
+            <button
+              onClick={copyJd}
+              title="Copy"
+              className="absolute top-2 right-2 p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+            <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed border rounded-lg p-4 pr-8 bg-muted/20">{app.job_description}</pre>
           </div>
-          <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed border rounded-lg p-4 bg-muted/20">{app.job_description}</pre>
         </TabsContent>
 
         <TabsContent value="resume">
