@@ -190,6 +190,7 @@ def approve_lead(lead_id: str, session: Session = Depends(get_session)):
         language=lead.language,
         job_description=lead.job_description,
         company_tone=lead.company_tone,
+        source_url=lead.source_url,
         status="New",
     )
     session.add(app)
@@ -279,6 +280,51 @@ Page text:
     return {"processed": len(results), "ids": results}
 
 
+class ProcessedLeadRequest(BaseModel):
+    """Extraction + analysis results written back by the Claude 'process my captured jobs' flow."""
+    company: str = ""
+    job_title: str = ""
+    language: str = "en"
+    job_description: str = ""
+    company_tone: str = "direct"
+    company_research: Optional[str] = None
+    fit_analysis: dict
+
+
+@router.put("/{lead_id}/processed")
+def save_processed_lead(lead_id: str, body: ProcessedLeadRequest, session: Session = Depends(get_session)):
+    """Persist Claude-produced extraction + fit analysis for a lead and mark it analyzed.
+
+    Mirrors the fields the Ollama `/analyze` path writes, so the lead renders identically.
+    """
+    lead = session.get(JobLead, lead_id)
+    if not lead:
+        raise HTTPException(404, "Lead not found")
+
+    score = body.fit_analysis.get("match_score", 0)
+    # Normalize 0-1 float to 0-100 int if it came through on the wrong scale
+    if isinstance(score, float) and score <= 1.0:
+        score = int(score * 100)
+    score = int(score)
+    is_poor = bool(body.fit_analysis.get("is_poor_match", False))
+
+    lead.company = body.company
+    lead.job_title = body.job_title
+    lead.language = body.language
+    lead.job_description = body.job_description
+    lead.company_tone = body.company_tone
+    lead.company_research = body.company_research or ""
+    lead.fit_score = score
+    lead.fit_verdict = _verdict(score, is_poor)
+    lead.fit_analysis_json = json.dumps(body.fit_analysis)
+    lead.status = "analyzed"
+    lead.updated_at = datetime.utcnow()
+    session.add(lead)
+    session.commit()
+    session.refresh(lead)
+    return lead
+
+
 @router.post("/{lead_id}/reject")
 def reject_lead(lead_id: str, session: Session = Depends(get_session)):
     lead = session.get(JobLead, lead_id)
@@ -289,56 +335,3 @@ def reject_lead(lead_id: str, session: Session = Depends(get_session)):
     session.add(lead)
     session.commit()
     return {"status": "rejected"}
-
-
-_TIER_LABELS = {1: "Core", 2: "Proficient", 3: "Familiar", 4: "Exposure"}
-
-
-@router.get("/{lead_id}/claude-prompt")
-def get_claude_prompt(lead_id: str, session: Session = Depends(get_session)):
-    lead = session.get(JobLead, lead_id)
-    if not lead:
-        raise HTTPException(404, "Lead not found")
-
-    skills_lines: list[str] = []
-    if SKILLS.exists():
-        try:
-            skills_data = json.loads(SKILLS.read_text(encoding="utf-8")).get("skills", {})
-            for name, s in skills_data.items():
-                label = _TIER_LABELS.get(s.get("tier"), str(s.get("tier", "")))
-                evidence = s.get("evidence", "")
-                skills_lines.append(f"- {name}: Tier {s.get('tier')} ({label}){' — ' + evidence if evidence else ''}")
-        except Exception:
-            pass
-
-    goal_text = ""
-    if CAREER_GOAL.exists():
-        try:
-            goal_text = CAREER_GOAL.read_text(encoding="utf-8").strip()
-        except Exception:
-            pass
-
-    sections: list[str] = []
-    sections.append(
-        "Please analyze this job posting against my background and give me your honest assessment.\n\n"
-        "## What I need\n\n"
-        "1. **Match score** (0–100)\n"
-        "2. **Skill breakdown** — for each required skill: STRONG (solid experience), HONEST (some exposure), or GAP (missing)\n"
-        "3. Separate must-haves from nice-to-haves\n"
-        "4. Top 5–8 **ATS keywords** from the JD\n"
-        "5. My **strongest angle** — what makes me genuinely competitive here\n"
-        "6. The **biggest weakness** the interviewer will push back on\n"
-        "7. **Goal alignment** — does this role move me toward my stated direction, or is it a detour?"
-    )
-
-    if goal_text:
-        sections.append(f"---\n\n## My Career Goal\n\n{goal_text}")
-
-    if skills_lines:
-        sections.append("---\n\n## My Skills Inventory\n\n" + "\n".join(skills_lines))
-
-    jd = lead.job_description or lead.raw_text or ""
-    label = f"{lead.company or 'Unknown'} — {lead.job_title or 'Unknown'}" if (lead.company or lead.job_title) else "Job Description"
-    sections.append(f"---\n\n## {label}\n\n{jd}")
-
-    return {"prompt": "\n\n".join(sections)}

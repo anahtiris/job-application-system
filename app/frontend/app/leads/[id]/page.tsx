@@ -2,8 +2,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Copy } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+
+const PROCESS_PROMPT = "process my captured jobs";
 
 type SkillEntry = {
   skill: string;
@@ -60,36 +63,17 @@ export default function LeadDetailPage() {
   const router = useRouter();
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
-  const [analyzing, setAnalyzing] = useState(false);
   const [approving, setApproving] = useState(false);
-  const [copying, setCopying] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const load = () => {
     api.get(`/api/leads/${id}`).then((data) => { setLead(data); setLoading(false); });
   };
   useEffect(() => { load(); }, [id]);
 
-  const copyForClaude = async () => {
-    setCopying(true);
-    const result = await api.get(`/api/leads/${id}/claude-prompt`);
-    if (result?.prompt) {
-      await navigator.clipboard.writeText(result.prompt);
-      toast.success("Copied — paste into Claude to analyze");
-    } else {
-      toast.error("Could not build prompt");
-    }
-    setCopying(false);
-  };
-
-  const runAnalysis = async () => {
-    setAnalyzing(true);
-    const result = await api.post(`/api/leads/${id}/analyze`, {});
-    if (result?.detail) {
-      toast.error(result.detail);
-    } else {
-      setLead(result);
-    }
-    setAnalyzing(false);
+  const copyProcessPrompt = async () => {
+    await navigator.clipboard.writeText(PROCESS_PROMPT);
+    toast.success("Copied — paste into Claude Code");
   };
 
   const approve = async () => {
@@ -106,7 +90,17 @@ export default function LeadDetailPage() {
 
   const reject = async () => {
     await api.post(`/api/leads/${id}/reject`, {});
-    toast.success("Lead rejected");
+    toast.success("Job rejected");
+    router.push("/leads");
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    await api.delete(`/api/leads/${id}`);
+    toast.success("Job deleted");
     router.push("/leads");
   };
 
@@ -118,22 +112,32 @@ export default function LeadDetailPage() {
     );
   }
 
-  if (!lead) return <main className="p-10 text-muted-foreground">Lead not found.</main>;
+  if (!lead) return <main className="p-10 text-muted-foreground">Job not found.</main>;
 
   if (lead.status === "captured") {
     return (
       <main className="w-full max-w-4xl mx-auto px-4 py-10 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-muted-foreground">Pending extraction</h1>
-          {lead.source_url && (
-            <a href={lead.source_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline mt-1 block">
-              {lead.source_url}
-            </a>
-          )}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-muted-foreground">Pending extraction</h1>
+            {lead.source_url && (
+              <a href={lead.source_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline mt-1 block">
+                {lead.source_url}
+              </a>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDelete}
+            className={confirmDelete ? "border-red-300 text-red-600 hover:text-red-700 shrink-0" : "text-muted-foreground shrink-0"}
+          >
+            {confirmDelete ? "Confirm delete?" : "Delete"}
+          </Button>
         </div>
         <div className="border rounded-lg p-8 text-center space-y-2">
           <p className="text-sm text-muted-foreground">
-            Raw page text is saved. Tell Claude Code <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">"process my captured leads"</span> to extract job details.
+            Raw page text is saved. Tell Claude Code <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">"process my captured jobs"</span> to extract job details.
           </p>
         </div>
         {lead.raw_text && (
@@ -167,37 +171,28 @@ export default function LeadDetailPage() {
           )}
         </div>
         <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDelete}
+            className={confirmDelete ? "border-red-300 text-red-600 hover:text-red-700" : "text-muted-foreground"}
+          >
+            {confirmDelete ? "Confirm delete?" : "Delete"}
+          </Button>
           {lead.status === "approved" && lead.application_id ? (
-            <>
-              <Button variant="outline" size="sm" onClick={copyForClaude} disabled={copying}>
-                {copying ? "Copying…" : "Copy for Claude"}
-              </Button>
-              <Button variant="outline" onClick={() => router.push(`/apply/${lead.application_id}`)}>
-                View Application →
-              </Button>
-            </>
+            <Button variant="outline" onClick={() => router.push(`/apply/${lead.application_id}`)}>
+              View Application →
+            </Button>
           ) : lead.status === "rejected" ? (
             <span className="text-sm text-muted-foreground">Rejected</span>
           ) : fit ? (
             <>
-              <Button variant="outline" size="sm" onClick={copyForClaude} disabled={copying}>
-                {copying ? "Copying…" : "Copy for Claude"}
-              </Button>
               <Button variant="outline" onClick={reject}>Reject</Button>
               <Button onClick={approve} disabled={approving}>
                 {approving ? "Creating…" : "Approve & Create Application"}
               </Button>
             </>
-          ) : (
-            <>
-              <Button variant="outline" size="sm" onClick={copyForClaude} disabled={copying}>
-                {copying ? "Copying…" : "Copy for Claude"}
-              </Button>
-              <Button onClick={runAnalysis} disabled={analyzing}>
-                {analyzing ? "Analyzing…" : "Analyze"}
-              </Button>
-            </>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -296,7 +291,16 @@ export default function LeadDetailPage() {
         /* Not yet analyzed */
         <div className="border rounded-lg p-8 text-center space-y-3">
           <p className="text-muted-foreground text-sm">
-            Run analysis to see fit score, skill gaps, and company tone before deciding to apply.
+            Not analyzed yet. Tell Claude Code{" "}
+            <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">&quot;process my captured jobs&quot;</span>
+            <button
+              onClick={copyProcessPrompt}
+              title="Copy prompt"
+              className="inline-flex items-center align-middle ml-1 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>{" "}
+            to get fit score, skill gaps, and company tone.
           </p>
           {lead.status === "analyzing" && (
             <p className="text-xs text-muted-foreground animate-pulse">Analysis in progress…</p>

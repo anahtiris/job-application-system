@@ -58,6 +58,7 @@ class Application(SQLModel, table=True):
     status: str = "Draft"  # Draft | Applied | Interview | Offer | Rejected
     date_applied: Optional[date] = None
     job_description: str
+    source_url: Optional[str] = None  # job posting URL, carried over from the lead
     company_address: Optional[str] = None
     company_tone: Optional[str] = None  # direct | contractor | agency
     resume_draft_md: Optional[str] = None
@@ -81,7 +82,7 @@ def create_db():
     SQLModel.metadata.create_all(engine)
     # Safe migration for columns added after initial schema
     with engine.connect() as conn:
-        for col_def in ["resume_docx_path TEXT", "cover_letter_docx_path TEXT", "cover_letter_notes TEXT", "interview_prep_md TEXT", "interview_debrief_md TEXT"]:
+        for col_def in ["resume_docx_path TEXT", "cover_letter_docx_path TEXT", "cover_letter_notes TEXT", "interview_prep_md TEXT", "interview_debrief_md TEXT", "source_url TEXT"]:
             try:
                 conn.execute(text(f"ALTER TABLE application ADD COLUMN {col_def}"))
                 conn.commit()

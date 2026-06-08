@@ -82,6 +82,7 @@ export default function NewApplicationPage() {
   // Step 0
   const [company, setCompany] = useState("");
   const [companyUrl, setCompanyUrl] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [language, setLanguage] = useState<"en" | "de">("en");
   const [jd, setJd] = useState("");
@@ -127,6 +128,7 @@ export default function NewApplicationPage() {
       setClMd(app.cover_letter_final_md ?? app.cover_letter_draft_md ?? "");
       setCompanyAddress(app.company_address ?? "");
       setClNotes(app.cover_letter_notes ?? "");
+      setSourceUrl(app.source_url ?? "");
       setStep(regen ? 2 : inferStep(app));
       setLoading(false);
     });
@@ -182,7 +184,7 @@ export default function NewApplicationPage() {
     let id = appId;
     if (id) {
       const res = await api.patch(`/api/tracker/${id}/details`, {
-        company, job_title: jobTitle, language, job_description: jd, cover_letter_notes: clNotes,
+        company, job_title: jobTitle, language, job_description: jd, cover_letter_notes: clNotes, source_url: sourceUrl,
       });
       if (res?.detail) {
         setSubmitError(res.detail);
@@ -191,7 +193,7 @@ export default function NewApplicationPage() {
       }
     } else {
       const app = await api.post("/api/tracker/", {
-        company, job_title: jobTitle, language, job_description: jd, cover_letter_notes: clNotes,
+        company, job_title: jobTitle, language, job_description: jd, cover_letter_notes: clNotes, source_url: sourceUrl,
       });
       if (!app?.id) {
         setSubmitError(app?.detail ?? "Failed to create application — check backend logs.");
@@ -357,6 +359,22 @@ export default function NewApplicationPage() {
                 placeholder="https://www.example.com"
                 type="url"
               />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="source-url" className="text-sm font-medium">Job Posting URL <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <input
+                id="source-url"
+                className="w-full border rounded p-2 text-sm"
+                value={sourceUrl}
+                onChange={(e) => setSourceUrl(e.target.value)}
+                placeholder="https://jobs.example.com/postings/123"
+                type="url"
+              />
+              {sourceUrl && (
+                <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-block mt-0.5">
+                  Open posting →
+                </a>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Language</label>

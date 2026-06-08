@@ -31,6 +31,7 @@ class CreateApplicationRequest(BaseModel):
     company_tone: Optional[str] = None
     date_applied: Optional[date] = None
     cover_letter_notes: Optional[str] = None
+    source_url: Optional[str] = None
 
 
 class UpdateDetailsRequest(BaseModel):
@@ -39,6 +40,7 @@ class UpdateDetailsRequest(BaseModel):
     language: str
     job_description: str
     cover_letter_notes: Optional[str] = None
+    source_url: Optional[str] = None
 
 
 class UpdateStatusRequest(BaseModel):
@@ -64,6 +66,7 @@ def create_application(body: CreateApplicationRequest, session: Session = Depend
         company_tone=body.company_tone,
         date_applied=body.date_applied,
         cover_letter_notes=body.cover_letter_notes,
+        source_url=body.source_url,
     )
     session.add(app)
     session.commit()
@@ -94,6 +97,7 @@ def update_details(app_id: str, body: UpdateDetailsRequest, session: Session = D
     app.language = body.language
     app.job_description = body.job_description
     app.cover_letter_notes = body.cover_letter_notes
+    app.source_url = body.source_url
     session.add(app)
     session.commit()
     return {"saved": True}
