@@ -59,8 +59,37 @@ Two-table funnel: `JobLead` → `Application`. Statuses: `captured → new → a
 - **`POST /from-text`** — browser extension posts `{text: body.innerText, url}`. Saved instantly with `status="captured"`, no LLM blocking. Deduplicates by `source_url`.
 - **`POST /extract-captured`** — batch LLM extraction for all `captured` leads. Parses company/job_title/language/job_description from raw text; sets `status="new"`.
 - **`POST /{id}/analyze`** — runs `analyzer.analyze_jd` + `researcher.research_company` in parallel. Stores fit score (0–100), verdict (`strong`/`maybe`/`skip`), company tone. Score normalization guard: float 0–1 is multiplied by 100.
-- **`POST /{id}/approve`** — creates an `Application` record (copies company, job_title, language, JD, tone from lead). Sets `lead.status="approved"`, `lead.application_id=app.id`. New application starts with `status="New"`.
+- **`POST /{id}/approve`** — creates an `Application` record (copies company, job_title, language, JD, tone, source_url from lead). Sets `lead.status="approved"`, `lead.application_id=app.id`. New application starts with `status="New"`.
 - **`POST /{id}/reject`** — sets `status="rejected"`.
+- **`PUT /{id}/processed`** — write-back endpoint for the Claude flow below. Accepts `{company, job_title, language, job_description, company_tone, company_research, fit_analysis}`, stores `fit_analysis` as `fit_analysis_json`, derives `fit_score`/`fit_verdict` from it (reusing `_verdict`), and sets `status="analyzed"`. Mirrors what the Ollama `/analyze` path writes.
+
+### Processing captured jobs — "process my captured jobs"
+
+When the user says **"process my captured jobs"**, Claude Code does extraction **and** analysis itself in one pass (do NOT call the Ollama `/extract-captured` or `/{id}/analyze` endpoints — those are the offline fallback):
+
+1. `GET /api/leads/` and select leads whose `status` is `captured` or `new`.
+2. Read `resume_master.md` (or `resume_master_de.md` for German), `data/skills.json`, and `data/career_goal.md` from disk.
+3. For each lead: extract `company`/`job_title`/`language`/`job_description` from `raw_text`; analyze fit against the resume + skills inventory + career goal; research the company on the web for tone + sentiment. Say "no reliable data found" when a company is thin — **never fabricate** reviews, salary, or facts.
+4. `PUT /api/leads/{id}/processed` with this body (the `fit_analysis` shape must match exactly — it is what `/leads/[id]` renders):
+   ```json
+   {
+     "company": "...", "job_title": "...", "language": "en|de", "job_description": "...",
+     "company_tone": "direct|startup|contractor|agency",
+     "company_research": "one-line tone reasoning",
+     "fit_analysis": {
+       "core_theme": "...",
+       "must_haves":    [{"skill": "...", "status": "STRONG|HONEST|GAP|UNKNOWN", "tier": 1, "evidence": "..."}],
+       "nice_to_haves": [{"skill": "...", "status": "STRONG|HONEST|GAP|UNKNOWN", "tier": null, "evidence": "..."}],
+       "ats_keywords": ["..."],
+       "match_score": 0,
+       "strongest_angle": "...",
+       "weakest_point": "...",
+       "is_poor_match": false,
+       "goal_alignment": "aligns|neutral|detours",
+       "goal_alignment_note": "..."
+     }
+   }
+   ```
 
 The `/leads` page shows color-coded status badges and fit verdict chips. The `/leads/[id]` detail page shows must-haves/nice-to-haves/ATS keywords from `fit_analysis_json`; all three arrays default to `[]` if missing (LLM sometimes uses non-standard field names).
 
@@ -81,7 +110,7 @@ Manifest V3. Click → `chrome.scripting.executeScript` grabs `{text: body.inner
 `person.name` is stored in the settings DB table and used for PDF/DOCX filenames. It is auto-extracted from the `# Contact` section when a resume is first parsed via `POST /api/resume/parse`. It can also be set manually via `PUT /api/settings/profile`. Files are named `[FirstName_LastName]_CV.docx` (EN) / `[FirstName_LastName]_Lebenslauf.docx` (DE), etc.
 
 ### Wizard flow (5 steps)
-1. **Job Details** — company, URL, job title, language, job description, cover letter notes. Creating saves to DB; revisiting patches via `PATCH /api/tracker/{id}/details`.
+1. **Job Details** — company, company website, job posting URL (`source_url`, carried over from the lead on approve), job title, language, job description, cover letter notes. Creating saves to DB; revisiting patches via `PATCH /api/tracker/{id}/details`.
 2. **Job Analysis** — auto-runs `POST /api/application/analyze-jd` on entry; shows STRONG/HONEST/GAP classification per JD skill against the skills inventory, ATS keywords, match score, and overclaim flags. Uses the `research` model. LLM output is sanitised (markdown fence stripping, trailing comma removal) before `json.loads`. Clears result on Back so re-entry re-runs fresh.
 3. **Generate** — auto-runs company research (tone + address) on entry; streams resume tailoring + cover letter via SSE. Tone can be overridden before generating.
 4. **Review** — persona + 2 random reviewers score and rewrite both documents. Side-by-side panel: left = highlighted document, right = rewrite queue. Items sorted by document position.
@@ -115,8 +144,12 @@ Each `skills/*/SKILL.md` is a self-contained instruction set consumed during a m
 
 ### Interview preparation (detail page, Interview tab)
 Two independent generation blocks, both only active when `app.status === "Interview"`:
-- **Interview Prep** — 5 sections (Technical Questions, Company Background, Introduction Script, STAR Stories, Questions to Ask), parameterised by round/interviewer/focus skills. Stored in `interview_prep_md`.
+- **Interview Prep** — 7 sections (`Company Analysis`, `Introduction Script`, `Common Questions`, `Job-Specific Questions`, `Weak Spots`, `Questions to Ask`, `Salary & Negotiation`), parameterised by round/interviewer/focus skills. The Introduction Script is fed the tailored CV + cover letter, not just the master resume. Stored in `interview_prep_md`. Rendered by `InterviewPrepDisplay`, which cards each `## ` section and special-cases the exact header `Questions to Ask`. Two generation paths (below).
 - **Skills Debrief** — tier-aware per-skill coaching: STAR prompts for Tier 1/2, honest answer templates for Tier 3, overclaim flags. No parameters. Stored in `interview_debrief_md`.
+
+**Two ways to generate Interview Prep** (mirrors the captured-jobs pattern):
+- **Generate with Ollama** — `POST /api/application/interview-prep` runs `interview.generate_interview_prep` offline. Company Analysis is inferred from the JD (no web), labelled "(inferred — verify)".
+- **Copy prompt for Claude** — the button copies an instruction referencing the application id. When the user pastes it, Claude Code: (1) `GET /api/tracker/{id}` for company/JD/CV/cover letter; (2) reads `data/skills.json`, `data/career_goal.md`, and the master resume from disk; (3) **web-researches the company** (reviews, salary, news, sentiment — cite sources, say "no reliable data found" when thin, **never fabricate**); (4) drafts all seven `## ` sections in the page's language; (5) saves via `PUT /api/application/{id}/interview-prep` with `{markdown}`. This is the **Interview prep — Claude path**.
 
 ### Templates
 `templates/resume/resume_en.docx` and `templates/resume/resume_de.docx` are the base CV DOCX files. `templates/cover-letter/cover_letter.docx` is the cover letter base. All are gitignored — `.gitkeep` preserves the folders.
