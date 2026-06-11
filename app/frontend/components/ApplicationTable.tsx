@@ -65,7 +65,7 @@ export function ApplicationTable({
     }
   };
 
-  const handleStatusChange = (app: Application, newStatus: string) => {
+  const handleStatusChange = (app: Application, newStatus: string | null) => {
     if (!newStatus || newStatus === app.status) return;
     if (newStatus === "Applied") {
       setPendingApply({ id: app.id, date: app.date_applied ?? new Date().toISOString().slice(0, 10) });

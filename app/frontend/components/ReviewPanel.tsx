@@ -166,11 +166,11 @@ export function ReviewPanel({
 
   const cvItems: QueueItem[] = (result.cv_consolidated?.all_rewrites ?? [])
     .filter(rw => rw.original && resumeDraft.includes(rw.original) && rw.rewrite && !noChangePatterns.test(rw.rewrite.trim()))
-    .map((rw, i) => ({ id: `cv-${i}`, doc: "cv", original: rw.original, rewrite: rw.rewrite }))
+    .map((rw, i) => ({ id: `cv-${i}`, doc: "cv" as const, original: rw.original, rewrite: rw.rewrite }))
     .sort((a, b) => resumeDraft.indexOf(a.original) - resumeDraft.indexOf(b.original));
   const clItems: QueueItem[] = (result.cl_consolidated?.all_rewrites ?? [])
     .filter(rw => rw.original && clDraft.includes(rw.original) && rw.rewrite && !noChangePatterns.test(rw.rewrite.trim()))
-    .map((rw, i) => ({ id: `cl-${i}`, doc: "cl", original: rw.original, rewrite: rw.rewrite }))
+    .map((rw, i) => ({ id: `cl-${i}`, doc: "cl" as const, original: rw.original, rewrite: rw.rewrite }))
     .sort((a, b) => clDraft.indexOf(a.original) - clDraft.indexOf(b.original));
   const allItems = [...cvItems, ...clItems];
 

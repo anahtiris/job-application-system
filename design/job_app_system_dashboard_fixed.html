@@ -1,0 +1,276 @@
+<h2 class="sr-only">Job Application System dashboard with corrected navigation state</h2>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--amb:#BA7517;--amb-l:#FAEEDA;--amb-d:#854F0B;}
+.shell{
+  display:grid;
+  grid-template-rows:46px 1fr;
+  grid-template-columns:44px 1fr;
+  min-height:540px;
+  font-family:'Syne',var(--font-sans);
+  border:0.5px solid var(--color-border-tertiary);
+  border-radius:var(--border-radius-lg);
+  overflow:hidden;
+  background:var(--color-background-tertiary);
+}
+.topbar{
+  grid-column:1/-1;
+  display:flex;align-items:center;
+  height:46px;padding:0 14px 0 0;
+  background:var(--color-background-primary);
+  border-bottom:0.5px solid var(--color-border-tertiary);
+  gap:0;
+}
+.logo{
+  width:44px;height:46px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border-right:0.5px solid var(--color-border-tertiary);
+  cursor:pointer;
+}
+.lm{
+  width:22px;height:22px;border-radius:5px;
+  background:var(--amb);
+  display:flex;align-items:center;justify-content:center;
+}
+.lm i{font-size:12px;color:#fff;}
+.tnav{display:flex;padding-left:4px;}
+.tn{
+  font-size:12px;font-weight:500;
+  padding:0 12px;height:46px;
+  display:flex;align-items:center;
+  color:var(--color-text-tertiary);cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+.tn.on{color:var(--amb);border-bottom-color:var(--amb);}
+.tn:hover:not(.on){color:var(--color-text-secondary);}
+.tn-int{display:flex;align-items:center;gap:5px;}
+.int-dot{width:6px;height:6px;border-radius:50%;background:#1D9E75;flex-shrink:0;}
+.tright{display:flex;align-items:center;gap:6px;margin-left:auto;}
+.abtn{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:12px;font-weight:500;padding:5px 10px;
+  border-radius:6px;cursor:pointer;border:none;
+  font-family:'Syne',var(--font-sans);
+}
+.abtn-p{background:var(--amb);color:#fff;}
+
+.sidebar{
+  border-right:0.5px solid var(--color-border-tertiary);
+  background:var(--color-background-primary);
+  display:flex;flex-direction:column;
+  align-items:center;
+  padding:10px 0;gap:2px;
+}
+.sib{
+  width:32px;height:32px;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--color-text-tertiary);font-size:17px;
+}
+.sib:hover{background:var(--color-background-secondary);}
+.sib-sp{flex:1;}
+
+.main{padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+
+.stat-row{display:flex;gap:10px;}
+.stat{
+  flex:1;background:var(--color-background-primary);
+  border:0.5px solid var(--color-border-tertiary);
+  border-radius:var(--border-radius-md);
+  padding:12px 14px;display:flex;align-items:center;gap:10px;
+}
+.stat-icon{
+  width:30px;height:30px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;
+}
+.si-a{background:var(--amb-l);color:var(--amb);}
+.si-b{background:var(--color-background-secondary);color:var(--color-text-secondary);}
+.si-c{background:#E1F5EE;color:#1D9E75;}
+.stat-n{font-size:20px;font-weight:700;letter-spacing:-0.03em;font-family:'Geist Mono',monospace;}
+.stat-l{font-size:11px;color:var(--color-text-tertiary);margin-top:1px;}
+
+.kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;flex:1;}
+.col{
+  background:var(--color-background-primary);
+  border:0.5px solid var(--color-border-tertiary);
+  border-radius:var(--border-radius-md);
+  display:flex;flex-direction:column;overflow:hidden;min-height:300px;
+}
+.col-hd{
+  padding:9px 11px;border-bottom:0.5px solid var(--color-border-tertiary);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.col-hd-left{display:flex;align-items:center;gap:7px;}
+.col-pip{width:6px;height:6px;border-radius:50%;}
+.pip-ana{background:var(--color-text-tertiary);}
+.pip-app{background:var(--amb);}
+.pip-int{background:#1D9E75;}
+.col-title{font-size:11px;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;color:var(--color-text-tertiary);}
+.col-count{
+  font-size:10px;font-weight:500;
+  background:var(--color-background-secondary);color:var(--color-text-tertiary);
+  padding:1px 6px;border-radius:99px;font-family:'Geist Mono',monospace;
+}
+.col-body{padding:8px;display:flex;flex-direction:column;gap:6px;}
+.card{
+  background:var(--color-background-primary);
+  border:0.5px solid var(--color-border-tertiary);
+  border-radius:7px;padding:9px 10px;cursor:pointer;
+}
+.card:hover{border-color:#FAC775;}
+.card-tag{
+  font-size:9px;font-weight:500;padding:2px 5px;
+  border-radius:4px;margin-bottom:5px;display:inline-block;
+}
+.ct-today{background:var(--amb-l);color:var(--amb-d);}
+.ct-int{background:#E1F5EE;color:#0F6E56;}
+.card-co{font-size:12px;font-weight:500;margin-bottom:2px;}
+.card-role{font-size:11px;color:var(--color-text-tertiary);line-height:1.4;margin-bottom:6px;}
+.card-foot{display:flex;align-items:center;justify-content:space-between;}
+.card-date{font-size:10px;color:var(--color-text-tertiary);font-family:'Geist Mono',monospace;}
+.card-pri{
+  width:16px;height:16px;border-radius:3px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:8px;font-weight:700;font-family:'Geist Mono',monospace;
+}
+.cp1{background:var(--amb-l);color:var(--amb-d);}
+.cp2{background:var(--color-background-secondary);color:var(--color-text-tertiary);}
+</style>
+
+<div class="shell">
+  <div class="topbar">
+    <div class="logo" title="Dashboard">
+      <div class="lm"><i class="ti ti-briefcase" aria-hidden="true"></i></div>
+    </div>
+    <div class="tnav">
+      <div class="tn">Applications</div>
+      <div class="tn">Captured jobs</div>
+      <div class="tn tn-int">
+        <span class="int-dot" aria-hidden="true"></span>
+        Interview
+      </div>
+    </div>
+    <div class="tright">
+      <button class="abtn abtn-p"><i class="ti ti-plus" aria-hidden="true"></i> New</button>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="sib" title="Resume" aria-label="Resume"><i class="ti ti-file-cv"></i></div>
+    <div class="sib" title="Skills" aria-label="Skills"><i class="ti ti-brain"></i></div>
+    <div class="sib-sp"></div>
+    <div class="sib" title="Settings" aria-label="Settings"><i class="ti ti-settings"></i></div>
+  </div>
+
+  <div class="main">
+    <div class="stat-row">
+      <div class="stat">
+        <div class="stat-icon si-a"><i class="ti ti-inbox" aria-hidden="true"></i></div>
+        <div>
+          <div class="stat-n">3</div>
+          <div class="stat-l">Captured jobs</div>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon si-b"><i class="ti ti-send" aria-hidden="true"></i></div>
+        <div>
+          <div class="stat-n">7</div>
+          <div class="stat-l">Awaiting response</div>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon si-c"><i class="ti ti-calendar-event" aria-hidden="true"></i></div>
+        <div>
+          <div class="stat-n">2</div>
+          <div class="stat-l">Interviews</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kanban">
+      <div class="col">
+        <div class="col-hd">
+          <div class="col-hd-left">
+            <div class="col-pip pip-ana" aria-hidden="true"></div>
+            <div class="col-title">Analyzed</div>
+          </div>
+          <div class="col-count">3</div>
+        </div>
+        <div class="col-body">
+          <div class="card">
+            <div class="card-co">Investa RE</div>
+            <div class="card-role">Forward Deployed AI Engineer</div>
+            <div class="card-foot"><div class="card-date">Jun 8</div><div class="card-pri cp2">P3</div></div>
+          </div>
+          <div class="card">
+            <div class="card-co">Amadeus Fire</div>
+            <div class="card-role">Senior Fullstack Developer</div>
+            <div class="card-foot"><div class="card-date">Jun 7</div><div class="card-pri cp2">P3</div></div>
+          </div>
+          <div class="card">
+            <div class="card-co">Atruvia</div>
+            <div class="card-role">Fullstack Online Banking</div>
+            <div class="card-foot"><div class="card-date">Jun 6</div><div class="card-pri cp2">—</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-hd">
+          <div class="col-hd-left">
+            <div class="col-pip pip-app" aria-hidden="true"></div>
+            <div class="col-title">Applied</div>
+          </div>
+          <div class="col-count">4</div>
+        </div>
+        <div class="col-body">
+          <div class="card">
+            <div class="card-co">Peter Park System</div>
+            <div class="card-role">Senior AI Software Engineer</div>
+            <div class="card-foot"><div class="card-date">Jun 5</div><div class="card-pri cp1">P1</div></div>
+          </div>
+          <div class="card">
+            <div class="card-co">BMW Group</div>
+            <div class="card-role">Agentic AI Engineer</div>
+            <div class="card-foot"><div class="card-date">Jun 4</div><div class="card-pri cp1">P1</div></div>
+          </div>
+          <div class="card">
+            <div class="card-co">LOBECO AI</div>
+            <div class="card-role">Senior Full-Stack Dev</div>
+            <div class="card-foot"><div class="card-date">May 25</div><div class="card-pri cp1">P2</div></div>
+          </div>
+          <div class="card">
+            <div class="card-co">Personio</div>
+            <div class="card-role">Senior Fullstack Engineer</div>
+            <div class="card-foot"><div class="card-date">May 18</div><div class="card-pri cp2">P3</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-hd">
+          <div class="col-hd-left">
+            <div class="col-pip pip-int" aria-hidden="true"></div>
+            <div class="col-title">Interview</div>
+          </div>
+          <div class="col-count">2</div>
+        </div>
+        <div class="col-body">
+          <div class="card">
+            <div class="card-tag ct-today">Today · 16:00</div>
+            <div class="card-co">CHECK24</div>
+            <div class="card-role">Fullstack InsurTech</div>
+            <div class="card-foot"><div class="card-date">Jun 10</div><div class="card-pri cp2">P2</div></div>
+          </div>
+          <div class="card">
+            <div class="card-tag ct-int">TBD</div>
+            <div class="card-co">Digital Health</div>
+            <div class="card-role">Full-Stack Product Engineer</div>
+            <div class="card-foot"><div class="card-date">Jun 6</div><div class="card-pri cp2">P2</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
-import { Nav } from "@/components/Nav";
+import { Geist_Mono, Playfair_Display, Syne } from "next/font/google";
+import { AppShell } from "@/components/AppShell";
 import { Toaster } from "sonner";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -17,6 +12,12 @@ const geistMono = Geist_Mono({
 const playfair = Playfair_Display({
   variable: "--font-playfair",
   subsets: ["latin"],
+});
+
+const syne = Syne({
+  variable: "--font-syne",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -32,11 +33,19 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} h-full antialiased`}
+      className={`${geistMono.variable} ${playfair.variable} ${syne.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">
-        <Nav />
-        {children}
+      {/* Apply .dark class based on OS preference — runs before paint to avoid flash */}
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var s=localStorage.getItem('theme'),m=window.matchMedia('(prefers-color-scheme: dark)');if(s==='dark'||(!s&&m.matches))document.documentElement.classList.add('dark');m.addEventListener('change',function(e){if(!localStorage.getItem('theme'))document.documentElement.classList.toggle('dark',e.matches);});var z={'large':'1.15','xl':'1.3'};var fs=localStorage.getItem('fontSize');if(fs&&z[fs])document.documentElement.style.zoom=z[fs];})();`,
+          }}
+        />
+      </head>
+      <body className="h-full">
+        <AppShell>{children}</AppShell>
         <Toaster position="bottom-right" richColors />
       </body>
     </html>

@@ -1,50 +1,43 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface Skill {
-  name: string;
-  tier: number;
-  evidence: string;
-}
-
-// ── Tier config ───────────────────────────────────────────────────────────────
+interface Skill { name: string; tier: number; evidence: string; }
 
 const TIERS = [
-  { value: 1, label: "Core",       color: "bg-green-100 text-green-800 border-green-200" },
-  { value: 2, label: "Proficient", color: "bg-blue-100 text-blue-800 border-blue-200" },
-  { value: 3, label: "Familiar",   color: "bg-amber-100 text-amber-800 border-amber-200" },
-  { value: 4, label: "Exposure",   color: "bg-muted text-muted-foreground border-border" },
+  { value: 1, label: "Core",       cls: "bg-badge-interview-bg text-badge-interview-fg", outline: "outline-badge-interview-fg" },
+  { value: 2, label: "Proficient", cls: "bg-badge-analyzed-bg text-badge-analyzed-fg",   outline: "outline-badge-analyzed-fg" },
+  { value: 3, label: "Familiar",   cls: "bg-amb-l text-amb-d",                            outline: "outline-amb-d" },
+  { value: 4, label: "Exposure",   cls: "bg-background-secondary text-text-tertiary",     outline: "outline-text-tertiary" },
 ];
 
-function tierConfig(tier: number) {
-  return TIERS.find((t) => t.value === tier) ?? TIERS[2];
+function tierConf(tier: number) { return TIERS.find((t) => t.value === tier) ?? TIERS[2]; }
+
+const inputCls = "w-full text-[13px] py-1.5 px-[9px] rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-primary font-shell outline-none";
+
+function btnCls(primary = true, disabled = false): string {
+  const border = primary ? "border-none" : "border-[0.5px] border-border-tertiary";
+  const bg = primary ? "bg-amb" : "bg-transparent";
+  const color = primary ? "text-white" : "text-text-secondary";
+  return `inline-flex items-center text-[12px] font-medium py-[5px] px-3 rounded-full font-shell ${border} ${bg} ${color} ${
+    disabled ? "opacity-50 cursor-default" : "opacity-100 cursor-pointer"
+  }`;
 }
 
 // ── Skill row ─────────────────────────────────────────────────────────────────
 
 function SkillRow({
-  skill,
-  onSave,
-  onDelete,
-  startEditing,
+  skill, onSave, onDelete, startEditing,
 }: {
-  skill: Skill;
-  onSave: (updated: Skill) => void;
-  onDelete: () => void;
-  startEditing: boolean;
+  skill: Skill; onSave: (u: Skill) => void; onDelete: () => void; startEditing: boolean;
 }) {
   const [editing, setEditing] = useState(startEditing);
-  const [name, setName] = useState(skill.name);
-  const [tier, setTier] = useState(skill.tier);
+  const [name, setName]       = useState(skill.name);
+  const [tier, setTier]       = useState(skill.tier);
   const [evidence, setEvidence] = useState(skill.evidence);
-
-  const tc = tierConfig(tier);
+  const tc = tierConf(tier);
 
   const handleSave = () => {
     if (!name.trim()) return;
@@ -53,75 +46,71 @@ function SkillRow({
   };
 
   const handleCancel = () => {
-    setName(skill.name);
-    setTier(skill.tier);
-    setEvidence(skill.evidence);
+    setName(skill.name); setTier(skill.tier); setEvidence(skill.evidence);
     setEditing(false);
     if (startEditing && !skill.name) onDelete();
   };
 
+  const tierBadgeCls = (t: typeof TIERS[0], active: boolean): string =>
+    `py-[3px] px-2.5 rounded-full text-[11px] font-medium cursor-pointer font-shell border-none outline-offset-1 ${
+      active ? `${t.cls} outline outline-[1.5px] ${t.outline}` : "bg-background-secondary text-text-tertiary outline-none"
+    }`;
+
   if (!editing) {
     return (
-      <tr className="border-t hover:bg-muted/20">
-        <td className="p-3 font-medium text-sm">{skill.name}</td>
-        <td className="p-3">
-          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${tc.color}`}>
-            {tc.label}
-          </span>
-        </td>
-        <td className="p-3 text-sm text-muted-foreground max-w-xs truncate">{skill.evidence || "—"}</td>
-        <td className="p-3 text-right">
-          <div className="flex items-center justify-end gap-1.5">
-            <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setEditing(true)}>Edit</Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs px-2 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDelete}>Delete</Button>
-          </div>
-        </td>
-      </tr>
+      <div className="grid grid-cols-[1fr_110px_1fr_88px] py-2 px-4 border-b-[0.5px] border-border-tertiary items-center gap-2.5 skill-row">
+        <span className="text-[13px] font-medium font-shell">{skill.name}</span>
+        <span className={`inline-flex items-center text-[10px] font-medium py-0.5 px-[9px] rounded-full font-shell w-fit ${tc.cls}`}>
+          {tc.label}
+        </span>
+        <span className="text-[12px] text-text-tertiary font-shell">
+          {skill.evidence || "—"}
+        </span>
+        <div className="flex gap-1 justify-end">
+          <button onClick={() => setEditing(true)} className={btnCls(false)}>Edit</button>
+          <button
+            aria-label="Delete"
+            onClick={onDelete}
+            className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center border-none bg-transparent cursor-pointer text-text-tertiary transition-colors hover:text-badge-passed-fg hover:bg-badge-passed-bg"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <tr className="border-t bg-muted/20">
-      <td className="p-3" colSpan={4}>
-        <div className="space-y-3">
-          <input
-            autoFocus
-            className="w-full border rounded px-3 py-1.5 text-sm bg-background font-medium"
-            placeholder="Skill name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <div className="flex gap-1 flex-wrap">
-            {TIERS.map((t) => (
-              <button
-                key={t.value}
-                onClick={() => setTier(t.value)}
-                className={`px-3 py-1 rounded-md text-xs font-medium border transition-colors
-                  ${tier === t.value ? t.color + " ring-1 ring-offset-1 ring-current" : "bg-background text-muted-foreground border-border hover:border-foreground/40"}`}
-              >
-                {t.value} — {t.label}
-              </button>
-            ))}
-          </div>
-          <div className="text-xs text-muted-foreground space-y-0.5">
-            <p><strong>Core:</strong> 3+ production projects, recent, owned end-to-end</p>
-            <p><strong>Proficient:</strong> 2+ projects, contributed meaningfully, mostly independent</p>
-            <p><strong>Familiar:</strong> 1 project or didn't own it, needs ramp-up</p>
-            <p><strong>Exposure:</strong> tutorials only, never shipped, or 3+ years ago</p>
-          </div>
-          <textarea
-            className="w-full border rounded px-3 py-1.5 text-sm bg-background min-h-[60px] resize-none"
-            placeholder="Evidence — e.g. 5 years production at a previous employer, owned 3 microservices end-to-end"
-            value={evidence}
-            onChange={(e) => setEvidence(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <Button size="sm" variant="ghost" onClick={handleCancel}>Cancel</Button>
-            <Button size="sm" onClick={handleSave} disabled={!name.trim()}>Save</Button>
-          </div>
-        </div>
-      </td>
-    </tr>
+    <div className="py-3.5 px-4 border-b-[0.5px] border-border-tertiary bg-background-secondary flex flex-col gap-2.5">
+      <input autoFocus className={inputCls} placeholder="Skill name" value={name} onChange={(e) => setName(e.target.value)} />
+
+      <div className="flex gap-[5px] flex-wrap">
+        {TIERS.map((t) => (
+          <button key={t.value} onClick={() => setTier(t.value)} className={tierBadgeCls(t, tier === t.value)}>
+            {t.value} — {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="text-[11px] text-text-tertiary font-shell flex flex-col gap-0.5">
+        <span><strong>Core:</strong> 3+ production projects, recent, owned end-to-end</span>
+        <span><strong>Proficient:</strong> 2+ projects, contributed meaningfully, mostly independent</span>
+        <span><strong>Familiar:</strong> 1 project or didn&apos;t own it, needs ramp-up</span>
+        <span><strong>Exposure:</strong> tutorials only, never shipped, or 3+ years ago</span>
+      </div>
+
+      <textarea
+        className="w-full py-1.5 px-[9px] rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-primary outline-none min-h-[60px] resize-none font-mono text-[12px]"
+        placeholder="Evidence — e.g. 5 years production at a previous employer, owned 3 microservices end-to-end"
+        value={evidence}
+        onChange={(e) => setEvidence(e.target.value)}
+      />
+
+      <div className="flex gap-1.5">
+        <button onClick={handleCancel} className={btnCls(false)}>Cancel</button>
+        <button onClick={handleSave} disabled={!name.trim()} className={btnCls(true, !name.trim())}>Save</button>
+      </div>
+    </div>
   );
 }
 
@@ -133,8 +122,10 @@ export default function SkillsPage() {
 
   useEffect(() => {
     api.get("/api/resume/skills").then((data) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const raw = data?.skills ?? {};
-      setSkills(Object.entries(raw).map(([name, s]: any) => ({ name, tier: s.tier, evidence: s.evidence ?? "" })));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setSkills(Object.entries(raw).map(([name, s]: [string, any]) => ({ name, tier: s.tier, evidence: s.evidence ?? "" })));
       setLoading(false);
     });
   }, []);
@@ -157,63 +148,72 @@ export default function SkillsPage() {
     await persist(next);
   };
 
-  const addSkill = () => {
-    setSkills((prev) => [...prev, { name: "", tier: 2, evidence: "" }]);
-  };
-
-  if (loading) return <p className="p-10 text-muted-foreground">Loading…</p>;
+  const addSkill = () => setSkills((p) => [...p, { name: "", tier: 2, evidence: "" }]);
 
   return (
-    <main className="w-full max-w-6xl mx-auto px-4 py-10 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Skills Inventory</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Your honest skill tiers. The cover letter generator uses these to match proficiency language — never overclaiming.
-          </p>
-        </div>
-        <Button onClick={addSkill}>+ Add Skill</Button>
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Topbar */}
+      <div className="flex items-center gap-2 py-2.5 px-5 border-b-[0.5px] border-border-tertiary shrink-0">
+        <span className="text-[13px] font-semibold font-shell">Skills Inventory</span>
+        <span className="text-[12px] font-medium font-mono bg-background-secondary text-text-tertiary py-0.5 px-2 rounded-full">
+          {skills.length}
+        </span>
+        <button onClick={addSkill} className={`${btnCls(true)} ml-auto`}>+ Add Skill</button>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
+      {/* Content */}
+      {loading ? (
+        <div className="p-10 text-[12px] text-text-tertiary font-shell">Loading…</div>
+      ) : (
+        <div className="flex-1 overflow-auto">
+          {/* Column headers */}
+          <div className="grid grid-cols-[1fr_110px_1fr_88px] py-[7px] px-4 border-b-[0.5px] border-border-tertiary bg-background-secondary sticky top-0 z-[2]">
+            {["Skill", "Tier", "Evidence", ""].map((h) => (
+              <span key={h} className="text-[11px] font-medium tracking-[0.05em] uppercase text-text-tertiary font-shell">
+                {h}
+              </span>
+            ))}
+          </div>
+
           {skills.length === 0 ? (
-            <p className="text-center text-muted-foreground py-10 text-sm">
-              No skills yet. Add your first skill above.
-            </p>
+            <div className="flex items-center justify-center py-[60px] px-5 text-[12px] text-text-tertiary font-shell">
+              No skills yet — add your first one above.
+            </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left p-3 font-medium">Skill</th>
-                  <th className="text-left p-3 font-medium">Tier</th>
-                  <th className="text-left p-3 font-medium">Evidence</th>
-                  <th className="p-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {skills.map((skill, i) => (
-                  <SkillRow
-                    key={`${skill.name}-${i}`}
-                    skill={skill}
-                    startEditing={!skill.name}
-                    onSave={(updated) => handleSave(i, updated)}
-                    onDelete={() => handleDelete(i)}
-                  />
-                ))}
-              </tbody>
-            </table>
+            skills.map((skill, i) => (
+              <SkillRow
+                key={`${skill.name}-${i}`}
+                skill={skill}
+                startEditing={!skill.name}
+                onSave={(u) => handleSave(i, u)}
+                onDelete={() => handleDelete(i)}
+              />
+            ))
           )}
-        </CardContent>
-      </Card>
 
-      <div className="text-xs text-muted-foreground space-y-1 border rounded-lg p-3 bg-muted/20">
-        <p className="font-medium">How tiers affect generation:</p>
-        <p><span className="text-green-700 font-medium">Core</span> → "shipped X across multiple projects", "owned end-to-end"</p>
-        <p><span className="text-blue-700 font-medium">Proficient</span> → "worked with X across several projects", "comfortable independently"</p>
-        <p><span className="text-amber-700 font-medium">Familiar</span> → "have worked with X", "gaining experience in"</p>
-        <p><span className="text-muted-foreground font-medium">Exposure</span> → "exploring X", "in a side project", "recent interest in"</p>
-      </div>
-    </main>
+          {/* Tier legend */}
+          {skills.length > 0 && (
+            <div className="m-4 py-3 px-3.5 border-[0.5px] border-border-tertiary rounded-card bg-background-secondary flex flex-col gap-1">
+              <span className="text-[11px] font-medium text-text-secondary font-shell mb-1">
+                How tiers affect generation
+              </span>
+              {[
+                { t: TIERS[0], text: '→ "shipped X across multiple projects", "owned end-to-end"' },
+                { t: TIERS[1], text: '→ "worked with X across several projects", "comfortable independently"' },
+                { t: TIERS[2], text: '→ "have worked with X", "gaining experience in"' },
+                { t: TIERS[3], text: '→ "exploring X", "in a side project", "recent interest in"' },
+              ].map(({ t, text }) => (
+                <div key={t.value} className="flex items-baseline gap-[7px]">
+                  <span className={`text-[10px] font-medium py-px px-[7px] rounded-full font-shell shrink-0 ${t.cls}`}>
+                    {t.label}
+                  </span>
+                  <span className="text-[11px] text-text-tertiary font-shell">{text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

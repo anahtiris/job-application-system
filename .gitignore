@@ -8,8 +8,8 @@ templates/**/*.docx
 templates/**/*.pdf
 
 # Generated application output folders (contain tailored docs with PII)
-Application/
-applications/
+/Application/
+/applications/
 
 # ─── macOS ──────────────────────────────────────────────────────────────────
 .DS_Store
@@ -37,8 +37,12 @@ build/
 # ─── App data (PII) ─────────────────────────────────────────────────────────
 data/persona.md
 data/skills.json
+data/career_goal.md
+data/general_prep.json
 app/backend/app.db
 app/backend/*.db
+/app.db
+data/*.db
 
 # Temporary unpacked DOCX folders (contain personal template content)
 unpacked_cv/

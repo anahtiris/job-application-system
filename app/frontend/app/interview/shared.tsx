@@ -1,0 +1,114 @@
+"use client";
+import React from "react";
+import { Trash2, GripVertical } from "lucide-react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GrowTextarea, iconBtnCls } from "@/components/ui-kit";
+import type { QAItem } from "./types";
+
+// ─── Shared UI helpers ─────────────────────────────────────────────────────────
+
+export function TabBar({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: string[];
+  active: string;
+  onChange: (t: string) => void;
+}) {
+  return (
+    <div className="flex gap-[3px]">
+      {tabs.map((t) => (
+        <button
+          key={t}
+          onClick={() => onChange(t)}
+          className={`text-[11px] font-medium py-[5px] px-[11px] rounded-[6px] cursor-pointer font-shell transition-all duration-100 ${
+            active === t
+              ? "border-none bg-amb text-white"
+              : "border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
+          }`}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function LangToggle({ lang, onChange }: { lang: "en" | "de"; onChange: (l: "en" | "de") => void }) {
+  return (
+    <div className="flex border-[0.5px] border-border-tertiary rounded-[6px] overflow-hidden ml-auto">
+      {(["en", "de"] as const).map((l) => (
+        <button
+          key={l}
+          onClick={() => onChange(l)}
+          className={`text-[11px] font-medium py-1 px-2.5 cursor-pointer font-mono border-none ${
+            lang === l ? "text-white bg-amb" : "text-text-secondary bg-transparent"
+          }`}
+        >
+          {l.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function QARow({
+  item,
+  lang,
+  isLast,
+  onPatch,
+  onDelete,
+}: {
+  item: QAItem;
+  lang: "en" | "de";
+  isLast: boolean;
+  onPatch: (patch: Partial<QAItem>) => void;
+  onDelete: () => void;
+}) {
+  const qKey = lang === "en" ? "q_en" : "q_de";
+  const aKey = lang === "en" ? "a_en" : "a_de";
+  return (
+    <div className={isLast ? "" : "pb-2.5 border-b-[0.5px] border-border-tertiary mb-2.5"}>
+      <div className="flex gap-2 items-start">
+        <GrowTextarea
+          value={item[qKey]}
+          onChange={(v) => onPatch({ [qKey]: v })}
+          placeholder="Question…"
+          className="font-medium text-text-primary"
+        />
+        <button
+          onClick={onDelete}
+          className={`${iconBtnCls} hover:text-badge-passed-fg`}
+        >
+          <Trash2 size={12} />
+        </button>
+      </div>
+      <GrowTextarea
+        value={item[aKey]}
+        onChange={(v) => onPatch({ [aKey]: v })}
+        placeholder="Answer…"
+        className="mt-1"
+      />
+    </div>
+  );
+}
+
+export function SortableItem({ id, children }: { id: string; children: (grip: React.ReactNode) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const grip = (
+    <button
+      {...listeners}
+      {...attributes}
+      className="bg-transparent border-none cursor-grab text-text-tertiary p-0 shrink-0 flex items-center opacity-40 touch-none"
+    >
+      <GripVertical size={12} />
+    </button>
+  );
+  return (
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}>
+      {children(grip)}
+    </div>
+  );
+}

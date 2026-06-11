@@ -1,142 +1,325 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Copy } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Copy, FileText, Download, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { api, BASE } from "@/lib/api";
+import { pillBtnCls, SectionCard } from "@/components/ui-kit";
 
-// ── Interview prep display ────────────────────────────────────────────────────
+// ─── Constants ─────────────────────────────────────────────────────────────────
 
-function InterviewQuestions({ sectionMd }: { sectionMd: string }) {
-  const lines = sectionMd
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.startsWith("- "))
-    .map((l) => l.slice(2));
+const STATUS_DISPLAY: Record<string, string> = {
+  New: "Analyzed", Draft: "Analyzed", Applied: "Applied",
+  Interview: "Interview", Offer: "Offer", Rejected: "Rejected",
+};
 
-  const [checked, setChecked] = useState<boolean[]>(() => lines.map(() => false));
+const NEXT_STATUSES: Record<string, string[]> = {
+  Draft: ["Applied"],
+  Applied: ["Interview", "Offer", "Rejected"],
+  Interview: ["Applied", "Offer", "Rejected"],
+  Offer: ["Rejected"],
+  Rejected: ["Applied", "Interview"],
+};
 
-  const toggle = (i: number) =>
-    setChecked((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  return (
-    <ul className="space-y-2 mt-2">
-      {lines.map((q, i) => (
-        <li key={i}>
-          <label className="flex items-start gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={checked[i] ?? false}
-              onChange={() => toggle(i)}
-              className="mt-1 shrink-0 h-4 w-4 accent-primary"
-            />
-            <span className={`text-sm leading-snug ${checked[i] ? "line-through text-muted-foreground" : ""}`}>{q}</span>
-          </label>
-        </li>
-      ))}
-    </ul>
-  );
+function badgeCls(status: string): string {
+  const label = STATUS_DISPLAY[status] ?? status;
+  const color =
+    label === "Applied"   ? "bg-amb-l text-amb-d" :
+    label === "Interview" ? "bg-badge-interview-bg text-badge-interview-fg" :
+    label === "Offer"     ? "bg-badge-offer-bg text-badge-offer-fg" :
+    label === "Rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
+                            "bg-badge-analyzed-bg text-badge-analyzed-fg";
+  return `inline-flex items-center text-[12px] font-medium py-[3px] px-2.5 rounded-full border-none font-shell ${color}`;
 }
 
-function InterviewPrepDisplay({ markdown }: { markdown: string }) {
-  const raw = markdown.startsWith("## ") ? markdown : markdown.replace(/^[^#]*(?=## )/, "");
-  const sections = raw.split(/(?=^## )/m).filter(Boolean);
+// ─── Shared UI ─────────────────────────────────────────────────────────────────
 
+function TabBar({ tabs, active, onChange }: { tabs: string[]; active: string; onChange: (t: string) => void }) {
   return (
-    <div className="space-y-6 mt-3">
-      {sections.map((sec) => {
-        const firstNewline = sec.indexOf("\n");
-        const header = firstNewline === -1 ? sec : sec.slice(0, firstNewline);
-        const body = firstNewline === -1 ? "" : sec.slice(firstNewline + 1).trim();
-        const title = header.replace(/^#+\s*/, "");
-
-        return (
-          <div key={title} className="border rounded-lg p-4 bg-muted/20">
-            <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3">{title}</h3>
-            {title === "Questions to Ask" ? (
-              <InterviewQuestions sectionMd={body} />
-            ) : (
-              <div className="prose prose-sm max-w-none">
-                <ReactMarkdown>{body}</ReactMarkdown>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Parameter controls ────────────────────────────────────────────────────────
-
-const ROUNDS = ["Screening", "Technical", "Final"];
-const INTERVIEWERS = ["HR / Recruiter", "Hiring Manager", "Technical Peer"];
-
-function ToggleGroup({
-  options,
-  value,
-  onChange,
-}: {
-  options: string[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="flex gap-1 flex-wrap">
-      {options.map((o) => (
+    <div className="flex gap-[3px]">
+      {tabs.map((t) => (
         <button
-          key={o}
-          onClick={() => onChange(o)}
-          className={`px-3 py-1 rounded-md text-xs font-medium border transition-colors
-            ${value === o
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-background text-muted-foreground border-border hover:border-foreground/40"}`}
+          key={t}
+          onClick={() => onChange(t)}
+          className={`text-[11px] font-medium py-[5px] px-[11px] rounded-[6px] cursor-pointer font-shell transition-all duration-100 ${
+            active === t
+              ? "border-none bg-amb text-white"
+              : "border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
+          }`}
         >
-          {o}
+          {t}
         </button>
       ))}
     </div>
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ─── Download dropdown ─────────────────────────────────────────────────────────
+
+function DownloadDropdown({ label, pdf, docx }: { label: string; pdf?: string; docx?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+
+  if (!pdf && !docx) return null;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        className="inline-flex items-center gap-1 text-[12px] font-medium py-[5px] px-[13px] rounded-full cursor-pointer font-shell whitespace-nowrap no-underline border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
+        onClick={() => setOpen((o) => !o)}
+      >
+        {label}
+        <ChevronDown size={11} />
+      </button>
+      {open && (
+        <div className="absolute top-[calc(100%+4px)] right-0 z-30 bg-background-primary border-[0.5px] border-border-tertiary rounded-card p-1 min-w-[110px] shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
+          {pdf && (
+            <a
+              href={pdf} target="_blank" rel="noreferrer"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 text-[12px] font-medium py-1.5 px-2 rounded-[5px] text-text-secondary font-shell no-underline hover:bg-background-secondary"
+            >
+              <FileText size={12} /> PDF
+            </a>
+          )}
+          {docx && (
+            <a
+              href={docx} download
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 text-[12px] font-medium py-1.5 px-2 rounded-[5px] text-text-secondary font-shell no-underline hover:bg-background-secondary"
+            >
+              <Download size={12} /> DOCX
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Status badge w/ dropdown ──────────────────────────────────────────────────
+
+function StatusBadge({ app, onUpdate }: { app: { id: string; status: string }; onUpdate: (id: string, s: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const nextOptions = NEXT_STATUSES[app.status] ?? [];
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        className={`${badgeCls(app.status)} ${nextOptions.length ? "cursor-pointer" : "cursor-default"}`}
+        onClick={() => { if (nextOptions.length) setOpen((o) => !o); }}
+      >
+        {STATUS_DISPLAY[app.status] ?? app.status}
+      </button>
+      {open && (
+        <div className="absolute top-[calc(100%+4px)] left-0 z-30 bg-background-primary border-[0.5px] border-border-tertiary rounded-card p-1 min-w-[110px] shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
+          {nextOptions.map((s) => (
+            <button
+              key={s}
+              onClick={() => { onUpdate(app.id, s); setOpen(false); }}
+              className="block w-full text-left text-[12px] font-medium py-1.5 px-2 rounded-[5px] border-none cursor-pointer bg-transparent font-shell text-text-secondary hover:bg-background-secondary"
+            >
+              {STATUS_DISPLAY[s] ?? s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Analysis tab ──────────────────────────────────────────────────────────────
+
+const SKILL_STYLE: Record<string, { cls: string; label: string }> = {
+  STRONG:  { cls: "bg-badge-interview-bg text-badge-interview-fg", label: "Strong" },
+  HONEST:  { cls: "bg-amb-l text-amb-d",                           label: "Honest" },
+  GAP:     { cls: "bg-badge-passed-bg text-badge-passed-fg",       label: "Gap" },
+  UNKNOWN: { cls: "bg-background-secondary text-text-tertiary",    label: "Unknown" },
+};
+
+function SkillRow({ skill, status, tier, evidence }: { skill: string; status: string; tier: number | null; evidence: string }) {
+  const s = SKILL_STYLE[status] ?? SKILL_STYLE.UNKNOWN;
+  return (
+    <div className="grid grid-cols-[170px_72px_1fr] gap-2.5 items-baseline py-[5px] border-b-[0.5px] border-border-tertiary">
+      <span className="text-[12px] font-medium font-shell text-text-primary">
+        {skill}
+        {tier && <span className="ml-[5px] text-[10px] text-text-tertiary font-mono">T{tier}</span>}
+      </span>
+      <span className={`inline-flex items-center text-[10px] font-medium py-0.5 px-[7px] rounded-full font-shell ${s.cls}`}>
+        {s.label}
+      </span>
+      <span className="text-[11px] text-text-tertiary font-shell">{evidence}</span>
+    </div>
+  );
+}
+
+interface AnalysisResult {
+  core_theme?: string;
+  match_score?: number;
+  goal_alignment?: string;
+  goal_alignment_note?: string;
+  is_poor_match?: boolean;
+  strongest_angle?: string;
+  weakest_point?: string;
+  must_haves?: { skill: string; status: string; tier: number | null; evidence: string }[];
+  nice_to_haves?: { skill: string; status: string; tier: number | null; evidence: string }[];
+  ats_keywords?: string[];
+}
+
+function AnalysisView({ result, onRefresh }: { result: AnalysisResult; onRefresh: () => void }) {
+  const goalColorCls = result.goal_alignment === "aligns"
+    ? "bg-badge-interview-bg text-badge-interview-fg"
+    : result.goal_alignment === "detours"
+    ? "bg-badge-passed-bg text-badge-passed-fg"
+    : "bg-background-secondary text-text-tertiary";
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Header row */}
+      <div className="flex items-center gap-2.5 flex-wrap">
+        {result.core_theme && (
+          <span className="text-[13px] font-medium font-shell text-text-primary">
+            {result.core_theme}
+          </span>
+        )}
+        {result.match_score != null && (
+          <span className="text-[12px] font-mono text-text-tertiary">
+            {result.match_score}/10
+          </span>
+        )}
+        {result.goal_alignment && (
+          <span className={`text-[10px] font-medium py-0.5 px-2 rounded-full font-shell ${goalColorCls}`}>
+            {result.goal_alignment}
+          </span>
+        )}
+        <button
+          className="inline-flex items-center gap-[5px] text-[11px] font-medium py-[5px] px-[13px] rounded-full cursor-pointer font-shell whitespace-nowrap no-underline border-[0.5px] border-border-tertiary bg-transparent text-text-secondary ml-auto"
+          onClick={onRefresh}
+        >
+          Refresh
+        </button>
+      </div>
+
+      {result.is_poor_match && (
+        <div className="py-2.5 px-[13px] rounded-card bg-badge-passed-bg text-[12px] text-badge-passed-fg font-shell">
+          Many must-have skills are gaps — consider carefully whether to proceed.
+        </div>
+      )}
+
+      {(result.must_haves?.length ?? 0) > 0 && (
+        <SectionCard title={`Must-haves (${result.must_haves!.length})`}>
+          <div>{result.must_haves!.map((item, i) => <SkillRow key={i} {...item} />)}</div>
+        </SectionCard>
+      )}
+
+      {(result.nice_to_haves?.length ?? 0) > 0 && (
+        <SectionCard title={`Nice-to-haves (${result.nice_to_haves!.length})`}>
+          <div>{result.nice_to_haves!.map((item, i) => <SkillRow key={i} {...item} />)}</div>
+        </SectionCard>
+      )}
+
+      {(result.ats_keywords?.length ?? 0) > 0 && (
+        <SectionCard title="ATS keywords">
+          <div className="flex flex-wrap gap-[5px]">
+            {result.ats_keywords!.map((kw) => (
+              <span key={kw} className="text-[11px] py-0.5 px-2 rounded-full bg-background-secondary text-text-secondary font-mono">
+                {kw}
+              </span>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {(result.strongest_angle || result.weakest_point || result.goal_alignment_note) && (
+        <SectionCard title="Angles">
+          <div className="flex flex-col gap-2">
+            {result.strongest_angle && (
+              <div className="flex gap-2 items-start">
+                <span className="shrink-0 text-[10px] font-medium py-0.5 px-2 rounded-full bg-badge-interview-bg text-badge-interview-fg font-shell">Lead with</span>
+                <span className="text-[12px] text-text-secondary font-shell">{result.strongest_angle}</span>
+              </div>
+            )}
+            {result.weakest_point && (
+              <div className="flex gap-2 items-start">
+                <span className="shrink-0 text-[10px] font-medium py-0.5 px-2 rounded-full bg-amb-l text-amb-d font-shell">Watch out</span>
+                <span className="text-[12px] text-text-secondary font-shell">{result.weakest_point}</span>
+              </div>
+            )}
+            {result.goal_alignment_note && (
+              <div className="flex gap-2 items-start">
+                <span className="shrink-0 text-[10px] font-medium py-0.5 px-2 rounded-full bg-background-secondary text-text-tertiary font-shell">Goal</span>
+                <span className="text-[12px] text-text-secondary font-shell">{result.goal_alignment_note}</span>
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      )}
+    </div>
+  );
+}
+
+// ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function ApplicationDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [app, setApp] = useState<any>(null);
+  const [app, setApp] = useState<Record<string, string> | null>(null);
+  const [tab, setTab] = useState("JD");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [copying, setCopying] = useState(false);
 
-  // Interview prep state
-  const [interviewPrep, setInterviewPrep] = useState("");
-  const [generatingPrep, setGeneratingPrep] = useState(false);
-  const [showPrepControls, setShowPrepControls] = useState(false);
-  const [prepRound, setPrepRound] = useState("Technical");
-  const [prepInterviewer, setPrepInterviewer] = useState("Hiring Manager");
-  const [prepFocus, setPrepFocus] = useState("");
-
-  // Skills debrief state
-  const [interviewDebrief, setInterviewDebrief] = useState("");
-  const [generatingDebrief, setGeneratingDebrief] = useState(false);
-
-  const copyJd = async () => {
-    if (!app?.job_description) return;
-    await navigator.clipboard.writeText(`${app.company || ""}\n${app.job_title || ""}\n\n${app.job_description}`);
-    toast.success("Copied");
-  };
+  // Analysis state (hoisted so it persists across tab switches)
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisRan, setAnalysisRan] = useState(false);
 
   useEffect(() => {
     api.get(`/api/tracker/${id}`).then((a) => {
       setApp(a);
       setNotes(a.notes ?? "");
-      setInterviewPrep(a.interview_prep_md ?? "");
-      setInterviewDebrief(a.interview_debrief_md ?? "");
     });
   }, [id]);
+
+  // Run analysis when Analysis tab is first opened
+  useEffect(() => {
+    if (tab !== "Analysis" || analysisRan || analysisLoading) return;
+    setAnalysisLoading(true);
+    api.post("/api/application/analyze-jd", { application_id: id })
+      .then((r) => { setAnalysisResult(r); })
+      .catch(() => { setAnalysisResult(null); })
+      .finally(() => { setAnalysisLoading(false); setAnalysisRan(true); });
+  }, [tab, analysisRan, analysisLoading, id]);
+
+  const rerunAnalysis = useCallback(() => {
+    setAnalysisRan(false);
+    setAnalysisResult(null);
+  }, []);
+
+  const updateStatus = useCallback(async (appId: string, newStatus: string) => {
+    await api.patch(`/api/tracker/${appId}/status`, { status: newStatus });
+    setApp((prev) => prev ? { ...prev, status: newStatus } : prev);
+  }, []);
 
   const saveNotes = async () => {
     setSaving(true);
@@ -145,225 +328,170 @@ export default function ApplicationDetailPage() {
     toast.success("Notes saved.");
   };
 
-  const handleGeneratePrep = async () => {
-    setGeneratingPrep(true);
-    setShowPrepControls(false);
-    const result = await api
-      .post("/api/application/interview-prep", {
-        application_id: id,
-        interview_round: prepRound,
-        interviewer_type: prepInterviewer,
-        focus_skills: prepFocus,
-      })
-      .catch(() => null);
-    if (!result?.markdown) {
-      toast.error("Interview prep generation failed — check backend logs.");
-    } else {
-      setInterviewPrep(result.markdown);
-    }
-    setGeneratingPrep(false);
+  const copyJd = async () => {
+    if (!app?.job_description) return;
+    setCopying(true);
+    await navigator.clipboard.writeText(`${app.company ?? ""}\n${app.job_title ?? ""}\n\n${app.job_description}`);
+    toast.success("Copied");
+    setTimeout(() => setCopying(false), 1500);
   };
 
-  const copyInterviewPromptForClaude = async () => {
-    const prompt =
-      `Prepare interview prep for application ${id} ` +
-      `(Round: ${prepRound}, Interviewer: ${prepInterviewer}${prepFocus.trim() ? `, Focus: ${prepFocus.trim()}` : ""}).\n` +
-      `Fetch details from http://localhost:8000/api/tracker/${id}, follow the "Interview prep — Claude path" steps in CLAUDE.md ` +
-      `(web-research the company, draft all sections), then save with PUT /api/application/${id}/interview-prep.`;
-    await navigator.clipboard.writeText(prompt);
-    toast.success("Copied — paste into Claude Code");
-  };
+  if (!app) {
+    return (
+      <div className="p-10 text-[12px] text-text-tertiary font-shell">
+        Loading…
+      </div>
+    );
+  }
 
-  const handleGenerateDebrief = async () => {
-    setGeneratingDebrief(true);
-    const result = await api
-      .post("/api/application/interview-debrief", { application_id: id })
-      .catch(() => null);
-    if (!result?.markdown) {
-      toast.error("Skills debrief generation failed — check backend logs.");
-    } else {
-      setInterviewDebrief(result.markdown);
-    }
-    setGeneratingDebrief(false);
-  };
+  const canContinue = !app.resume_pdf_path && (app.status === "New" || app.status === "Draft");
+  const canRegen = !canContinue && (app.status === "New" || app.status === "Draft");
 
-  if (!app) return <p className="p-10 text-muted-foreground">Loading…</p>;
+  const cvPdf  = app.resume_pdf_path    ? `${BASE}/files/${app.resume_pdf_path.split("/applications/")[1]}`    : undefined;
+  const cvDocx = app.resume_docx_path   ? `${BASE}/files/${app.resume_docx_path.split("/applications/")[1]}`   : undefined;
+  const clPdf  = app.cover_letter_pdf_path  ? `${BASE}/files/${app.cover_letter_pdf_path.split("/applications/")[1]}`  : undefined;
+  const clDocx = app.cover_letter_docx_path ? `${BASE}/files/${app.cover_letter_docx_path.split("/applications/")[1]}` : undefined;
 
-  const isIncomplete = !app.resume_pdf_path;
-  const isInterview = app.status === "Interview";
+  const allTabs = ["JD", "Analysis", "Resume", "Cover Letter"];
+  const visibleTabs = allTabs.filter((t) => {
+    if (t === "Resume" && !app.resume_final_md) return false;
+    if (t === "Cover Letter" && !app.cover_letter_final_md) return false;
+    return true;
+  });
 
   return (
-    <main className="w-full max-w-6xl mx-auto px-4 py-10 space-y-8">
-      {/* Header */}
-      <div>
-        <Link href="/" className="text-sm text-muted-foreground hover:underline">← Dashboard</Link>
-        <div className="flex items-start justify-between mt-1 gap-4">
-          <h1 className="text-2xl font-bold">{app.company} — {app.job_title}</h1>
-          {(app.status === "New" || app.status === "Draft") && (
-            <Link href={`/apply/new?id=${id}&regen=1`} className="shrink-0">
-              <Button size="sm" variant="outline">Regenerate</Button>
-            </Link>
+    <div className="flex flex-col h-full overflow-hidden bg-background-primary">
+      {/* ── Topbar ── */}
+      <div className="flex items-center gap-2.5 py-2.5 px-4 shrink-0 border-b-[0.5px] border-border-tertiary flex-wrap">
+        <div className="flex items-baseline gap-1.5 flex-1 min-w-0">
+          <span className="text-[14px] font-semibold font-shell text-text-primary overflow-hidden text-ellipsis whitespace-nowrap">
+            {app.company}
+          </span>
+          <span className="text-[12px] text-text-tertiary font-shell shrink-0">·</span>
+          <span className="text-[13px] font-shell text-text-secondary overflow-hidden text-ellipsis whitespace-nowrap">
+            {app.job_title}
+          </span>
+          {app.language && (
+            <span className="shrink-0 text-[10px] font-mono text-text-tertiary border-[0.5px] border-border-tertiary py-px px-1.5 rounded-[4px]">
+              {app.language.toUpperCase()}
+            </span>
           )}
         </div>
-        {isIncomplete && (
-          <div className="mt-3">
-            <Link href={`/apply/new?id=${id}`}>
-              <Button size="sm">Continue</Button>
-            </Link>
-          </div>
+
+        <StatusBadge app={{ id, status: app.status }} onUpdate={updateStatus} />
+
+        {canContinue && (
+          <Link href={`/apply/new?id=${id}`} className={pillBtnCls(true)}>
+            Continue wizard
+          </Link>
         )}
+        {canRegen && (
+          <Link href={`/apply/new?id=${id}&regen=1`} className={pillBtnCls()}>
+            Regenerate
+          </Link>
+        )}
+
+        {app.status === "Interview" && (
+          <Link
+            href="/interview"
+            className="inline-flex items-center gap-[5px] text-[12px] font-medium py-[5px] px-[13px] rounded-full cursor-pointer font-shell whitespace-nowrap no-underline border-none bg-badge-interview-bg text-badge-interview-fg"
+          >
+            Interview prep →
+          </Link>
+        )}
+
+        <DownloadDropdown label="CV" pdf={cvPdf} docx={cvDocx} />
+        <DownloadDropdown label="Cover Letter" pdf={clPdf} docx={clDocx} />
       </div>
 
-      {/* Downloads */}
-      {(app.resume_pdf_path || app.cover_letter_pdf_path) && (
-        <div className="flex flex-wrap gap-3">
-          {app.resume_pdf_path && (
-            <a href={`${BASE}/files/${app.resume_pdf_path.split("/applications/")[1]}`} target="_blank" rel="noreferrer">
-              <Button variant="outline">Resume (PDF)</Button>
-            </a>
-          )}
-          {app.resume_docx_path && (
-            <a href={`${BASE}/files/${app.resume_docx_path.split("/applications/")[1]}`} download>
-              <Button variant="outline">Resume (DOCX)</Button>
-            </a>
-          )}
-          {app.cover_letter_pdf_path && (
-            <a href={`${BASE}/files/${app.cover_letter_pdf_path.split("/applications/")[1]}`} target="_blank" rel="noreferrer">
-              <Button variant="outline">Cover Letter (PDF)</Button>
-            </a>
-          )}
-          {app.cover_letter_docx_path && (
-            <a href={`${BASE}/files/${app.cover_letter_docx_path.split("/applications/")[1]}`} download>
-              <Button variant="outline">Cover Letter (DOCX)</Button>
-            </a>
-          )}
-        </div>
-      )}
+      {/* ── Body: left tabs + right notes ── */}
+      <div className="flex-1 flex overflow-hidden">
 
-      {/* Tabs */}
-      <Tabs defaultValue={isInterview ? "prep" : "jd"}>
-        <TabsList className="w-full">
-          {isInterview && <TabsTrigger value="prep" className="flex-1">Interview Prep</TabsTrigger>}
-          <TabsTrigger value="jd" className="flex-1">Job Description</TabsTrigger>
-          <TabsTrigger value="resume" className="flex-1" disabled={!app.resume_final_md}>Resume</TabsTrigger>
-          <TabsTrigger value="cl" className="flex-1" disabled={!app.cover_letter_final_md}>Cover Letter</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="jd">
-          <div className="relative mt-3">
-            <button
-              onClick={copyJd}
-              title="Copy"
-              className="absolute top-2 right-2 p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </button>
-            <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed border rounded-lg p-4 pr-8 bg-muted/20">{app.job_description}</pre>
+        {/* Left — tab strip + content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Tab strip */}
+          <div className="flex items-center py-2 px-4 shrink-0 border-b-[0.5px] border-border-tertiary">
+            <TabBar
+              tabs={visibleTabs}
+              active={visibleTabs.includes(tab) ? tab : visibleTabs[0]}
+              onChange={setTab}
+            />
           </div>
-        </TabsContent>
 
-        <TabsContent value="resume">
-          <div className="border rounded-lg p-4 prose prose-sm max-w-none bg-muted/20 mt-3">
-            <ReactMarkdown>{app.resume_final_md}</ReactMarkdown>
-          </div>
-        </TabsContent>
+          {/* Tab content */}
+          <div className="flex-1 overflow-auto p-4">
 
-        <TabsContent value="cl">
-          <div className="border rounded-lg p-4 prose prose-sm max-w-none bg-muted/20 mt-3">
-            <ReactMarkdown>{app.cover_letter_final_md}</ReactMarkdown>
-          </div>
-        </TabsContent>
-
-        {isInterview && (
-        <TabsContent value="prep">
-          <div className="mt-3 space-y-8">
-            {/* General interview prep */}
-            <div>
-              {generatingPrep ? (
-                <p className="text-sm text-muted-foreground py-6 text-center">Generating interview prep… (this may take a minute)</p>
-              ) : interviewPrep && !showPrepControls ? (
-                <>
-                  <div className="flex justify-end gap-2 mb-2">
-                    <Button size="sm" variant="outline" onClick={copyInterviewPromptForClaude}>Copy prompt for Claude</Button>
-                    <Button size="sm" variant="outline" onClick={() => setShowPrepControls(true)}>Options</Button>
-                  </div>
-                  <InterviewPrepDisplay markdown={interviewPrep} />
-                </>
-              ) : (
-                <div className="space-y-4 border rounded-lg p-4 bg-muted/20">
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Interview Round</p>
-                    <ToggleGroup options={ROUNDS} value={prepRound} onChange={setPrepRound} />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Interviewer</p>
-                    <ToggleGroup options={INTERVIEWERS} value={prepInterviewer} onChange={setPrepInterviewer} />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Focus Skills <span className="normal-case font-normal">(optional)</span></p>
-                    <input
-                      className="w-full border rounded px-3 py-2 text-sm bg-background"
-                      value={prepFocus}
-                      onChange={(e) => setPrepFocus(e.target.value)}
-                      placeholder="e.g. Python, system design, Kubernetes"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    {showPrepControls && (
-                      <Button variant="ghost" size="sm" onClick={() => setShowPrepControls(false)}>Cancel</Button>
-                    )}
-                    <Button variant="outline" onClick={copyInterviewPromptForClaude}>Copy prompt for Claude</Button>
-                    <Button onClick={handleGeneratePrep} className="flex-1">
-                      {interviewPrep ? "Regenerate with Ollama" : "Generate with Ollama"}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    <strong>Claude</strong> web-researches the company (real reviews/salary where available); <strong>Ollama</strong> runs offline with company analysis inferred from the JD.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Skills debrief */}
-            <div>
-              <hr className="mb-6" />
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-sm font-semibold">Skills Debrief</h3>
-                {interviewDebrief && !generatingDebrief && (
-                  <Button size="sm" variant="outline" onClick={handleGenerateDebrief}>Regenerate</Button>
-                )}
+            {/* JD */}
+            {tab === "JD" && (
+              <div className="relative">
+                <button
+                  onClick={copyJd}
+                  title="Copy"
+                  className={`absolute top-0 right-0 p-[5px] rounded-[5px] border-[0.5px] border-border-tertiary bg-transparent cursor-pointer hover:text-text-primary ${
+                    copying ? "text-text-primary" : "text-text-tertiary"
+                  }`}
+                >
+                  <Copy size={13} />
+                </button>
+                <pre className="font-shell text-[13px] leading-[1.7] whitespace-pre-wrap text-text-secondary m-0 pr-7">
+                  {app.job_description}
+                </pre>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">
-                Tier-aware coaching for every skill you claimed — STAR prompts for your strongest skills, honest answer templates for weaker ones, and flags for any overclaims.
-              </p>
-              {generatingDebrief ? (
-                <p className="text-sm text-muted-foreground py-6 text-center">Generating skills debrief… (this may take a minute)</p>
-              ) : interviewDebrief ? (
-                <InterviewPrepDisplay markdown={interviewDebrief} />
-              ) : (
-                <Button onClick={handleGenerateDebrief} className="w-full">
-                  Generate Skills Debrief
-                </Button>
-              )}
-            </div>
-          </div>
-        </TabsContent>
-        )}
-      </Tabs>
+            )}
 
-      {/* Notes */}
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Notes</h2>
-        <textarea
-          className="w-full border rounded-lg p-3 text-sm min-h-[120px] bg-background"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Follow-up dates, recruiter contact, interview notes…"
-        />
-        <Button className="mt-2" onClick={saveNotes} disabled={saving}>
-          {saving ? "Saving…" : "Save Notes"}
-        </Button>
-      </section>
-    </main>
+            {/* Analysis */}
+            {tab === "Analysis" && (
+              analysisLoading ? (
+                <div className="text-center py-8 text-[12px] text-text-tertiary font-shell">
+                  Analysing job description…
+                </div>
+              ) : analysisResult ? (
+                <AnalysisView result={analysisResult} onRefresh={rerunAnalysis} />
+              ) : analysisRan ? (
+                <div className="flex flex-col gap-2.5 items-start">
+                  <p className="text-[12px] text-text-tertiary font-shell">Analysis failed — check backend.</p>
+                  <button className={pillBtnCls(true)} onClick={rerunAnalysis}>Retry</button>
+                </div>
+              ) : null
+            )}
+
+            {/* Resume */}
+            {tab === "Resume" && app.resume_final_md && (
+              <div className="text-[13px] leading-[1.7] text-text-secondary font-shell">
+                <ReactMarkdown>{app.resume_final_md}</ReactMarkdown>
+              </div>
+            )}
+
+            {/* Cover Letter */}
+            {tab === "Cover Letter" && app.cover_letter_final_md && (
+              <div className="text-[13px] leading-[1.7] text-text-secondary font-shell">
+                <ReactMarkdown>{app.cover_letter_final_md}</ReactMarkdown>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right — Notes column */}
+        <div className="w-[240px] shrink-0 border-l-[0.5px] border-border-tertiary flex flex-col p-3.5 gap-2 items-start">
+          <div className="text-[10px] font-medium tracking-[0.06em] uppercase text-text-tertiary font-shell">
+            Notes
+          </div>
+          <textarea
+            className="notes-textarea text-[12px] leading-[1.7] font-shell text-text-secondary bg-transparent border-none resize-none outline-none p-0 w-full overflow-y-auto"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Follow-up dates, recruiter contact, interview notes…"
+            rows={10}
+          />
+          <button
+            onClick={saveNotes}
+            disabled={saving}
+            className="inline-flex items-center gap-[5px] text-[11px] font-medium py-1 px-2.5 rounded-full cursor-pointer font-shell whitespace-nowrap no-underline border-none bg-amb text-white self-start"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

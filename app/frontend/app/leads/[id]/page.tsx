@@ -1,12 +1,24 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Copy } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import {
+  chipCls,
+  pillBtnCls,
+  skillStatusStyleCls,
+  verdictStyleCls,
+  goalAlignStyleCls,
+  statusChipStyleCls,
+  sectionLabelCls,
+  CopyButton,
+  SectionCard,
+} from "@/components/ui-kit";
 
 const PROCESS_PROMPT = "process my captured jobs";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type SkillEntry = {
   skill: string;
@@ -45,18 +57,28 @@ type Lead = {
   application_id: string | null;
 };
 
-const STATUS_CLASSES: Record<string, string> = {
-  STRONG: "bg-green-100 text-green-800",
-  HONEST: "bg-yellow-100 text-yellow-800",
-  GAP: "bg-red-100 text-red-800",
-  UNKNOWN: "bg-muted text-muted-foreground",
-};
+// ─── Style helpers ────────────────────────────────────────────────────────────
 
-const VERDICT_CLASSES: Record<string, string> = {
-  strong: "bg-green-100 text-green-800",
-  maybe: "bg-yellow-100 text-yellow-800",
-  skip: "bg-red-100 text-red-800",
-};
+const pageShell = "flex flex-col h-full overflow-hidden font-shell";
+
+const pageHeader =
+  "px-6 py-3 border-b-[0.5px] border-(--color-border-tertiary) shrink-0 flex justify-between gap-4";
+
+const contentWrapper = "flex-1 overflow-auto px-6 py-5 flex flex-col gap-3.5";
+
+const emptyStateBox =
+  "border-[0.5px] border-(--color-border-tertiary) rounded-[8px] px-6 py-8 text-center";
+
+const mutedParagraph = "text-[13px] text-(--color-text-tertiary) leading-[1.7]";
+
+const inlineCode =
+  "text-[11px] font-mono bg-(--color-background-secondary) px-1.5 py-px rounded-[4px]";
+
+const sourceLink = "block mt-[3px] text-[11px] text-(--color-text-tertiary) no-underline";
+
+const angleText = "text-[12px] text-(--color-text-secondary) leading-[1.55]";
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LeadDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -66,15 +88,9 @@ export default function LeadDetailPage() {
   const [approving, setApproving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const load = () => {
+  useEffect(() => {
     api.get(`/api/leads/${id}`).then((data) => { setLead(data); setLoading(false); });
-  };
-  useEffect(() => { load(); }, [id]);
-
-  const copyProcessPrompt = async () => {
-    await navigator.clipboard.writeText(PROCESS_PROMPT);
-    toast.success("Copied — paste into Claude Code");
-  };
+  }, [id]);
 
   const approve = async () => {
     setApproving(true);
@@ -95,230 +111,253 @@ export default function LeadDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
+    if (!confirmDelete) { setConfirmDelete(true); return; }
     await api.delete(`/api/leads/${id}`);
     toast.success("Job deleted");
     router.push("/leads");
   };
 
+  // ── Loading ──
   if (loading) {
     return (
-      <main className="w-full max-w-4xl mx-auto px-4 py-10">
-        <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="animate-pulse bg-muted/40 h-16 rounded-md" />)}</div>
-      </main>
+      <div className={pageShell}>
+        <div className="px-6 py-3.5 border-b-[0.5px] border-(--color-border-tertiary)">
+          <div className="h-4 w-[140px] rounded-[6px] bg-(--color-background-secondary)" />
+        </div>
+        <div className="px-6 py-5 flex flex-col gap-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-[60px] rounded-[8px] bg-(--color-background-secondary)" />
+          ))}
+        </div>
+      </div>
     );
   }
 
-  if (!lead) return <main className="p-10 text-muted-foreground">Job not found.</main>;
+  if (!lead) {
+    return (
+      <div className="px-6 py-10 text-[13px] text-(--color-text-tertiary) font-shell">
+        Job not found.
+      </div>
+    );
+  }
 
+  // ── Captured (not yet extracted) ──
   if (lead.status === "captured") {
     return (
-      <main className="w-full max-w-4xl mx-auto px-4 py-10 space-y-6">
-        <div className="flex items-start justify-between gap-4">
+      <div className={pageShell}>
+        <div className={`${pageHeader} items-center`}>
           <div>
-            <h1 className="text-2xl font-bold text-muted-foreground">Pending extraction</h1>
+            <span className="text-[13px] font-semibold text-(--color-text-tertiary)">
+              Pending extraction
+            </span>
             {lead.source_url && (
-              <a href={lead.source_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline mt-1 block">
+              <a
+                href={lead.source_url}
+                target="_blank"
+                rel="noreferrer"
+                className={sourceLink}
+              >
                 {lead.source_url}
               </a>
             )}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDelete}
-            className={confirmDelete ? "border-red-300 text-red-600 hover:text-red-700 shrink-0" : "text-muted-foreground shrink-0"}
-          >
+          <button onClick={handleDelete} className={pillBtnCls(false, confirmDelete)}>
             {confirmDelete ? "Confirm delete?" : "Delete"}
-          </Button>
+          </button>
         </div>
-        <div className="border rounded-lg p-8 text-center space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Raw page text is saved. Tell Claude Code <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">"process my captured jobs"</span> to extract job details.
-          </p>
+
+        <div className={contentWrapper}>
+          <div className={emptyStateBox}>
+            <p className={mutedParagraph}>
+              Raw page text saved. Tell Claude Code{" "}
+              <code className={inlineCode}>
+                &quot;process my captured jobs&quot;
+              </code>
+              {" "}to extract job details.
+            </p>
+          </div>
+
+          {lead.raw_text && (
+            <SectionCard variant="labeled" title="Raw page text">
+              <pre className="text-[11px] font-mono whitespace-pre-wrap text-(--color-text-tertiary) leading-[1.6]">
+                {lead.raw_text.slice(0, 3000)}…
+              </pre>
+            </SectionCard>
+          )}
         </div>
-        {lead.raw_text && (
-          <details className="border rounded-lg">
-            <summary className="px-4 py-3 cursor-pointer text-sm font-medium select-none">Raw page text</summary>
-            <div className="px-4 pb-4">
-              <pre className="text-xs whitespace-pre-wrap text-muted-foreground leading-relaxed">{lead.raw_text.slice(0, 3000)}…</pre>
-            </div>
-          </details>
-        )}
-      </main>
+      </div>
     );
   }
 
   const fit: FitAnalysis | null = lead.fit_analysis_json ? JSON.parse(lead.fit_analysis_json) : null;
 
   return (
-    <main className="w-full max-w-4xl mx-auto px-4 py-10 space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+    <div className={pageShell}>
+      {/* ── Header ── */}
+      <div className={`${pageHeader} items-start`}>
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold">{lead.company}</h1>
-            <span className="px-1.5 py-0.5 rounded text-xs font-mono bg-muted">{lead.language.toUpperCase()}</span>
+          <div className="flex items-center gap-2 mb-[3px] flex-wrap">
+            <span className="text-[16px] font-bold text-(--color-text-primary)">{lead.company}</span>
+            <span className="inline-flex items-center text-[10px] font-medium px-[9px] py-[3px] rounded-[99px] font-mono bg-(--color-background-secondary) text-(--color-text-tertiary)">
+              {lead.language.toUpperCase()}
+            </span>
+            <span className={`${chipCls(statusChipStyleCls(lead.status))} capitalize`}>{lead.status}</span>
+            {lead.fit_verdict && (
+              <span className={`${chipCls(verdictStyleCls(lead.fit_verdict))} capitalize`}>{lead.fit_verdict}</span>
+            )}
           </div>
-          <p className="text-muted-foreground">{lead.job_title}</p>
+          <span className="text-[12px] text-(--color-text-secondary)">{lead.job_title}</span>
           {lead.source_url && (
-            <a href={lead.source_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline mt-1 block">
-              Source ↗
+            <a
+              href={lead.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className={sourceLink}
+            >
+              {lead.source_url} ↗
             </a>
           )}
         </div>
-        <div className="flex gap-2 shrink-0 flex-wrap justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDelete}
-            className={confirmDelete ? "border-red-300 text-red-600 hover:text-red-700" : "text-muted-foreground"}
-          >
+
+        <div className="flex gap-1.5 shrink-0 items-center flex-wrap justify-end">
+          <button onClick={handleDelete} className={pillBtnCls(false, confirmDelete)}>
             {confirmDelete ? "Confirm delete?" : "Delete"}
-          </Button>
+          </button>
           {lead.status === "approved" && lead.application_id ? (
-            <Button variant="outline" onClick={() => router.push(`/apply/${lead.application_id}`)}>
+            <button onClick={() => router.push(`/apply/${lead.application_id!}`)} className={pillBtnCls()}>
               View Application →
-            </Button>
+            </button>
           ) : lead.status === "rejected" ? (
-            <span className="text-sm text-muted-foreground">Rejected</span>
+            <span className="text-[12px] text-(--color-text-tertiary)">Rejected</span>
           ) : fit ? (
             <>
-              <Button variant="outline" onClick={reject}>Reject</Button>
-              <Button onClick={approve} disabled={approving}>
+              <button onClick={reject} className={pillBtnCls()}>Reject</button>
+              <button onClick={approve} disabled={approving} className={`${pillBtnCls(true)} ${approving ? "opacity-60" : ""}`}>
                 {approving ? "Creating…" : "Approve & Create Application"}
-              </Button>
+              </button>
             </>
           ) : null}
         </div>
       </div>
 
-      {/* Fit analysis */}
-      {fit ? (
-        <div className="space-y-4">
-          {/* Score card */}
-          <div className="border rounded-lg p-4 space-y-3">
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-3xl font-bold">{fit.match_score}</span>
-              <span className="text-muted-foreground text-sm">/100</span>
-              {lead.fit_verdict && (
-                <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${VERDICT_CLASSES[lead.fit_verdict] ?? ""}`}>
-                  {lead.fit_verdict}
-                </span>
-              )}
-              {fit.goal_alignment && (
-                <span
-                  title={fit.goal_alignment_note ?? ""}
-                  className={`px-2 py-1 rounded text-xs font-medium cursor-default ${
-                    fit.goal_alignment === "aligns"
-                      ? "bg-green-50 text-green-700 border border-green-200"
-                      : fit.goal_alignment === "detours"
-                      ? "bg-amber-50 text-amber-700 border border-amber-200"
-                      : "bg-muted text-muted-foreground border border-border"
-                  }`}
-                >
-                  {fit.goal_alignment === "aligns" ? "→ aligns" : fit.goal_alignment === "detours" ? "← detours" : "⟳ neutral"}
-                </span>
-              )}
-              {lead.company_tone && (
-                <span className="px-2 py-1 rounded text-xs font-medium bg-muted text-muted-foreground capitalize ml-auto">
-                  {lead.company_tone}
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-muted-foreground">{fit.core_theme}</p>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Strongest angle</p>
-                <p>{fit.strongest_angle}</p>
+      {/* ── Content ── */}
+      <div className={contentWrapper}>
+
+        {fit ? (
+          <>
+            {/* Fit score card */}
+            <SectionCard variant="labeled" title="Fit Analysis">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="text-[30px] font-bold text-(--color-text-primary) font-mono leading-none">
+                    {fit.match_score}
+                  </span>
+                  <span className="text-[12px] text-(--color-text-tertiary)">/100</span>
+                  {fit.goal_alignment && (
+                    <span
+                      title={fit.goal_alignment_note ?? ""}
+                      className={chipCls(goalAlignStyleCls(fit.goal_alignment))}
+                    >
+                      {fit.goal_alignment === "aligns" ? "→ aligns" : fit.goal_alignment === "detours" ? "← detours" : "⟳ neutral"}
+                    </span>
+                  )}
+                  {lead.company_tone && (
+                    <span className="inline-flex items-center text-[11px] font-medium px-[9px] py-[3px] rounded-[99px] font-shell bg-(--color-background-secondary) text-(--color-text-tertiary) capitalize ml-auto">
+                      {lead.company_tone}
+                    </span>
+                  )}
+                </div>
+
+                {fit.core_theme && (
+                  <p className="text-[13px] text-(--color-text-secondary) leading-[1.65]">{fit.core_theme}</p>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className={sectionLabelCls}>Strongest angle</div>
+                    <p className={angleText}>{fit.strongest_angle}</p>
+                  </div>
+                  <div>
+                    <div className={sectionLabelCls}>Watch out for</div>
+                    <p className={angleText}>{fit.weakest_point}</p>
+                  </div>
+                </div>
+
+                {lead.company_research && (
+                  <p className="text-[11px] text-(--color-text-tertiary) border-t-[0.5px] border-(--color-border-tertiary) pt-2.5">
+                    {lead.company_research}
+                  </p>
+                )}
               </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Watch out for</p>
-                <p>{fit.weakest_point}</p>
-              </div>
-            </div>
-            {lead.company_research && (
-              <p className="text-xs text-muted-foreground border-t pt-2">{lead.company_research}</p>
+            </SectionCard>
+
+            {(fit.must_haves ?? []).length > 0 && (
+              <SectionCard variant="labeled" title="Must-haves">
+                <div className="flex flex-wrap gap-1.5">
+                  {(fit.must_haves ?? []).map((s) => (
+                    <span key={s.skill} className={chipCls(skillStatusStyleCls(s.status))}>
+                      {s.skill}{s.status === "GAP" ? " ✗" : s.status === "STRONG" ? " ✓" : ""}
+                    </span>
+                  ))}
+                </div>
+              </SectionCard>
+            )}
+
+            {(fit.nice_to_haves ?? []).length > 0 && (
+              <SectionCard variant="labeled" title="Nice-to-haves">
+                <div className="flex flex-wrap gap-1.5">
+                  {(fit.nice_to_haves ?? []).map((s) => (
+                    <span key={s.skill} className={chipCls(skillStatusStyleCls(s.status))}>{s.skill}</span>
+                  ))}
+                </div>
+              </SectionCard>
+            )}
+
+            {(fit.ats_keywords ?? []).length > 0 && (
+              <SectionCard variant="labeled" title="ATS Keywords">
+                <div className="flex flex-wrap gap-[5px]">
+                  {(fit.ats_keywords ?? []).map((k) => (
+                    <span key={k} className="inline-flex items-center text-[11px] font-medium px-[9px] py-[3px] rounded-[99px] font-mono bg-(--color-background-secondary) text-(--color-text-secondary)">
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              </SectionCard>
+            )}
+          </>
+        ) : (
+          <div className={emptyStateBox}>
+            <p className={mutedParagraph}>
+              Not analyzed yet. Tell Claude Code{" "}
+              <code className={inlineCode}>
+                &quot;process my captured jobs&quot;
+              </code>
+              {" "}
+              <button
+                onClick={async () => { await navigator.clipboard.writeText(PROCESS_PROMPT); toast.success("Copied — paste into Claude Code"); }}
+                title="Copy prompt"
+                className="bg-transparent border-none cursor-pointer text-(--color-text-tertiary) px-0.5 py-0 inline-flex items-center align-middle"
+              >
+                <Copy size={12} />
+              </button>
+              {" "}to get fit score, skill gaps, and company tone.
+            </p>
+            {lead.status === "analyzing" && (
+              <p className="text-[11px] text-(--color-text-tertiary) font-mono mt-2">
+                Analysis in progress…
+              </p>
             )}
           </div>
+        )}
 
-          {/* Must-haves */}
-          {(fit.must_haves ?? []).length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Must-haves</h3>
-              <div className="flex flex-wrap gap-2">
-                {(fit.must_haves ?? []).map((s) => (
-                  <span key={s.skill} className={`px-2 py-1 rounded text-xs font-medium ${STATUS_CLASSES[s.status]}`}>
-                    {s.skill}
-                    {s.status === "GAP" && " ✗"}
-                    {s.status === "STRONG" && " ✓"}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Nice-to-haves */}
-          {(fit.nice_to_haves ?? []).length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Nice-to-haves</h3>
-              <div className="flex flex-wrap gap-2">
-                {(fit.nice_to_haves ?? []).map((s) => (
-                  <span key={s.skill} className={`px-2 py-1 rounded text-xs font-medium ${STATUS_CLASSES[s.status]}`}>
-                    {s.skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ATS keywords */}
-          {(fit.ats_keywords ?? []).length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold mb-2">ATS keywords</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {(fit.ats_keywords ?? []).map((k) => (
-                  <span key={k} className="px-2 py-0.5 rounded bg-muted text-xs font-mono">{k}</span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        /* Not yet analyzed */
-        <div className="border rounded-lg p-8 text-center space-y-3">
-          <p className="text-muted-foreground text-sm">
-            Not analyzed yet. Tell Claude Code{" "}
-            <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">&quot;process my captured jobs&quot;</span>
-            <button
-              onClick={copyProcessPrompt}
-              title="Copy prompt"
-              className="inline-flex items-center align-middle ml-1 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </button>{" "}
-            to get fit score, skill gaps, and company tone.
-          </p>
-          {lead.status === "analyzing" && (
-            <p className="text-xs text-muted-foreground animate-pulse">Analysis in progress…</p>
-          )}
-        </div>
-      )}
-
-      {/* Job description */}
-      <details className="border rounded-lg">
-        <summary className="px-4 py-3 cursor-pointer text-sm font-medium select-none">
-          Job Description
-        </summary>
-        <div className="px-4 pb-4">
-          <pre className="text-xs whitespace-pre-wrap text-muted-foreground leading-relaxed">
-            {lead.job_description}
-          </pre>
-        </div>
-      </details>
-    </main>
+        {lead.job_description && (
+          <SectionCard variant="labeled" title="Job Description" action={<CopyButton text={lead.job_description} title="Copy JD" />}>
+            <pre className="text-[12px] font-mono whitespace-pre-wrap text-(--color-text-secondary) leading-[1.65]">
+              {lead.job_description}
+            </pre>
+          </SectionCard>
+        )}
+      </div>
+    </div>
   );
 }

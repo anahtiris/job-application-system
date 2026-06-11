@@ -1,0 +1,217 @@
+<h2 class="sr-only">Applications list with colored status badges and sortable columns</h2>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--amb:#BA7517;--amb-l:#FAEEDA;--amb-d:#854F0B;}
+.shell{
+  display:grid;grid-template-rows:46px 1fr;grid-template-columns:44px 1fr;
+  min-height:540px;font-family:'Syne',var(--font-sans);
+  border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);
+  overflow:hidden;background:var(--color-background-tertiary);
+}
+.topbar{
+  grid-column:1/-1;display:flex;align-items:center;
+  height:46px;padding:0 14px 0 0;
+  background:var(--color-background-primary);
+  border-bottom:0.5px solid var(--color-border-tertiary);
+}
+.logo{width:44px;height:46px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-right:0.5px solid var(--color-border-tertiary);cursor:pointer;}
+.lm{width:22px;height:22px;border-radius:5px;background:var(--amb);display:flex;align-items:center;justify-content:center;}
+.lm i{font-size:12px;color:#fff;}
+.tnav{display:flex;padding-left:4px;}
+.tn{font-size:12px;font-weight:500;padding:0 12px;height:46px;display:flex;align-items:center;color:var(--color-text-tertiary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.tn.on{color:var(--amb);border-bottom-color:var(--amb);}
+.tn-int{display:flex;align-items:center;gap:5px;}
+.int-dot{width:6px;height:6px;border-radius:50%;background:#1D9E75;}
+.tright{margin-left:auto;}
+.abtn{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:5px 10px;border-radius:6px;cursor:pointer;border:none;font-family:'Syne',var(--font-sans);background:var(--amb);color:#fff;}
+
+.sidebar{border-right:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:2px;}
+.sib{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--color-text-tertiary);font-size:17px;}
+.sib:hover{background:var(--color-background-secondary);}
+.sib-sp{flex:1;}
+
+.main{display:flex;flex-direction:column;overflow:hidden;background:var(--color-background-primary);}
+
+.list-topbar{display:flex;align-items:center;padding:10px 16px;border-bottom:0.5px solid var(--color-border-tertiary);gap:8px;flex-shrink:0;}
+.page-title{font-size:14px;font-weight:500;margin-right:6px;}
+.total-badge{font-size:11px;font-weight:500;background:var(--color-background-secondary);color:var(--color-text-tertiary);padding:2px 8px;border-radius:99px;font-family:'Geist Mono',monospace;}
+.filter-row{display:flex;gap:5px;margin-left:auto;}
+.filter-btn{font-size:11px;font-weight:500;padding:4px 10px;border-radius:99px;cursor:pointer;border:0.5px solid var(--color-border-tertiary);background:transparent;color:var(--color-text-secondary);font-family:'Syne',var(--font-sans);}
+.filter-btn.on{background:var(--amb-l);color:var(--amb-d);border-color:transparent;}
+
+.table-wrap{overflow-y:auto;flex:1;}
+.th{
+  display:grid;grid-template-columns:2fr 2fr 130px 90px 32px;
+  padding:0 16px;border-bottom:0.5px solid var(--color-border-tertiary);
+  background:var(--color-background-secondary);position:sticky;top:0;z-index:2;
+}
+.th-c{
+  display:flex;align-items:center;gap:4px;
+  font-size:10px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;
+  color:var(--color-text-tertiary);padding:9px 0;cursor:pointer;user-select:none;
+}
+.th-c:hover{color:var(--color-text-secondary);}
+.th-c.sorted{color:var(--amb);}
+.sort-icon{font-size:12px;opacity:0.5;}
+.th-c.sorted .sort-icon{opacity:1;color:var(--amb);}
+
+.tr{display:grid;grid-template-columns:2fr 2fr 130px 90px 32px;padding:10px 16px;border-bottom:0.5px solid var(--color-border-tertiary);align-items:center;cursor:pointer;position:relative;}
+.tr:last-child{border-bottom:none;}
+.tr:hover{background:var(--color-background-secondary);}
+.tr .del{opacity:0;}
+.tr:hover .del{opacity:1;}
+
+.co-cell{display:flex;align-items:center;gap:9px;}
+.chip{width:26px;height:26px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;background:var(--amb-l);color:var(--amb-d);font-family:'Geist Mono',monospace;}
+.chip-gray{background:var(--color-background-secondary);color:var(--color-text-tertiary);}
+.co-n{font-size:13px;font-weight:500;}
+.role-cell{font-size:12px;color:var(--color-text-secondary);}
+.date-cell{font-size:12px;color:var(--color-text-tertiary);font-family:'Geist Mono',monospace;}
+
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:500;padding:3px 9px;border-radius:99px;cursor:pointer;}
+.b-analyzed{background:var(--color-background-secondary);color:var(--color-text-secondary);}
+.b-applied{background:var(--amb-l);color:var(--amb-d);}
+.b-interview{background:#E1F5EE;color:#0F6E56;}
+.b-responded{background:#E6F1FB;color:#185FA5;}
+.b-passed{background:#FCEBEB;color:#A32D2D;}
+
+.del{width:26px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--color-text-tertiary);font-size:15px;border:none;background:transparent;transition:opacity 0.1s;}
+.del:hover{color:#A32D2D;background:#FCEBEB;}
+</style>
+
+<script>
+const data = [
+  {co:'Peter Park System',chip:'PP',role:'Senior AI Software Engineer',status:'applied',date:'2026-06-05',dateStr:'Jun 5'},
+  {co:'BMW Group',chip:'BMW',role:'Senior Engineer Agentic AI',status:'applied',date:'2026-06-04',dateStr:'Jun 4'},
+  {co:'CHECK24',chip:'C24',role:'Fullstack Engineer InsurTech',status:'interview',date:'2026-05-28',dateStr:'May 28'},
+  {co:'LOBECO AI-Solutions',chip:'LB',role:'Senior Full-Stack Developer',status:'applied',date:'2026-05-25',dateStr:'May 25'},
+  {co:'Digital Health Startup',chip:'DH',role:'Full-Stack Product Engineer',status:'responded',date:'2026-05-20',dateStr:'May 20'},
+  {co:'Personio',chip:'PS',role:'Senior Fullstack Engineer',status:'applied',date:'2026-05-18',dateStr:'May 18'},
+  {co:'Amadeus Fire',chip:'AM',role:'Senior Fullstack Developer',status:'analyzed',date:'2026-06-07',dateStr:'Jun 7'},
+  {co:'Atruvia',chip:'AT',role:'Fullstack Online Banking',status:'passed',date:'2026-05-10',dateStr:'May 10'},
+  {co:'Google Cloud',chip:'GG',role:'Forward Deployed AI Engineer',status:'passed',date:'2026-04-28',dateStr:'Apr 28'},
+  {co:'Storyblok',chip:'SB',role:'DX Engineer II',status:'passed',date:'2026-04-20',dateStr:'Apr 20'},
+];
+
+const statusOrder = {analyzed:0,applied:1,responded:2,interview:3,passed:4};
+const statusLabel = {analyzed:'Analyzed',applied:'Applied',responded:'Responded',interview:'Interview',passed:'Passed'};
+const statusClass = {analyzed:'b-analyzed',applied:'b-applied',responded:'b-responded',interview:'b-interview',passed:'b-passed'};
+const activeStatuses = ['applied','interview','responded'];
+
+let sortCol = 'date', sortDir = -1, filterStatus = 'all';
+let rows = [...data];
+
+function getFilteredSorted(){
+  let d = filterStatus === 'all' ? [...rows] : rows.filter(r => r.status === filterStatus);
+  d.sort((a,b) => {
+    if(sortCol === 'co') return sortDir * a.co.localeCompare(b.co);
+    if(sortCol === 'role') return sortDir * a.role.localeCompare(b.role);
+    if(sortCol === 'status') return sortDir * (statusOrder[a.status] - statusOrder[b.status]);
+    if(sortCol === 'date') return sortDir * (a.date > b.date ? 1 : -1);
+    return 0;
+  });
+  return d;
+}
+
+function chipClass(s){ return activeStatuses.includes(s) ? 'chip' : 'chip chip-gray'; }
+
+function render(){
+  const d = getFilteredSorted();
+  document.getElementById('tbody').innerHTML = d.map((r,i) => `
+    <div class="tr" onclick="handleRow(${rows.indexOf(r)})">
+      <div class="co-cell"><div class="${chipClass(r.status)}">${r.chip}</div><div class="co-n">${r.co}</div></div>
+      <div class="role-cell">${r.role}</div>
+      <div><span class="badge ${statusClass[r.status]}" onclick="cycleStatus(event,${rows.indexOf(r)})">${statusLabel[r.status]}</span></div>
+      <div class="date-cell">${r.dateStr}</div>
+      <div><button class="del" aria-label="Delete" onclick="deleteRow(event,${rows.indexOf(r)})"><i class="ti ti-trash"></i></button></div>
+    </div>
+  `).join('');
+
+  document.getElementById('total').textContent = d.length;
+
+  document.querySelectorAll('.th-c[data-col]').forEach(el => {
+    el.classList.toggle('sorted', el.dataset.col === sortCol);
+    const icon = el.querySelector('.sort-icon');
+    if(icon) icon.className = `ti sort-icon ${el.dataset.col === sortCol ? (sortDir === 1 ? 'ti-arrow-up' : 'ti-arrow-down') : 'ti-arrows-sort'}`;
+  });
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('on', btn.dataset.status === filterStatus);
+  });
+}
+
+function setSort(col){
+  if(sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = 1; }
+  render();
+}
+
+function cycleStatus(e, idx){
+  e.stopPropagation();
+  const order = Object.keys(statusOrder);
+  const cur = order.indexOf(rows[idx].status);
+  rows[idx].status = order[(cur+1) % order.length];
+  render();
+}
+
+function deleteRow(e, idx){
+  e.stopPropagation();
+  rows.splice(idx,1);
+  render();
+}
+
+function handleRow(idx){ }
+
+function setFilter(status){
+  filterStatus = status;
+  render();
+}
+
+window.addEventListener('DOMContentLoaded', render);
+</script>
+
+<div class="shell">
+  <div class="topbar">
+    <div class="logo" title="Dashboard"><div class="lm"><i class="ti ti-briefcase" aria-hidden="true"></i></div></div>
+    <div class="tnav">
+      <div class="tn on">Applications</div>
+      <div class="tn">Captured jobs</div>
+      <div class="tn tn-int"><span class="int-dot" aria-hidden="true"></span>Interview</div>
+    </div>
+    <div class="tright"><button class="abtn"><i class="ti ti-plus" aria-hidden="true"></i> New</button></div>
+  </div>
+
+  <div class="sidebar">
+    <div class="sib" title="Resume" aria-label="Resume"><i class="ti ti-file-cv"></i></div>
+    <div class="sib" title="Skills" aria-label="Skills"><i class="ti ti-brain"></i></div>
+    <div class="sib-sp"></div>
+    <div class="sib" title="Settings" aria-label="Settings"><i class="ti ti-settings"></i></div>
+  </div>
+
+  <div class="main">
+    <div class="list-topbar">
+      <div class="page-title">Applications</div>
+      <div class="total-badge" id="total">10</div>
+      <div class="filter-row">
+        <button class="filter-btn on" data-status="all" onclick="setFilter('all')">All</button>
+        <button class="filter-btn" data-status="analyzed" onclick="setFilter('analyzed')">Analyzed</button>
+        <button class="filter-btn" data-status="applied" onclick="setFilter('applied')">Applied</button>
+        <button class="filter-btn" data-status="responded" onclick="setFilter('responded')">Responded</button>
+        <button class="filter-btn" data-status="interview" onclick="setFilter('interview')">Interview</button>
+        <button class="filter-btn" data-status="passed" onclick="setFilter('passed')">Passed</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="th">
+        <div class="th-c sorted" data-col="co" onclick="setSort('co')">Company <i class="ti ti-arrows-sort sort-icon"></i></div>
+        <div class="th-c" data-col="role" onclick="setSort('role')">Role <i class="ti ti-arrows-sort sort-icon"></i></div>
+        <div class="th-c" data-col="status" onclick="setSort('status')">Status <i class="ti ti-arrows-sort sort-icon"></i></div>
+        <div class="th-c" data-col="date" onclick="setSort('date')">Date <i class="ti ti-arrows-sort sort-icon"></i></div>
+        <div></div>
+      </div>
+      <div id="tbody"></div>
+    </div>
+  </div>
+</div>

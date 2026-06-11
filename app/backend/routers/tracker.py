@@ -141,6 +141,36 @@ def update_notes(app_id: str, body: UpdateNotesRequest, session: Session = Depen
     return {"saved": True}
 
 
+class UpdateInterviewDateRequest(BaseModel):
+    interview_date: Optional[str] = None
+
+
+@router.patch("/{app_id}/interview-date")
+def update_interview_date(app_id: str, body: UpdateInterviewDateRequest, session: Session = Depends(get_session)):
+    app = session.get(Application, app_id)
+    if not app:
+        raise HTTPException(404, "Application not found")
+    app.interview_date = body.interview_date
+    session.add(app)
+    session.commit()
+    return {"saved": True}
+
+
+class UpdateInterviewNotesRequest(BaseModel):
+    notes_json: str
+
+
+@router.patch("/{app_id}/interview-notes")
+def update_interview_notes(app_id: str, body: UpdateInterviewNotesRequest, session: Session = Depends(get_session)):
+    app = session.get(Application, app_id)
+    if not app:
+        raise HTTPException(404, "Application not found")
+    app.interview_notes_json = body.notes_json
+    session.add(app)
+    session.commit()
+    return {"saved": True}
+
+
 @router.delete("/{app_id}")
 def delete_application(app_id: str, session: Session = Depends(get_session)):
     app = session.get(Application, app_id)

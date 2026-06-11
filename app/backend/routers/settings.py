@@ -1,8 +1,9 @@
+import json
 import os
 import tomllib
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from db import get_setting, set_setting
@@ -14,6 +15,7 @@ with open(Path(__file__).parent.parent / "config.toml", "rb") as f:
 
 BASE = Path(__file__).parent.parent.parent.parent
 CAREER_GOAL = BASE / _cfg["paths"]["career_goal"]
+GENERAL_PREP = BASE / "data" / "general_prep.json"
 
 _ROLES = ("parser", "writer", "reviewer", "research")
 
@@ -80,6 +82,21 @@ class GoalUpdate(BaseModel):
 def update_goal(body: GoalUpdate):
     CAREER_GOAL.parent.mkdir(parents=True, exist_ok=True)
     CAREER_GOAL.write_text(body.content, encoding="utf-8")
+    return {"saved": True}
+
+
+@router.get("/general-prep")
+def get_general_prep():
+    if not GENERAL_PREP.exists():
+        return {}
+    return json.loads(GENERAL_PREP.read_text(encoding="utf-8"))
+
+
+@router.put("/general-prep")
+async def update_general_prep(request: Request):
+    data = await request.json()
+    GENERAL_PREP.parent.mkdir(parents=True, exist_ok=True)
+    GENERAL_PREP.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     return {"saved": True}
 
 

@@ -1,107 +1,198 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { ApplicationTable } from "@/components/ApplicationTable";
+import { useRouter } from "next/navigation";
+import { Inbox, Send, Calendar } from "lucide-react";
 import { api } from "@/lib/api";
-import { STATUS_ORDER, STATUS_CLASSES } from "@/lib/status";
+
+interface Application {
+  id: string;
+  company: string;
+  job_title: string;
+  status: string;
+  date_applied: string | null;
+  interview_date: string | null;
+  language: string;
+}
+
+interface Lead {
+  id: string;
+  status: string;
+}
+
+const PENDING_LEAD_STATUSES = new Set(["captured", "new", "analyzing", "analyzed"]);
+
+function shortDate(d: string | null | undefined): string {
+  if (!d) return "—";
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(
+    new Date(d + "T00:00:00")
+  );
+}
+
+function shortInterviewDate(iso: string | null | undefined): string {
+  if (!iso) return "TBD";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "TBD";
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(d);
+}
 
 export default function Dashboard() {
-  const [apps, setApps] = useState([]);
+  const router = useRouter();
+  const [apps, setApps] = useState<Application[]>([]);
+  const [capturedCount, setCapturedCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("dashboard.statusFilter");
-  });
 
-  const setFilter = (s: string | null) => {
-    setStatusFilter(s);
-    if (s) localStorage.setItem("dashboard.statusFilter", s);
-    else localStorage.removeItem("dashboard.statusFilter");
-  };
-
-  // Auto-clear saved filter if it no longer matches any app
   useEffect(() => {
-    if (statusFilter && !(apps as any[]).some((a) => a.status === statusFilter)) {
-      setFilter(null);
-    }
-  }, [apps]);
+    Promise.all([api.get("/api/tracker/"), api.get("/api/leads/")])
+      .then(([appData, leadData]) => {
+        setApps(appData as Application[]);
+        setCapturedCount(
+          (leadData as Lead[]).filter((l) => PENDING_LEAD_STATUSES.has(l.status)).length
+        );
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-  const load = () => {
-    setLoading(true);
-    api.get("/api/tracker/").then((data) => { setApps(data); setLoading(false); });
-  };
-  useEffect(() => { load(); }, []);
+  const todoApps = apps.filter((a) => a.status === "New" || a.status === "Draft");
+  const appliedApps = apps.filter((a) => a.status === "Applied");
+  const interviewApps = apps.filter((a) => a.status === "Interview");
 
-  const exportCsv = () => {
-    if (!apps.length) return;
-    const headers = ["Company", "Role", "Language", "Status", "Date Applied"];
-    const rows = apps.map((a: any) =>
-      [a.company, a.job_title, a.language.toUpperCase(), a.status, a.date_applied]
-        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-        .join(",")
+  // Same ordering as /interview: upcoming (soonest first, undated last), then past (most recent first)
+  const now = new Date();
+  const upcomingInterviewApps = interviewApps
+    .filter((a) => !a.interview_date || new Date(a.interview_date) >= now)
+    .sort((a, b) => {
+      if (!a.interview_date) return 1;
+      if (!b.interview_date) return -1;
+      return new Date(a.interview_date).getTime() - new Date(b.interview_date).getTime();
+    });
+  const pastInterviewApps = interviewApps
+    .filter((a) => !!a.interview_date && new Date(a.interview_date) < now)
+    .sort((a, b) => new Date(b.interview_date!).getTime() - new Date(a.interview_date!).getTime());
+  const sortedInterviewApps = [...upcomingInterviewApps, ...pastInterviewApps];
+
+  const stats = [
+    {
+      icon: <Inbox size={15} />,
+      value: capturedCount,
+      label: "Captured jobs",
+      iconCls: "bg-amb-l text-amb",
+    },
+    {
+      icon: <Send size={15} />,
+      value: appliedApps.length,
+      label: "Awaiting response",
+      iconCls: "bg-background-secondary text-text-secondary",
+    },
+    {
+      icon: <Calendar size={15} />,
+      value: interviewApps.length,
+      label: "Interviews",
+      iconCls: "bg-[#E1F5EE] text-[#1D9E75]",
+    },
+  ];
+
+  const columns = [
+    { label: "Todo", dot: "bg-text-tertiary", apps: todoApps },
+    { label: "Applied", dot: "bg-amb", apps: appliedApps },
+    { label: "Interview", dot: "bg-[#1D9E75]", apps: sortedInterviewApps },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full text-[12px] text-text-tertiary">
+        Loading…
+      </div>
     );
-    const csv = [headers.join(","), ...rows].join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `applications_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const counts = STATUS_ORDER.reduce<Record<string, number>>((acc, s) => {
-    acc[s] = (apps as any[]).filter((a) => a.status === s).length;
-    return acc;
-  }, {});
-  const visibleApps = statusFilter ? (apps as any[]).filter((a) => a.status === statusFilter) : apps;
+  }
 
   return (
-    <main className="w-full max-w-6xl mx-auto px-4 py-10 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Applications</h1>
-          <p className="text-muted-foreground text-sm">Track and manage your job applications</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportCsv} disabled={!apps.length}>Export CSV</Button>
-          <Link href="/apply/new"><Button>+ New Application</Button></Link>
-        </div>
-      </div>
-      {!loading && apps.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setFilter(null)}
-            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors
-              ${!statusFilter
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-muted/40 text-muted-foreground border-transparent hover:border-border"}`}
+    <div className="flex flex-col p-4 gap-3.5 h-full box-border overflow-hidden">
+      {/* Stat row */}
+      <div className="flex gap-2.5">
+        {stats.map((stat) => (
+          <div
+            key={stat.label}
+            className="flex-1 bg-background-primary border-[0.5px] border-border-tertiary rounded-card py-3 px-3.5 flex items-center gap-2.5"
           >
-            All ({(apps as any[]).length})
-          </button>
-          {STATUS_ORDER.filter((s) => counts[s] > 0).map((s) => (
-            <button
-              key={s}
-              onClick={() => setFilter(statusFilter === s ? null : s)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors
-                ${statusFilter === s
-                  ? STATUS_CLASSES[s]
-                  : "bg-muted/40 text-muted-foreground border border-transparent hover:border-border"}`}
-            >
-              {s} ({counts[s]})
-            </button>
-          ))}
-        </div>
-      )}
-      {loading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse bg-muted/40 h-12 rounded-md" />
-          ))}
-        </div>
-      ) : (
-        <ApplicationTable applications={visibleApps} onRefresh={load} />
-      )}
-    </main>
+            <div className={`w-[30px] h-[30px] rounded-[6px] flex items-center justify-center shrink-0 ${stat.iconCls}`}>
+              {stat.icon}
+            </div>
+            <div>
+              <div className="text-[28px] font-bold tracking-[-0.04em] font-mono leading-none">
+                {stat.value}
+              </div>
+              <div className="text-[11px] text-text-tertiary mt-px">
+                {stat.label}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Kanban */}
+      <div className="grid grid-cols-3 gap-2.5 flex-1 min-h-0">
+        {columns.map((col) => (
+          <div
+            key={col.label}
+            className="flex flex-col bg-background-primary border-[0.5px] border-border-tertiary rounded-card overflow-hidden"
+          >
+            {/* Column header */}
+            <div className="py-[9px] px-[11px] border-b-[0.5px] border-border-tertiary flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-[7px]">
+                <span
+                  aria-hidden
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 inline-block ${col.dot}`}
+                />
+                <span className="text-[11px] font-medium tracking-[0.05em] uppercase text-text-tertiary">
+                  {col.label}
+                </span>
+              </div>
+              <span className="text-[10px] font-medium bg-background-secondary text-text-tertiary py-px px-1.5 rounded-full font-mono">
+                {col.apps.length}
+              </span>
+            </div>
+
+            {/* Cards */}
+            <div className="p-2 flex flex-col gap-1.5 overflow-y-auto flex-1">
+              {col.apps.length === 0 ? (
+                <p className="text-[11px] text-text-tertiary text-center py-4">
+                  —
+                </p>
+              ) : (
+                col.apps.map((app) => (
+                  <button
+                    key={app.id}
+                    className="kanban-card"
+                    onClick={() => router.push(`/apply/${app.id}`)}
+                  >
+                    {app.status === "Interview" && (
+                      <span className="text-[9px] font-medium py-0.5 px-[5px] rounded-[4px] mb-[5px] inline-block bg-[#E1F5EE] text-[#0F6E56]">
+                        Interview
+                      </span>
+                    )}
+                    {app.status === "Draft" && (
+                      <span className="text-[9px] font-medium py-0.5 px-[5px] rounded-[4px] mb-[5px] inline-block bg-background-secondary text-text-tertiary">
+                        Draft
+                      </span>
+                    )}
+                    <div className="text-[12px] font-medium mb-0.5">
+                      {app.company}
+                    </div>
+                    <div className="text-[11px] text-text-tertiary leading-[1.4] mb-1.5">
+                      {app.job_title}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-text-tertiary font-mono">
+                        {app.status === "Interview" ? shortInterviewDate(app.interview_date) : shortDate(app.date_applied)}
+                      </span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -9,6 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-shell: var(--font-syne);
   --font-heading: var(--font-playfair);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -46,9 +47,61 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* App design tokens — registered so Tailwind generates utilities
+     (bg-*, text-*, border-*, rounded-*) for the variables defined below. */
+  --color-background-primary: var(--color-background-primary);
+  --color-background-secondary: var(--color-background-secondary);
+  --color-background-tertiary: var(--color-background-tertiary);
+  --color-border-tertiary: var(--color-border-tertiary);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
+  --color-amb: var(--amb);
+  --color-amb-l: var(--amb-l);
+  --color-amb-d: var(--amb-d);
+  --color-badge-analyzed-bg: var(--badge-analyzed-bg);
+  --color-badge-analyzed-fg: var(--badge-analyzed-fg);
+  --color-badge-interview-bg: var(--badge-interview-bg);
+  --color-badge-interview-fg: var(--badge-interview-fg);
+  --color-badge-offer-bg: var(--badge-offer-bg);
+  --color-badge-offer-fg: var(--badge-offer-fg);
+  --color-badge-responded-bg: var(--badge-responded-bg);
+  --color-badge-responded-fg: var(--badge-responded-fg);
+  --color-badge-passed-bg: var(--badge-passed-bg);
+  --color-badge-passed-fg: var(--badge-passed-fg);
+  --radius-card: var(--border-radius-md);
+  --radius-chip: var(--border-radius-sm);
 }
 
 :root {
+  /* Design system tokens */
+  --amb: #BA7517;
+  --amb-l: #FAEEDA;
+  --amb-d: #854F0B;
+
+  /* Status badge colors */
+  --badge-analyzed-bg: #EEF2FF;
+  --badge-analyzed-fg: #3730A3;
+  --badge-interview-bg: #E1F5EE;
+  --badge-interview-fg: #0F6E56;
+  --badge-offer-bg: #F5F3FF;
+  --badge-offer-fg: #5B21B6;
+  --badge-responded-bg: #E6F1FB;
+  --badge-responded-fg: #185FA5;
+  --badge-passed-bg: #FCEBEB;
+  --badge-passed-fg: #A32D2D;
+  --color-background-primary: var(--background);
+  --color-background-secondary: oklch(0.97 0 0);
+  --color-background-tertiary: oklch(0.95 0 0);
+  --color-border-tertiary: var(--border);
+  --color-text-primary: var(--foreground);
+  --color-text-secondary: oklch(0.4 0 0);
+  --color-text-tertiary: var(--muted-foreground);
+  --border-radius-sm: 5px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -84,6 +137,31 @@
 }
 
 .dark {
+  --color-background-secondary: oklch(0.22 0 0);
+  --color-background-tertiary: oklch(0.17 0 0);
+
+  /* Text — secondary was oklch(0.4) in light, invisible on dark bg */
+  --color-text-secondary: oklch(0.78 0 0);
+
+  /* Borders — base --border is 10% white in dark, bump slightly */
+  --color-border-tertiary: oklch(1 0 0 / 16%);
+
+  /* Amber — soften on dark */
+  --amb-l: rgba(186, 117, 23, 0.18);
+  --amb-d: #E5A030;
+
+  /* Badge colors — muted on dark */
+  --badge-analyzed-bg: rgba(67, 56, 202, 0.18);
+  --badge-analyzed-fg: #818CF8;
+  --badge-interview-bg: rgba(29, 158, 117, 0.15);
+  --badge-interview-fg: #4DB896;
+  --badge-offer-bg: rgba(109, 40, 217, 0.18);
+  --badge-offer-fg: #A78BFA;
+  --badge-responded-bg: rgba(24, 95, 165, 0.15);
+  --badge-responded-fg: #7BB3E8;
+  --badge-passed-bg: rgba(163, 45, 45, 0.15);
+  --badge-passed-fg: #E07070;
+
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -132,4 +210,52 @@
     font-weight: 400;
     letter-spacing: -0.01em;
   }
+}
+
+/* Applications list row */
+.app-row:hover {
+  background: var(--amb-l);
+}
+.app-row .app-row-del button:not([aria-label]) {
+  display: none;
+}
+.app-row-del > button[aria-label="Delete"] {
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.app-row:hover .app-row-del > button[aria-label="Delete"] {
+  opacity: 1;
+}
+
+.kanban-card {
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 7px;
+  padding: 9px 10px;
+  cursor: pointer;
+  background: var(--color-background-primary);
+  text-align: left;
+  width: 100%;
+  transition: border-color 0.1s;
+  display: block;
+}
+.kanban-card:hover {
+  border-color: #FAC775;
+}
+/* ── Notes textarea scrollbar ─────────────────────────────────────────────── */
+.notes-textarea {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-text-tertiary) transparent;
+}
+.notes-textarea::-webkit-scrollbar {
+  width: 2px;
+}
+.notes-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+.notes-textarea::-webkit-scrollbar-thumb {
+  background: var(--color-text-tertiary);
+  border-radius: 99px;
+}
+.notes-textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
 }
