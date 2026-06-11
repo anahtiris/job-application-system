@@ -199,11 +199,11 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
-    @apply font-sans;
+    @apply font-sans overflow-hidden;
+  }
+  body {
+    @apply bg-background text-foreground overflow-hidden;
   }
   h1, h2, h3 {
     font-family: var(--font-playfair), Georgia, serif;

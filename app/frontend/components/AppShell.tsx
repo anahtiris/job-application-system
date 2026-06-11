@@ -29,7 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     exact ? pathname === href : pathname.startsWith(href);
 
   return (
-    <div className="grid grid-rows-[46px_1fr] grid-cols-[44px_1fr] h-[100dvh] overflow-hidden bg-background-tertiary font-shell">
+    <div className="grid grid-rows-[46px_1fr] grid-cols-[44px_1fr] h-full overflow-hidden bg-background-tertiary font-shell">
       {/* Topbar — spans both columns */}
       <header className="col-[1/-1] flex items-center h-[46px] pr-[14px] bg-background-primary border-b-[0.5px] border-border-tertiary">
         <Link
@@ -83,7 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="overflow-hidden bg-background-primary">
+      <main className="overflow-hidden min-h-0 bg-background-primary">
         {children}
       </main>
     </div>

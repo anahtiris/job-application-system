@@ -174,7 +174,7 @@ export default function InterviewPage() {
   );
 
   return (
-    <div className="flex h-[calc(100dvh-46px)] overflow-hidden">
+    <div className="flex h-full overflow-hidden">
       {/* ── Left panel ── */}
       <div
         className={`${
