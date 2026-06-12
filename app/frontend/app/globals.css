@@ -60,6 +60,7 @@
   --color-custom: var(--custom);
   --color-custom-l: var(--custom-l);
   --color-custom-d: var(--custom-d);
+  --color-custom-hover: var(--custom-hover);
   --color-badge-analyzed-bg: var(--badge-analyzed-bg);
   --color-badge-analyzed-fg: var(--badge-analyzed-fg);
   --color-badge-interview-bg: var(--badge-interview-bg);
@@ -77,8 +78,9 @@
 :root {
   /* Design system tokens */
   --custom: #BA7517;
-  --custom-l: #FAEEDA;
-  --custom-d: #854F0B;
+  --custom-l: color-mix(in srgb, var(--custom) 12%, white);
+  --custom-d: color-mix(in srgb, var(--custom) 70%, black);
+  --custom-hover: color-mix(in srgb, var(--custom) 45%, white);
 
   /* Status badge colors */
   --badge-analyzed-bg: #EEF2FF;
@@ -147,8 +149,8 @@
   --color-border-tertiary: oklch(1 0 0 / 16%);
 
   /* Amber — soften on dark */
-  --custom-l: rgba(186, 117, 23, 0.18);
-  --custom-d: #E5A030;
+  --custom-l: color-mix(in srgb, var(--custom) 18%, transparent);
+  --custom-d: color-mix(in srgb, var(--custom) 65%, white);
 
   /* Badge colors — muted on dark */
   --badge-analyzed-bg: rgba(67, 56, 202, 0.18);
@@ -239,7 +241,7 @@
   display: block;
 }
 .kanban-card:hover {
-  border-color: #FAC775;
+  border-color: var(--custom-hover);
 }
 /* ── Notes textarea scrollbar ─────────────────────────────────────────────── */
 .notes-textarea {
