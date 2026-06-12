@@ -74,7 +74,7 @@ const mutedParagraph = "text-[13px] text-(--color-text-tertiary) leading-[1.7]";
 const inlineCode =
   "text-[11px] font-mono bg-(--color-background-secondary) px-1.5 py-px rounded-[4px]";
 
-const sourceLink = "block mt-[3px] text-[11px] text-(--color-text-tertiary) no-underline";
+const sourceLink = "block mt-[3px] text-[11px] text-(--color-text-tertiary) no-underline truncate";
 
 const angleText = "text-[12px] text-(--color-text-secondary) leading-[1.55]";
 
@@ -146,7 +146,7 @@ export default function LeadDetailPage() {
     return (
       <div className={pageShell}>
         <div className={`${pageHeader} items-center`}>
-          <div>
+          <div className="min-w-0">
             <span className="text-[13px] font-semibold text-(--color-text-tertiary)">
               Pending extraction
             </span>
@@ -161,7 +161,7 @@ export default function LeadDetailPage() {
               </a>
             )}
           </div>
-          <button onClick={handleDelete} className={pillBtnCls(false, confirmDelete)}>
+          <button onClick={handleDelete} className={`${pillBtnCls(false, confirmDelete)} shrink-0`}>
             {confirmDelete ? "Confirm delete?" : "Delete"}
           </button>
         </div>
@@ -173,14 +173,22 @@ export default function LeadDetailPage() {
               <code className={inlineCode}>
                 &quot;process my captured jobs&quot;
               </code>
+              {" "}
+              <button
+                onClick={async () => { await navigator.clipboard.writeText(PROCESS_PROMPT); toast.success("Copied — paste into Claude Code"); }}
+                title="Copy prompt"
+                className="bg-transparent border-none cursor-pointer text-(--color-text-tertiary) px-0.5 py-0 inline-flex items-center align-middle"
+              >
+                <Copy size={12} />
+              </button>
               {" "}to extract job details.
             </p>
           </div>
 
           {lead.raw_text && (
-            <SectionCard variant="labeled" title="Raw page text">
-              <pre className="text-[11px] font-mono whitespace-pre-wrap text-(--color-text-tertiary) leading-[1.6]">
-                {lead.raw_text.slice(0, 3000)}…
+            <SectionCard variant="labeled" title="Raw page text" action={<CopyButton text={lead.raw_text} title="Copy raw text" />}>
+              <pre className="text-[11px] font-mono whitespace-pre-wrap text-(--color-text-tertiary) leading-[1.6] max-h-[500px] overflow-y-auto">
+                {lead.raw_text}
               </pre>
             </SectionCard>
           )}
@@ -195,7 +203,7 @@ export default function LeadDetailPage() {
     <div className={pageShell}>
       {/* ── Header ── */}
       <div className={`${pageHeader} items-start`}>
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2 mb-[3px] flex-wrap">
             <span className="text-[16px] font-bold text-(--color-text-primary)">{lead.company}</span>
             <span className="inline-flex items-center text-[10px] font-medium px-[9px] py-[3px] rounded-[99px] font-mono bg-(--color-background-secondary) text-(--color-text-tertiary)">

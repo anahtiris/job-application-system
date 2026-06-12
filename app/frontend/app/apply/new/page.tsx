@@ -191,6 +191,8 @@ function NewApplicationPageInner() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [pdfError, setPdfError] = useState("");
   const [companyAddress, setCompanyAddress] = useState("");
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const finalsBaselineRef = useRef<{ resume: string; cl: string; address: string } | null>(null);
 
   useEffect(() => {
     if (!existingId) return;
@@ -245,6 +247,35 @@ function NewApplicationPageInner() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [step, resumeMd, clMd]);
+
+  // Step 4 — autosave resume/cover letter/company address edits
+  useEffect(() => {
+    if (step !== 4) {
+      finalsBaselineRef.current = null;
+      setAutoSaveStatus("idle");
+      return;
+    }
+    if (!finalsBaselineRef.current) {
+      finalsBaselineRef.current = { resume: resumeMd, cl: clMd, address: companyAddress };
+      return;
+    }
+    const baseline = finalsBaselineRef.current;
+    if (resumeMd === baseline.resume && clMd === baseline.cl && companyAddress === baseline.address) {
+      return;
+    }
+    setAutoSaveStatus("saving");
+    const timer = setTimeout(async () => {
+      await api.put("/api/application/finals", {
+        application_id: appId,
+        resume_md: resumeMd,
+        cover_letter_md: clMd,
+        company_address: companyAddress,
+      });
+      finalsBaselineRef.current = { resume: resumeMd, cl: clMd, address: companyAddress };
+      setAutoSaveStatus("saved");
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [step, resumeMd, clMd, companyAddress, appId]);
 
   if (loading) {
     return (
@@ -636,8 +667,14 @@ function NewApplicationPageInner() {
                 </div>
               </div>
               {pdfError && <ErrorBanner msg={pdfError} />}
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Btn onClick={() => setStep(3)}>← Back</Btn>
+                {autoSaveStatus === "saving" && (
+                  <span className="text-[11px] text-text-tertiary font-shell">Saving…</span>
+                )}
+                {autoSaveStatus === "saved" && (
+                  <span className="text-[11px] text-text-tertiary font-shell">✓ Saved</span>
+                )}
                 <Btn primary onClick={handlePdf} disabled={generatingPdf} className="ml-auto">
                   {generatingPdf ? "Finalizing…" : "Finalize & Generate PDFs"}
                 </Btn>

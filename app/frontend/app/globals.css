@@ -218,9 +218,6 @@
 .app-row:hover {
   background: var(--custom-l);
 }
-.app-row .app-row-del button:not([aria-label]) {
-  display: none;
-}
 .app-row-del > button[aria-label="Delete"] {
   opacity: 0;
   transition: opacity 0.1s;
@@ -228,6 +225,17 @@
 .app-row:hover .app-row-del > button[aria-label="Delete"] {
   opacity: 1;
 }
+
+/* Compact FlipClock for the interview date/time picker */
+.flipclock-compact .fc-xs {
+  --fc-card-w: 28px;
+  --fc-card-h: 40px;
+  --fc-font: 18px;
+}
+.flipclock-compact .fc-row { gap: 10px; }
+.flipclock-compact .fc-unit { gap: 6px; }
+.flipclock-compact .fc-gap { width: 16px; }
+.flipclock-compact .fc-sep { font-size: 30px; }
 
 .kanban-card {
   border: 0.5px solid var(--color-border-tertiary);
@@ -243,6 +251,26 @@
 .kanban-card:hover {
   border-color: var(--custom-hover);
 }
+/* ── Global scrollbar ─────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-text-tertiary) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-text-tertiary);
+  border-radius: 99px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
 /* ── Notes textarea scrollbar ─────────────────────────────────────────────── */
 .notes-textarea {
   scrollbar-width: thin;

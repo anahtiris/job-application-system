@@ -159,15 +159,26 @@ export default function Dashboard() {
                   —
                 </p>
               ) : (
-                col.apps.map((app) => (
+                col.apps.map((app) => {
+                  const isPastInterview =
+                    app.status === "Interview" &&
+                    !!app.interview_date &&
+                    new Date(app.interview_date) < now;
+                  return (
                   <button
                     key={app.id}
-                    className="kanban-card"
+                    className={`kanban-card ${isPastInterview ? "opacity-60" : ""}`}
                     onClick={() => router.push(`/apply/${app.id}`)}
                   >
                     {app.status === "Interview" && (
-                      <span className="text-[9px] font-medium py-0.5 px-[5px] rounded-[4px] mb-[5px] inline-block bg-[#E1F5EE] text-[#0F6E56]">
-                        Interview
+                      <span
+                        className={`text-[9px] font-medium py-0.5 px-[5px] rounded-[4px] mb-[5px] inline-block ${
+                          isPastInterview
+                            ? "bg-background-secondary text-text-tertiary"
+                            : "bg-[#E1F5EE] text-[#0F6E56]"
+                        }`}
+                      >
+                        {isPastInterview ? "Interviewed" : "Interview"}
                       </span>
                     )}
                     {app.status === "Draft" && (
@@ -187,7 +198,8 @@ export default function Dashboard() {
                       </span>
                     </div>
                   </button>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

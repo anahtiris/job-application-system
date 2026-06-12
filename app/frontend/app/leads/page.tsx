@@ -20,7 +20,7 @@ type Lead = {
 const STATUS_TABS = ["new", "analyzing", "analyzed", "approved", "rejected"] as const;
 const CLAUDE_PROMPT = "process my captured jobs";
 
-const COL_GRID_CLS = "grid-cols-[2fr_2fr_64px_140px_110px_90px_32px]";
+const COL_GRID_CLS = "grid-cols-[2fr_2fr_64px_100px_90px_70px_66px]";
 
 function hostname(url: string | null): string {
   if (!url) return "captured job";
@@ -324,7 +324,7 @@ export default function LeadsPage() {
               className={`app-row grid ${COL_GRID_CLS} py-2.5 px-4 border-b-[0.5px] border-border-tertiary items-center cursor-pointer relative`}
             >
               {/* Company */}
-              <div className="text-[14px] font-medium">
+              <div className="text-[14px] font-medium min-w-0 line-clamp-2 break-words">
                 {lead.company || (
                   <span className="text-text-tertiary italic text-[12px]">
                     pending
@@ -333,7 +333,7 @@ export default function LeadsPage() {
               </div>
 
               {/* Role */}
-              <div className="text-[13px] text-text-secondary">
+              <div className="text-[13px] text-text-secondary min-w-0 line-clamp-2 break-words">
                 {lead.job_title || (
                   <span className="font-mono text-[11px] text-text-tertiary">
                     {hostname(lead.source_url)}
@@ -391,22 +391,26 @@ export default function LeadsPage() {
               </div>
 
               {/* Delete */}
-              <div onClick={(e) => e.stopPropagation()} className="app-row-del">
+              <div onClick={(e) => e.stopPropagation()} className="app-row-del justify-self-end flex items-center">
                 {pendingDelete === lead.id ? (
-                  <div className="flex items-center gap-1 text-[11px] whitespace-nowrap absolute right-2 top-1/2 -translate-y-1/2 bg-background-primary py-0.5 px-1 rounded-[6px] z-[1]">
-                    <span className="text-text-tertiary">Delete?</span>
-                    <button
-                      onClick={() => handleDelete(lead.id)}
-                      className="text-[11px] font-medium py-[3px] px-[7px] rounded-[5px] bg-badge-passed-bg text-badge-passed-fg border-none cursor-pointer font-shell"
-                    >
-                      Yes
-                    </button>
-                    <button
-                      onClick={() => setPendingDelete(null)}
-                      className="text-[11px] font-medium py-[3px] px-[7px] rounded-[5px] bg-transparent text-text-tertiary border-[0.5px] border-border-tertiary cursor-pointer font-shell"
-                    >
-                      No
-                    </button>
+                  <div className="flex flex-col items-center gap-1 text-[11px]">
+                    <span className="text-text-tertiary whitespace-nowrap">Delete?</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        aria-label="Confirm delete"
+                        onClick={() => handleDelete(lead.id)}
+                        className="text-[11px] font-medium py-[3px] px-[7px] rounded-[5px] bg-badge-passed-bg text-badge-passed-fg border-none cursor-pointer font-shell"
+                      >
+                        Yes
+                      </button>
+                      <button
+                        aria-label="Cancel delete"
+                        onClick={() => setPendingDelete(null)}
+                        className="text-[11px] font-medium py-[3px] px-[7px] rounded-[5px] bg-transparent text-text-tertiary border-[0.5px] border-border-tertiary cursor-pointer font-shell"
+                      >
+                        No
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <button

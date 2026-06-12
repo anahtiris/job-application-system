@@ -5,13 +5,16 @@ import Link from "next/link";
 import { Copy, FileText, Download, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
+import { FlipClock, type DateValue } from "@anahtiris/flipclock";
+import "@anahtiris/flipclock/dist/flipclock.css";
 import { api, BASE } from "@/lib/api";
 import { pillBtnCls, SectionCard } from "@/components/ui-kit";
+import { isoToDateValue, dateValueToISO } from "@/lib/utils";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_DISPLAY: Record<string, string> = {
-  New: "Analyzed", Draft: "Analyzed", Applied: "Applied",
+  New: "Analyzed", Draft: "Draft", Applied: "Applied",
   Interview: "Interview", Offer: "Offer", Rejected: "Rejected",
 };
 
@@ -25,6 +28,17 @@ const NEXT_STATUSES: Record<string, string[]> = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function todayDateValue(): DateValue {
+  const now = new Date();
+  return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
+}
+
+function formatAppliedDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(
+    new Date(iso + "T00:00:00")
+  );
+}
+
 function badgeCls(status: string): string {
   const label = STATUS_DISPLAY[status] ?? status;
   const color =
@@ -32,6 +46,7 @@ function badgeCls(status: string): string {
     label === "Interview" ? "bg-badge-interview-bg text-badge-interview-fg" :
     label === "Offer"     ? "bg-badge-offer-bg text-badge-offer-fg" :
     label === "Rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
+    label === "Draft"     ? "bg-badge-responded-bg text-badge-responded-fg" :
                             "bg-badge-analyzed-bg text-badge-analyzed-fg";
   return `inline-flex items-center text-[12px] font-medium py-[3px] px-2.5 rounded-full border-none font-shell ${color}`;
 }
@@ -110,7 +125,7 @@ function DownloadDropdown({ label, pdf, docx }: { label: string; pdf?: string; d
 
 // ─── Status badge w/ dropdown ──────────────────────────────────────────────────
 
-function StatusBadge({ app, onUpdate }: { app: { id: string; status: string }; onUpdate: (id: string, s: string) => void }) {
+function StatusBadge({ app, onUpdate, onRequestApplied }: { app: { id: string; status: string }; onUpdate: (id: string, s: string) => void; onRequestApplied: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const nextOptions = NEXT_STATUSES[app.status] ?? [];
@@ -137,7 +152,7 @@ function StatusBadge({ app, onUpdate }: { app: { id: string; status: string }; o
           {nextOptions.map((s) => (
             <button
               key={s}
-              onClick={() => { onUpdate(app.id, s); setOpen(false); }}
+              onClick={() => { setOpen(false); if (s === "Applied") { onRequestApplied(); } else { onUpdate(app.id, s); } }}
               className="block w-full text-left text-[12px] font-medium py-1.5 px-2 rounded-[5px] border-none cursor-pointer bg-transparent font-shell text-text-secondary hover:bg-background-secondary"
             >
               {STATUS_DISPLAY[s] ?? s}
@@ -294,10 +309,30 @@ export default function ApplicationDetailPage() {
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisRan, setAnalysisRan] = useState(false);
 
+  // Applied-date picker state
+  const [isDark, setIsDark] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pendingDate, setPendingDate] = useState<DateValue | undefined>(undefined);
+  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
+
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains("dark"));
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+
   useEffect(() => {
     api.get(`/api/tracker/${id}`).then((a) => {
       setApp(a);
       setNotes(a.notes ?? "");
+      if (a.fit_analysis_json) {
+        try {
+          setAnalysisResult(JSON.parse(a.fit_analysis_json) as AnalysisResult);
+          setAnalysisRan(true);
+        } catch {}
+      }
     });
   }, [id]);
 
@@ -320,6 +355,29 @@ export default function ApplicationDetailPage() {
     await api.patch(`/api/tracker/${appId}/status`, { status: newStatus });
     setApp((prev) => prev ? { ...prev, status: newStatus } : prev);
   }, []);
+
+  const openDatePicker = useCallback((statusChange: string | null) => {
+    setPendingStatusChange(statusChange);
+    setPendingDate(isoToDateValue(app?.date_applied) ?? todayDateValue());
+    setShowDatePicker(true);
+  }, [app?.date_applied]);
+
+  const cancelDatePicker = () => {
+    setShowDatePicker(false);
+    setPendingStatusChange(null);
+  };
+
+  const confirmDatePicker = async () => {
+    if (!pendingDate) return;
+    const iso = dateValueToISO(pendingDate);
+    if (pendingStatusChange) {
+      await updateStatus(id, pendingStatusChange);
+    }
+    await api.patch(`/api/tracker/${id}/date`, { date_applied: iso });
+    setApp((prev) => prev ? { ...prev, date_applied: iso } : prev);
+    setShowDatePicker(false);
+    setPendingStatusChange(null);
+  };
 
   const saveNotes = async () => {
     setSaving(true);
@@ -378,7 +436,32 @@ export default function ApplicationDetailPage() {
           )}
         </div>
 
-        <StatusBadge app={{ id, status: app.status }} onUpdate={updateStatus} />
+        <div className="relative">
+          <div className="flex items-center gap-1.5">
+            <StatusBadge app={{ id, status: app.status }} onUpdate={updateStatus} onRequestApplied={() => openDatePicker("Applied")} />
+            {app.date_applied && (
+              <button
+                onClick={() => openDatePicker(null)}
+                className="inline-flex items-center text-[12px] font-medium py-[3px] px-2.5 rounded-full border-[0.5px] border-border-tertiary bg-transparent text-text-secondary cursor-pointer font-shell whitespace-nowrap"
+              >
+                Applied {formatAppliedDate(app.date_applied)}
+              </button>
+            )}
+          </div>
+          {showDatePicker && (
+            <div className="absolute top-[calc(100%+6px)] left-0 z-40 bg-background-primary border-[0.5px] border-border-tertiary rounded-[12px] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] flex flex-col gap-3">
+              <FlipClock
+                mode="date" theme={isDark ? "dark" : "light"} size="xs"
+                defaultValue={pendingDate}
+                onChange={setPendingDate}
+              />
+              <div className="flex gap-1.5 justify-end">
+                <button onClick={cancelDatePicker} className="text-[11px] font-medium py-[5px] px-2.5 rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-secondary cursor-pointer font-shell">Cancel</button>
+                <button onClick={confirmDatePicker} className="text-[11px] font-medium py-[5px] px-2.5 rounded-[6px] border-none bg-custom text-white cursor-pointer font-shell">Confirm</button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {canContinue && (
           <Link href={`/apply/new?id=${id}`} className={pillBtnCls(true)}>

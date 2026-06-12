@@ -1,9 +1,12 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Search, Download } from "lucide-react";
+import { Trash2, Search, Download, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { FlipClock } from "@anahtiris/flipclock";
+import "@anahtiris/flipclock/dist/flipclock.css";
 import { api } from "@/lib/api";
+import { isoToDateValue, dateValueToISO } from "@/lib/utils";
 
 interface Application {
   id: string;
@@ -18,23 +21,24 @@ interface Application {
 // Map backend status → display label shown in the list
 const STATUS_DISPLAY: Record<string, string> = {
   New: "Analyzed",
-  Draft: "Analyzed",
+  Draft: "Draft",
   Applied: "Applied",
   Interview: "Interview",
   Offer: "Offer",
   Rejected: "Rejected",
 };
 
-// Which backend statuses each filter button covers
+// Which backend statuses each filter option covers
 const FILTER_MAP: Record<string, string[]> = {
-  Analyzed: ["New", "Draft"],
+  Analyzed: ["New"],
+  Draft: ["Draft"],
   Applied: ["Applied"],
   Interview: ["Interview"],
   Offer: ["Offer"],
   Rejected: ["Rejected"],
 };
 
-const FILTER_LABELS = ["All", "Analyzed", "Applied", "Interview", "Offer", "Rejected"] as const;
+const FILTER_LABELS = ["Analyzed", "Draft", "Applied", "Interview", "Offer", "Rejected"] as const;
 
 // Backend statuses where the company chip is amber (active)
 const ACTIVE_STATUSES = new Set(["Applied", "Interview", "Offer"]);
@@ -49,7 +53,7 @@ const NEXT_STATUSES: Record<string, string[]> = {
 };
 
 // Shared column grid for both header and rows
-const COL_GRID_CLS = "grid-cols-[2fr_2fr_130px_90px_32px]";
+const COL_GRID_CLS = "grid-cols-[2fr_2fr_130px_90px_66px]";
 
 type FilterLabel = (typeof FILTER_LABELS)[number];
 
@@ -74,15 +78,16 @@ function shortDate(d: string | null | undefined): string {
   );
 }
 
-// Badge colors keyed by display label (filter pills); default = "All" (amber)
+// Badge colors keyed by filter/display label
 function labelBadgeCls(label: string): string {
   switch (label) {
     case "Applied":   return "bg-custom-l text-custom-d";
     case "Interview": return "bg-badge-interview-bg text-badge-interview-fg";
     case "Offer":     return "bg-badge-offer-bg text-badge-offer-fg";
     case "Rejected":  return "bg-badge-passed-bg text-badge-passed-fg";
+    case "Draft":     return "bg-badge-responded-bg text-badge-responded-fg";
     case "Analyzed":  return "bg-badge-analyzed-bg text-badge-analyzed-fg";
-    default:          return "bg-custom-l text-custom-d"; // All
+    default:          return "bg-custom-l text-custom-d";
   }
 }
 
@@ -94,6 +99,7 @@ function badgeCls(backendStatus: string): string {
     label === "Interview" ? "bg-badge-interview-bg text-badge-interview-fg" :
     label === "Offer"     ? "bg-badge-offer-bg text-badge-offer-fg" :
     label === "Rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
+    label === "Draft"     ? "bg-badge-responded-bg text-badge-responded-fg" :
                             "bg-badge-analyzed-bg text-badge-analyzed-fg";
   return `inline-flex items-center text-[12px] font-medium py-[3px] px-[9px] rounded-full border-none whitespace-nowrap font-shell ${color}`;
 }
@@ -152,6 +158,73 @@ function StatusBadge({
   );
 }
 
+// Multiselect dropdown for filtering by status
+function FilterDropdown({
+  activeFilters,
+  onToggle,
+  onClear,
+}: {
+  activeFilters: Set<FilterLabel>;
+  onToggle: (label: FilterLabel) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const count = activeFilters.size;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`inline-flex items-center gap-1 text-[12px] font-medium py-1 px-2.5 rounded-full cursor-pointer font-shell border-[0.5px] border-border-tertiary ${
+          count > 0 ? "bg-background-secondary text-text-primary" : "bg-transparent text-text-secondary"
+        }`}
+      >
+        Status{count > 0 ? ` (${count})` : ""}
+        <ChevronDown size={12} />
+      </button>
+
+      {open && (
+        <div className="absolute top-[calc(100%+4px)] right-0 z-30 bg-background-primary border-[0.5px] border-border-tertiary rounded-card p-1.5 min-w-[150px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] flex flex-col gap-0.5">
+          {FILTER_LABELS.map((label) => (
+            <label
+              key={label}
+              className="flex items-center gap-2 text-[12px] font-shell py-1 px-2 rounded-[5px] cursor-pointer hover:bg-background-secondary"
+            >
+              <input
+                type="checkbox"
+                checked={activeFilters.has(label)}
+                onChange={() => onToggle(label)}
+                className="cursor-pointer accent-custom"
+              />
+              <span className={`inline-flex items-center text-[11px] font-medium py-0.5 px-2 rounded-full font-shell ${labelBadgeCls(label)}`}>
+                {label}
+              </span>
+            </label>
+          ))}
+          {count > 0 && (
+            <button
+              onClick={onClear}
+              className="text-left text-[11px] text-text-tertiary font-shell py-1 px-2 mt-0.5 border-t-[0.5px] border-border-tertiary border-x-0 border-b-0 bg-transparent cursor-pointer"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ApplicationsPage() {
   const router = useRouter();
   const [apps, setApps] = useState<Application[]>([]);
@@ -164,6 +237,16 @@ export default function ApplicationsPage() {
 
   // Search
   const [search, setSearch] = useState("");
+
+  // Dark mode detection (for FlipClock theme)
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains("dark"));
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
 
   // Filter state — empty set means "All"; persisted in localStorage
   const [activeFilters, setActiveFilters] = useState<Set<FilterLabel>>(new Set());
@@ -186,16 +269,14 @@ export default function ApplicationsPage() {
   }, [activeFilters]);
 
   const toggleFilter = (label: FilterLabel) => {
-    if (label === "All") {
-      setActiveFilters(new Set());
-      return;
-    }
     setActiveFilters((prev) => {
       const next = new Set(prev);
       next.has(label) ? next.delete(label) : next.add(label);
       return next;
     });
   };
+
+  const clearFilters = () => setActiveFilters(new Set());
 
   const exportCsv = () => {
     const headers = ["Company", "Job Title", "Status", "Date Applied", "Language"];
@@ -301,11 +382,10 @@ export default function ApplicationsPage() {
       {pendingApply && (
         <div className="flex items-center gap-2.5 py-2 px-4 border-b-[0.5px] border-border-tertiary text-[12px] bg-background-secondary shrink-0 font-shell">
           <span className="text-text-tertiary">Date applied:</span>
-          <input
-            type="date"
-            value={pendingApply.date}
-            onChange={(e) => setPendingApply({ ...pendingApply, date: e.target.value })}
-            className="border-[0.5px] border-border-tertiary rounded-[6px] py-[3px] px-2 text-[12px] bg-background-primary text-text-primary font-mono"
+          <FlipClock
+            mode="date" theme={isDark ? "dark" : "light"} size="xs"
+            defaultValue={isoToDateValue(pendingApply.date)}
+            onChange={(v) => setPendingApply({ ...pendingApply, date: dateValueToISO(v) })}
           />
           <button
             onClick={confirmApply}
@@ -359,24 +439,9 @@ export default function ApplicationsPage() {
           CSV
         </button>
 
-        {/* Filter pills — multi-select; All clears selection */}
-        <div className="flex gap-[5px] ml-auto flex-wrap">
-          {FILTER_LABELS.map((label) => {
-            const active = label === "All" ? activeFilters.size === 0 : activeFilters.has(label);
-            return (
-              <button
-                key={label}
-                onClick={() => toggleFilter(label)}
-                className={`text-[12px] font-medium py-1 px-2.5 rounded-full cursor-pointer font-shell transition-all duration-100 ${
-                  active
-                    ? `border-none ${labelBadgeCls(label)}`
-                    : "border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
+        {/* Status filter — multiselect dropdown */}
+        <div className="ml-auto">
+          <FilterDropdown activeFilters={activeFilters} onToggle={toggleFilter} onClear={clearFilters} />
         </div>
       </div>
 
@@ -415,13 +480,13 @@ export default function ApplicationsPage() {
                 className={`app-row grid ${COL_GRID_CLS} py-2.5 px-4 border-b-[0.5px] border-border-tertiary items-center cursor-pointer relative`}
               >
                 {/* Company */}
-                <div className="flex items-center gap-[9px]">
+                <div className="flex items-center gap-[9px] min-w-0">
                   <div className={chipCls}>{initials}</div>
-                  <span className="text-[14px] font-medium">{app.company}</span>
+                  <span className="text-[14px] font-medium min-w-0 line-clamp-2 break-words">{app.company}</span>
                 </div>
 
                 {/* Role */}
-                <div className="text-[13px] text-text-secondary">
+                <div className="text-[13px] text-text-secondary min-w-0 line-clamp-2 break-words">
                   {app.job_title}
                 </div>
 
@@ -436,22 +501,26 @@ export default function ApplicationsPage() {
                 </div>
 
                 {/* Delete */}
-                <div onClick={(e) => e.stopPropagation()} className="app-row-del">
+                <div onClick={(e) => e.stopPropagation()} className="app-row-del justify-self-end flex items-center">
                   {pendingDeleteId === app.id ? (
-                    <div className="flex items-center gap-1 text-[11px] whitespace-nowrap absolute right-2 top-1/2 -translate-y-1/2 bg-background-primary py-0.5 px-1 rounded-[6px] z-[1]">
-                      <span className="text-text-tertiary">Delete?</span>
-                      <button
-                        onClick={() => handleDelete(app.id)}
-                        className="text-[11px] font-medium py-[3px] px-[7px] rounded-[5px] bg-badge-passed-bg text-badge-passed-fg border-none cursor-pointer font-shell"
-                      >
-                        Yes
-                      </button>
-                      <button
-                        onClick={() => setPendingDeleteId(null)}
-                        className="text-[11px] font-medium py-[3px] px-[7px] rounded-[5px] bg-transparent text-text-tertiary border-[0.5px] border-border-tertiary cursor-pointer font-shell"
-                      >
-                        No
-                      </button>
+                    <div className="flex flex-col items-center gap-1 text-[11px]">
+                      <span className="text-text-tertiary whitespace-nowrap">Delete?</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          aria-label="Confirm delete"
+                          onClick={() => handleDelete(app.id)}
+                          className="text-[11px] font-medium py-[3px] px-[7px] rounded-[5px] bg-badge-passed-bg text-badge-passed-fg border-none cursor-pointer font-shell"
+                        >
+                          Yes
+                        </button>
+                        <button
+                          aria-label="Cancel delete"
+                          onClick={() => setPendingDeleteId(null)}
+                          className="text-[11px] font-medium py-[3px] px-[7px] rounded-[5px] bg-transparent text-text-tertiary border-[0.5px] border-border-tertiary cursor-pointer font-shell"
+                        >
+                          No
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button
