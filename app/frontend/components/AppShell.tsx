@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Briefcase, FileUser, Brain, Settings } from "lucide-react";
+import { Briefcase, FileUser, Brain, Settings, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -75,6 +75,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarBtn>
         <SidebarBtn href="/skills" label="Skills">
           <Brain size={19} />
+        </SidebarBtn>
+        <SidebarBtn href="/trash" label="Trash">
+          <Trash2 size={19} />
         </SidebarBtn>
         <div className="w-5 h-[0.5px] bg-border-tertiary my-1" />
         <SidebarBtn href="/settings" label="Settings">

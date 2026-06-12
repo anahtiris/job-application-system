@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
@@ -76,7 +76,11 @@ def create_application(body: CreateApplicationRequest, session: Session = Depend
 
 @router.get("/")
 def list_applications(session: Session = Depends(get_session)):
-    return session.exec(select(Application).order_by(Application.created_at.desc())).all()
+    return session.exec(
+        select(Application)
+        .where(Application.deleted_at == None)
+        .order_by(Application.created_at.desc())
+    ).all()
 
 
 @router.get("/{app_id}")
@@ -176,6 +180,7 @@ def delete_application(app_id: str, session: Session = Depends(get_session)):
     app = session.get(Application, app_id)
     if not app:
         raise HTTPException(404, "Application not found")
-    session.delete(app)
+    app.deleted_at = datetime.utcnow()
+    session.add(app)
     session.commit()
     return {"deleted": True}

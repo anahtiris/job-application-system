@@ -52,7 +52,11 @@ class UpdateLeadRequest(BaseModel):
 
 @router.get("/")
 def list_leads(session: Session = Depends(get_session)):
-    return session.exec(select(JobLead).order_by(JobLead.created_at.desc())).all()
+    return session.exec(
+        select(JobLead)
+        .where(JobLead.deleted_at == None)
+        .order_by(JobLead.created_at.desc())
+    ).all()
 
 
 @router.post("/")
@@ -100,7 +104,8 @@ def delete_lead(lead_id: str, session: Session = Depends(get_session)):
     lead = session.get(JobLead, lead_id)
     if not lead:
         raise HTTPException(404, "Lead not found")
-    session.delete(lead)
+    lead.deleted_at = datetime.utcnow()
+    session.add(lead)
     session.commit()
     return {"deleted": True}
 
@@ -191,6 +196,7 @@ def approve_lead(lead_id: str, session: Session = Depends(get_session)):
         job_description=lead.job_description,
         company_tone=lead.company_tone,
         source_url=lead.source_url,
+        fit_analysis_json=lead.fit_analysis_json,
         status="New",
     )
     session.add(app)

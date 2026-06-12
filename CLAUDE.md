@@ -38,8 +38,8 @@ pdfinfo <file.pdf> | grep Pages
 
 A local Next.js + FastAPI app that replaces the manual Claude Code workflow with a structured UI. It enforces all guardrails in code so the LLM cannot exaggerate.
 
-- **Backend**: `app/backend/` — FastAPI + SQLite. Routers: `/api/resume`, `/api/application`, `/api/tracker`, `/api/settings`, `/api/leads`. Services: `generator.py` (locked tailoring + streaming), `reviewer.py` (persona + 2 random reviewers), `researcher.py` (company scraper + tone classifier), `analyzer.py` (JD gap analysis), `interview.py` (prep + skills debrief), `pdf.py` (LibreOffice + 1-page check).
-- **Frontend**: `app/frontend/` — Next.js 14. Pages: dashboard (`/`), setup (`/setup`), skills inventory (`/skills`), leads list (`/leads`), lead detail (`/leads/[id]`), 5-step wizard (`/apply/new`), detail (`/apply/[id]`), settings (`/settings`).
+- **Backend**: `app/backend/` — FastAPI + SQLite. Routers: `/api/resume`, `/api/application`, `/api/tracker`, `/api/settings`, `/api/leads`, `/api/trash`. Services: `generator.py` (locked tailoring + streaming), `reviewer.py` (persona + 2 random reviewers), `researcher.py` (company scraper + tone classifier), `analyzer.py` (JD gap analysis), `interview.py` (prep + skills debrief), `pdf.py` (LibreOffice + 1-page check).
+- **Frontend**: `app/frontend/` — Next.js 14. Pages: dashboard (`/`), setup (`/setup`), skills inventory (`/skills`), trash (`/trash`), leads list (`/leads`), lead detail (`/leads/[id]`), 5-step wizard (`/apply/new`), detail (`/apply/[id]`), settings (`/settings`).
 - **Ollama models** (configured in `app/backend/config.toml`): all four roles (parser, writer, reviewer, research) are set there. Restart the backend after editing `config.toml` — it is read once at startup.
 - **Persona**: `data/persona.md` (gitignored) — the obligated personal reviewer. Edit via `/settings`.
 - **PDF gate**: the "Finalize & Generate PDFs" button is gated until review completes. The backend enforces a 1-page check and returns HTTP 422 if the CV overflows.
@@ -105,6 +105,14 @@ Manifest V3. Click → `chrome.scripting.executeScript` grabs `{text: body.inner
 - **Draft**: documents written (either via the wizard Generate step or via `PUT /api/application/drafts` or `PUT /api/application/finals`). Both endpoints auto-promote `New → Draft`.
 - Further transitions are manual via `PATCH /api/tracker/{id}/status`.
 
+### Trash / soft delete (`/api/trash/`)
+
+`DELETE /api/tracker/{id}` and `DELETE /api/leads/{id}` are **soft deletes** — they set `deleted_at` rather than removing the row. `GET /api/tracker/` and `GET /api/leads/` exclude rows where `deleted_at` is set, so deleted items vanish from the normal lists immediately but remain recoverable. The `/trash` page (sidebar icon, under Skills) lists everything soft-deleted, newest first, with:
+- **Restore** — `POST /api/trash/applications/{id}/restore` or `POST /api/trash/leads/{id}/restore`, clears `deleted_at`.
+- **Delete forever** — `DELETE /api/trash/applications/{id}` or `DELETE /api/trash/leads/{id}`, a real hard delete (same as the old pre-soft-delete behavior; files under `applications/[Company]/` are not touched either way).
+
+Soft-deleting an `Application` does not affect a `JobLead` that references it via `application_id` (and vice versa) — each is restored/purged independently.
+
 ### Person name / file naming
 
 `person.name` is stored in the settings DB table and used for PDF/DOCX filenames. It is auto-extracted from the `# Contact` section when a resume is first parsed via `POST /api/resume/parse`. It can also be set manually via `PUT /api/settings/profile`. Files are named `[FirstName_LastName]_CV.docx` (EN) / `[FirstName_LastName]_Lebenslauf.docx` (DE), etc.
@@ -158,7 +166,7 @@ Two independent generation blocks, both only active when `app.status === "Interv
 Every application lives in `applications/[Company]/` and is gitignored. Detail page (`/apply/[id]`) provides PDF and DOCX download links for both documents.
 
 ### Database migrations
-`db.py` runs safe `ALTER TABLE` migrations on startup for new nullable columns (try/except loop). Current extra columns on `Application`: `resume_docx_path`, `cover_letter_docx_path`, `cover_letter_notes`, `interview_prep_md`, `interview_debrief_md`. `JobLead` table: `raw_text` added via migration. For constraint changes (e.g. making a column nullable), use the SQLite table-recreation pattern: CREATE new → INSERT SELECT → DROP old → RENAME.
+`db.py` runs safe `ALTER TABLE` migrations on startup for new nullable columns (try/except loop). Current extra columns on `Application`: `resume_docx_path`, `cover_letter_docx_path`, `cover_letter_notes`, `interview_prep_md`, `interview_debrief_md`, `deleted_at`. `JobLead` table: `raw_text`, `deleted_at` added via migration. For constraint changes (e.g. making a column nullable), use the SQLite table-recreation pattern: CREATE new → INSERT SELECT → DROP old → RENAME.
 
 ## Critical constraints
 
