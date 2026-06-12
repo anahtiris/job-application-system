@@ -9,7 +9,7 @@ interface Skill { name: string; tier: number; evidence: string; }
 const TIERS = [
   { value: 1, label: "Core",       cls: "bg-badge-interview-bg text-badge-interview-fg", outline: "outline-badge-interview-fg" },
   { value: 2, label: "Proficient", cls: "bg-badge-analyzed-bg text-badge-analyzed-fg",   outline: "outline-badge-analyzed-fg" },
-  { value: 3, label: "Familiar",   cls: "bg-amb-l text-amb-d",                            outline: "outline-amb-d" },
+  { value: 3, label: "Familiar",   cls: "bg-custom-l text-custom-d",                            outline: "outline-custom-d" },
   { value: 4, label: "Exposure",   cls: "bg-background-secondary text-text-tertiary",     outline: "outline-text-tertiary" },
 ];
 
@@ -19,7 +19,7 @@ const inputCls = "w-full text-[13px] py-1.5 px-[9px] rounded-[6px] border-[0.5px
 
 function btnCls(primary = true, disabled = false): string {
   const border = primary ? "border-none" : "border-[0.5px] border-border-tertiary";
-  const bg = primary ? "bg-amb" : "bg-transparent";
+  const bg = primary ? "bg-custom" : "bg-transparent";
   const color = primary ? "text-white" : "text-text-secondary";
   return `inline-flex items-center text-[12px] font-medium py-[5px] px-3 rounded-full font-shell ${border} ${bg} ${color} ${
     disabled ? "opacity-50 cursor-default" : "opacity-100 cursor-pointer"

@@ -231,7 +231,7 @@ function TechQAGroupCard({
           ))}
           <button
             onClick={onAddQuestion}
-            className={`inline-flex items-center gap-[5px] text-[12px] font-medium text-amb bg-transparent border-none cursor-pointer font-shell p-0 ${
+            className={`inline-flex items-center gap-[5px] text-[12px] font-medium text-custom bg-transparent border-none cursor-pointer font-shell p-0 ${
               total > 0 ? "mt-2" : ""
             }`}
           >

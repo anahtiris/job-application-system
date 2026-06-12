@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 
 function btnCls(primary = true, disabled = false): string {
   const border = primary ? "border-none" : "border-[0.5px] border-border-tertiary";
-  const bg = primary ? "bg-amb" : "bg-transparent";
+  const bg = primary ? "bg-custom" : "bg-transparent";
   const color = primary ? "text-white" : "text-text-secondary";
   return `inline-flex items-center gap-[5px] text-[12px] font-medium py-1.5 px-3.5 rounded-full font-shell transition-opacity duration-100 ${border} ${bg} ${color} ${
     disabled ? "opacity-50 cursor-default" : "opacity-100 cursor-pointer"
@@ -64,7 +64,7 @@ export default function SetupPage() {
               key={l}
               onClick={() => setLanguage(l)}
               className={`text-[11px] font-medium py-1 px-3 cursor-pointer font-mono border-none ${
-                language === l ? "bg-amb text-white" : "bg-transparent text-text-secondary"
+                language === l ? "bg-custom text-white" : "bg-transparent text-text-secondary"
               }`}
             >
               {l.toUpperCase()}

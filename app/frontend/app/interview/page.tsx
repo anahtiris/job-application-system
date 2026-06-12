@@ -27,11 +27,11 @@ function InterviewCard({
       onClick={() => onSelect(app.id)}
       className={`block w-full text-left py-[9px] px-2.5 rounded-[7px] border-[0.5px] cursor-pointer mb-1.5 font-shell transition-colors ${
         active
-          ? "border-amb bg-amb-l"
+          ? "border-custom bg-custom-l"
           : "border-border-tertiary bg-background-primary hover:border-[#FAC775]"
       } ${past && !active ? "opacity-60" : ""}`}
     >
-      <div className={`text-[12px] font-medium ${active ? "text-amb-d" : "text-text-primary"}`}>
+      <div className={`text-[12px] font-medium ${active ? "text-custom-d" : "text-text-primary"}`}>
         {app.company}
       </div>
       <div className="text-[11px] text-text-tertiary mt-px">
@@ -120,7 +120,7 @@ export default function InterviewPage() {
           onClick={() => setSelected("general")}
           className={`flex items-center gap-2 w-full py-[7px] px-2 rounded-[6px] cursor-pointer text-[12px] font-medium font-shell border-none text-left transition-colors ${
             selected === "general"
-              ? "bg-amb-l text-amb-d"
+              ? "bg-custom-l text-custom-d"
               : "bg-transparent text-text-secondary hover:bg-background-secondary"
           }`}
         >
@@ -132,7 +132,7 @@ export default function InterviewPage() {
           onClick={() => setSelected("technical")}
           className={`flex items-center gap-2 w-full py-[7px] px-2 rounded-[6px] cursor-pointer text-[12px] font-medium font-shell border-none text-left transition-colors ${
             selected === "technical"
-              ? "bg-amb-l text-amb-d"
+              ? "bg-custom-l text-custom-d"
               : "bg-transparent text-text-secondary hover:bg-background-secondary"
           }`}
         >

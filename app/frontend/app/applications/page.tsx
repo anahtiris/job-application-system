@@ -77,12 +77,12 @@ function shortDate(d: string | null | undefined): string {
 // Badge colors keyed by display label (filter pills); default = "All" (amber)
 function labelBadgeCls(label: string): string {
   switch (label) {
-    case "Applied":   return "bg-amb-l text-amb-d";
+    case "Applied":   return "bg-custom-l text-custom-d";
     case "Interview": return "bg-badge-interview-bg text-badge-interview-fg";
     case "Offer":     return "bg-badge-offer-bg text-badge-offer-fg";
     case "Rejected":  return "bg-badge-passed-bg text-badge-passed-fg";
     case "Analyzed":  return "bg-badge-analyzed-bg text-badge-analyzed-fg";
-    default:          return "bg-amb-l text-amb-d"; // All
+    default:          return "bg-custom-l text-custom-d"; // All
   }
 }
 
@@ -90,7 +90,7 @@ function labelBadgeCls(label: string): string {
 function badgeCls(backendStatus: string): string {
   const label = STATUS_DISPLAY[backendStatus] ?? backendStatus;
   const color =
-    label === "Applied"   ? "bg-amb-l text-amb-d" :
+    label === "Applied"   ? "bg-custom-l text-custom-d" :
     label === "Interview" ? "bg-badge-interview-bg text-badge-interview-fg" :
     label === "Offer"     ? "bg-badge-offer-bg text-badge-offer-fg" :
     label === "Rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
@@ -309,7 +309,7 @@ export default function ApplicationsPage() {
           />
           <button
             onClick={confirmApply}
-            className="text-[12px] font-medium py-1 px-2.5 rounded-[6px] bg-amb text-white border-none cursor-pointer font-shell"
+            className="text-[12px] font-medium py-1 px-2.5 rounded-[6px] bg-custom text-white border-none cursor-pointer font-shell"
           >
             Confirm
           </button>
@@ -405,7 +405,7 @@ export default function ApplicationsPage() {
             const initials = companyChip(app.company);
             const isActive = ACTIVE_STATUSES.has(app.status);
             const chipCls = `w-[26px] h-[26px] rounded-[6px] shrink-0 flex items-center justify-center text-[9px] font-bold font-mono ${
-              isActive ? "bg-amb-l text-amb-d" : "bg-background-secondary text-text-tertiary"
+              isActive ? "bg-custom-l text-custom-d" : "bg-background-secondary text-text-tertiary"
             }`;
 
             return (

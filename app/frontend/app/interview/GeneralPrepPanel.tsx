@@ -143,7 +143,7 @@ export function GeneralPrepPanel() {
             ))}
             <button
               onClick={() => addQA(qaField)}
-              className="inline-flex items-center gap-[5px] mt-2 text-[12px] font-medium text-amb bg-transparent border-none cursor-pointer font-shell p-0"
+              className="inline-flex items-center gap-[5px] mt-2 text-[12px] font-medium text-custom bg-transparent border-none cursor-pointer font-shell p-0"
             >
               <Plus size={13} /> Add question
             </button>

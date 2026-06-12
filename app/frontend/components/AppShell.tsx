@@ -37,7 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           title="Dashboard"
           className="w-[44px] h-[46px] shrink-0 flex items-center justify-center border-r-[0.5px] border-border-tertiary"
         >
-          <span className="w-[22px] h-[22px] rounded-[5px] bg-amb flex items-center justify-center">
+          <span className="w-[22px] h-[22px] rounded-[5px] bg-custom flex items-center justify-center">
             <Briefcase size={12} color="#fff" />
           </span>
         </Link>
@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={tab.href}
                 href={tab.href}
                 className={`text-[12px] font-medium px-3 h-[46px] flex items-center gap-[5px] -mb-px font-shell no-underline border-b-2 ${
-                  active ? "text-amb border-amb" : "text-text-tertiary border-transparent"
+                  active ? "text-custom border-custom" : "text-text-tertiary border-transparent"
                 }`}
               >
                 {showDot && (

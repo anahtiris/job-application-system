@@ -75,7 +75,7 @@ export default function Dashboard() {
       icon: <Inbox size={15} />,
       value: capturedCount,
       label: "Captured jobs",
-      iconCls: "bg-amb-l text-amb",
+      iconCls: "bg-custom-l text-custom",
     },
     {
       icon: <Send size={15} />,
@@ -93,7 +93,7 @@ export default function Dashboard() {
 
   const columns = [
     { label: "Todo", dot: "bg-text-tertiary", apps: todoApps },
-    { label: "Applied", dot: "bg-amb", apps: appliedApps },
+    { label: "Applied", dot: "bg-custom", apps: appliedApps },
     { label: "Interview", dot: "bg-[#1D9E75]", apps: sortedInterviewApps },
   ];
 

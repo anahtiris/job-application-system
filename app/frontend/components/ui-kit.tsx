@@ -111,7 +111,7 @@ export function pillBtnCls(primary = false, danger = false): string {
     : primary
     ? "border-none"
     : "border-[0.5px] border-border-tertiary";
-  const bg = primary ? "bg-amb" : "bg-transparent";
+  const bg = primary ? "bg-custom" : "bg-transparent";
   const color = danger ? "text-badge-passed-fg" : primary ? "text-white" : "text-text-secondary";
   return `inline-flex items-center gap-[5px] text-[12px] font-medium py-[5px] px-[13px] rounded-full cursor-pointer font-shell whitespace-nowrap no-underline ${border} ${bg} ${color}`;
 }
@@ -126,7 +126,7 @@ export function chipCls(extra = ""): string {
 export function skillStatusStyleCls(status: string): string {
   switch (status) {
     case "STRONG":  return "bg-badge-interview-bg text-badge-interview-fg";
-    case "HONEST":  return "bg-amb-l text-amb-d";
+    case "HONEST":  return "bg-custom-l text-custom-d";
     case "GAP":     return "bg-badge-passed-bg text-badge-passed-fg";
     default:        return "bg-background-secondary text-text-tertiary";
   }
@@ -136,14 +136,14 @@ export function verdictStyleCls(verdict: string): string {
   switch (verdict) {
     case "strong": return "bg-badge-interview-bg text-badge-interview-fg";
     case "skip":   return "bg-badge-passed-bg text-badge-passed-fg";
-    default:       return "bg-amb-l text-amb-d";
+    default:       return "bg-custom-l text-custom-d";
   }
 }
 
 export function goalAlignStyleCls(alignment: string): string {
   switch (alignment) {
     case "aligns":  return "bg-badge-interview-bg text-badge-interview-fg";
-    case "detours": return "bg-amb-l text-amb-d";
+    case "detours": return "bg-custom-l text-custom-d";
     default:        return "bg-background-secondary text-text-tertiary";
   }
 }
@@ -153,7 +153,7 @@ export function statusChipStyleCls(status: string): string {
     case "approved":  return "bg-badge-interview-bg text-badge-interview-fg";
     case "rejected":  return "bg-badge-passed-bg text-badge-passed-fg";
     case "analyzed":  return "bg-badge-analyzed-bg text-badge-analyzed-fg";
-    case "analyzing": return "bg-amb-l text-amb-d";
+    case "analyzing": return "bg-custom-l text-custom-d";
     case "new":       return "bg-badge-responded-bg text-badge-responded-fg";
     default:          return "bg-background-secondary text-text-tertiary";
   }
@@ -163,7 +163,7 @@ export function statusChipStyleCls(status: string): string {
 
 export const cardBoxCls = "border-[0.5px] border-border-tertiary rounded-card overflow-hidden";
 
-// `background` must be a Tailwind background className, e.g. "bg-amb-l".
+// `background` must be a Tailwind background className, e.g. "bg-custom-l".
 export function cardHeaderBarCls(collapsed = false, background = "bg-background-secondary"): string {
   const border = collapsed ? "" : " border-b-[0.5px] border-border-tertiary";
   return `flex items-center gap-2 py-[7px] px-3 ${background}${border}`;

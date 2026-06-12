@@ -57,7 +57,7 @@ function SegmentGroup<T extends string>({ value, options, onChange }: { value: T
           key={o.value}
           onClick={() => onChange(o.value)}
           className={`text-[12px] font-medium py-[5px] px-3.5 cursor-pointer font-shell border-none ${
-            value === o.value ? "bg-amb text-white" : "bg-transparent text-text-secondary"
+            value === o.value ? "bg-custom text-white" : "bg-transparent text-text-secondary"
           }`}
         >
           {o.label}
@@ -72,7 +72,7 @@ function SaveBtn({ onClick, loading, label }: { onClick: () => void; loading: bo
     <button
       onClick={onClick}
       disabled={loading}
-      className={`inline-flex items-center text-[12px] font-medium py-1.5 px-3.5 rounded-full border-none bg-amb text-white font-shell ${
+      className={`inline-flex items-center text-[12px] font-medium py-1.5 px-3.5 rounded-full border-none bg-custom text-white font-shell ${
         loading ? "opacity-60 cursor-default" : "opacity-100 cursor-pointer"
       }`}
     >
@@ -232,7 +232,7 @@ export default function SettingsPage() {
                 Describe where you want to take your career. Each job analysis will include a goal alignment signal —{" "}
                 <strong className="text-badge-interview-fg">aligns</strong>,{" "}
                 <strong className="text-text-tertiary">neutral</strong>, or{" "}
-                <strong className="text-amb-d">detours</strong>{" "}
+                <strong className="text-custom-d">detours</strong>{" "}
                 — based on your stated direction and your recent approve/reject decisions.
               </InfoText>
               <textarea

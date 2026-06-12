@@ -25,7 +25,7 @@ export function TabBar({
           onClick={() => onChange(t)}
           className={`text-[11px] font-medium py-[5px] px-[11px] rounded-[6px] cursor-pointer font-shell transition-all duration-100 ${
             active === t
-              ? "border-none bg-amb text-white"
+              ? "border-none bg-custom text-white"
               : "border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
           }`}
         >
@@ -44,7 +44,7 @@ export function LangToggle({ lang, onChange }: { lang: "en" | "de"; onChange: (l
           key={l}
           onClick={() => onChange(l)}
           className={`text-[11px] font-medium py-1 px-2.5 cursor-pointer font-mono border-none ${
-            lang === l ? "text-white bg-amb" : "text-text-secondary bg-transparent"
+            lang === l ? "text-white bg-custom" : "text-text-secondary bg-transparent"
           }`}
         >
           {l.toUpperCase()}

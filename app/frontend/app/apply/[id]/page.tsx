@@ -28,7 +28,7 @@ const NEXT_STATUSES: Record<string, string[]> = {
 function badgeCls(status: string): string {
   const label = STATUS_DISPLAY[status] ?? status;
   const color =
-    label === "Applied"   ? "bg-amb-l text-amb-d" :
+    label === "Applied"   ? "bg-custom-l text-custom-d" :
     label === "Interview" ? "bg-badge-interview-bg text-badge-interview-fg" :
     label === "Offer"     ? "bg-badge-offer-bg text-badge-offer-fg" :
     label === "Rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
@@ -47,7 +47,7 @@ function TabBar({ tabs, active, onChange }: { tabs: string[]; active: string; on
           onClick={() => onChange(t)}
           className={`text-[11px] font-medium py-[5px] px-[11px] rounded-[6px] cursor-pointer font-shell transition-all duration-100 ${
             active === t
-              ? "border-none bg-amb text-white"
+              ? "border-none bg-custom text-white"
               : "border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
           }`}
         >
@@ -153,7 +153,7 @@ function StatusBadge({ app, onUpdate }: { app: { id: string; status: string }; o
 
 const SKILL_STYLE: Record<string, { cls: string; label: string }> = {
   STRONG:  { cls: "bg-badge-interview-bg text-badge-interview-fg", label: "Strong" },
-  HONEST:  { cls: "bg-amb-l text-amb-d",                           label: "Honest" },
+  HONEST:  { cls: "bg-custom-l text-custom-d",                           label: "Honest" },
   GAP:     { cls: "bg-badge-passed-bg text-badge-passed-fg",       label: "Gap" },
   UNKNOWN: { cls: "bg-background-secondary text-text-tertiary",    label: "Unknown" },
 };
@@ -262,7 +262,7 @@ function AnalysisView({ result, onRefresh }: { result: AnalysisResult; onRefresh
             )}
             {result.weakest_point && (
               <div className="flex gap-2 items-start">
-                <span className="shrink-0 text-[10px] font-medium py-0.5 px-2 rounded-full bg-amb-l text-amb-d font-shell">Watch out</span>
+                <span className="shrink-0 text-[10px] font-medium py-0.5 px-2 rounded-full bg-custom-l text-custom-d font-shell">Watch out</span>
                 <span className="text-[12px] text-text-secondary font-shell">{result.weakest_point}</span>
               </div>
             )}
@@ -486,7 +486,7 @@ export default function ApplicationDetailPage() {
           <button
             onClick={saveNotes}
             disabled={saving}
-            className="inline-flex items-center gap-[5px] text-[11px] font-medium py-1 px-2.5 rounded-full cursor-pointer font-shell whitespace-nowrap no-underline border-none bg-amb text-white self-start"
+            className="inline-flex items-center gap-[5px] text-[11px] font-medium py-1 px-2.5 rounded-full cursor-pointer font-shell whitespace-nowrap no-underline border-none bg-custom text-white self-start"
           >
             {saving ? "Saving…" : "Save"}
           </button>

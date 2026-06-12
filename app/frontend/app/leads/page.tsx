@@ -32,7 +32,7 @@ function leadBadgeCls(status: string): string {
     status === "approved"  ? "bg-badge-interview-bg text-badge-interview-fg" :
     status === "rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
     status === "analyzed"  ? "bg-badge-analyzed-bg text-badge-analyzed-fg" :
-    status === "analyzing" ? "bg-amb-l text-amb-d" :
+    status === "analyzing" ? "bg-custom-l text-custom-d" :
     status === "new"       ? "bg-badge-responded-bg text-badge-responded-fg" :
                              "bg-background-secondary text-text-tertiary";
   return `inline-flex items-center text-[12px] font-medium py-[3px] px-[9px] rounded-full font-shell capitalize ${color}`;
@@ -42,7 +42,7 @@ function verdictCls(verdict: string): string {
   const color =
     verdict === "strong" ? "bg-badge-interview-bg text-badge-interview-fg" :
     verdict === "skip"   ? "bg-badge-passed-bg text-badge-passed-fg" :
-                           "bg-amb-l text-amb-d"; // maybe
+                           "bg-custom-l text-custom-d"; // maybe
   return `text-[11px] font-semibold py-0.5 px-[7px] rounded-full font-shell capitalize ${color}`;
 }
 
@@ -163,7 +163,7 @@ export default function LeadsPage() {
             <div className="py-3.5 px-4 flex flex-col gap-3.5 border-r-[0.5px] border-border-tertiary">
               {/* Count */}
               <div className="flex items-center gap-2.5">
-                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amb text-white text-[16px] font-mono font-bold shrink-0">
+                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-custom text-white text-[16px] font-mono font-bold shrink-0">
                   {unanalyzed.length}
                 </span>
                 <span className="text-[13px] font-medium text-text-secondary font-shell">
@@ -198,7 +198,7 @@ export default function LeadsPage() {
                 <button
                   onClick={analyzeAll}
                   disabled={bulkAnalyzing}
-                  className={`text-[11px] font-medium py-1 px-2.5 rounded-full border-none bg-amb text-white font-shell ${
+                  className={`text-[11px] font-medium py-1 px-2.5 rounded-full border-none bg-custom text-white font-shell ${
                     bulkAnalyzing ? "opacity-60 cursor-default" : "opacity-100 cursor-pointer"
                   }`}
                 >

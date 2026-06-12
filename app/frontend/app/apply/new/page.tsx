@@ -15,7 +15,7 @@ const TONES = ["direct", "startup", "contractor", "agency"] as const;
 
 const SKILL_STYLE: Record<string, string> = {
   STRONG:  "bg-badge-interview-bg text-badge-interview-fg",
-  HONEST:  "bg-amb-l text-amb-d",
+  HONEST:  "bg-custom-l text-custom-d",
   GAP:     "bg-badge-passed-bg text-badge-passed-fg",
   UNKNOWN: "bg-background-secondary text-text-tertiary",
 };
@@ -45,7 +45,7 @@ function Btn({ onClick, disabled, primary, children, className = "" }: {
   children: React.ReactNode; className?: string;
 }) {
   const border = primary ? "border-none" : "border-[0.5px] border-border-tertiary";
-  const bg = primary ? "bg-amb" : "bg-transparent";
+  const bg = primary ? "bg-custom" : "bg-transparent";
   const color = primary ? "text-white" : "text-text-secondary";
   return (
     <button
@@ -80,7 +80,7 @@ function ClWordCount({ text }: { text: string }) {
   const colorCls = count >= 250 && count <= 350
     ? "text-badge-interview-fg"
     : count >= 200 && count <= 400
-    ? "text-amb"
+    ? "text-custom"
     : "text-badge-passed-fg";
   const msg = count < 250 ? "(target 250–350)" : count > 350 ? "(over 250–350)" : "✓";
   return (
@@ -102,7 +102,7 @@ function StepBar({ current }: { current: Step }) {
             <div className="flex items-center gap-[5px]">
               <span
                 className={`w-[18px] h-[18px] rounded-full shrink-0 inline-flex items-center justify-center text-[10px] font-bold font-mono ${
-                  active ? "bg-amb text-white" : done ? "bg-amb-l text-amb-d" : "bg-background-secondary text-text-tertiary"
+                  active ? "bg-custom text-white" : done ? "bg-custom-l text-custom-d" : "bg-background-secondary text-text-tertiary"
                 }`}
               >
                 {i + 1}
@@ -396,7 +396,7 @@ function NewApplicationPageInner() {
                     <Label hint="optional">Job posting URL</Label>
                     <input className={inputCls} type="url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://jobs.example.com/postings/123" />
                     {sourceUrl && (
-                      <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-block mt-1 text-[11px] text-amb font-shell no-underline">
+                      <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-block mt-1 text-[11px] text-custom font-shell no-underline">
                         Open posting →
                       </a>
                     )}
@@ -409,7 +409,7 @@ function NewApplicationPageInner() {
                           key={l}
                           onClick={() => setLanguage(l)}
                           className={`text-[11px] font-medium py-1 px-3 cursor-pointer font-mono border-none ${
-                            language === l ? "bg-amb text-white" : "bg-transparent text-text-secondary"
+                            language === l ? "bg-custom text-white" : "bg-transparent text-text-secondary"
                           }`}
                         >
                           {l.toUpperCase()}
@@ -494,7 +494,7 @@ function NewApplicationPageInner() {
                         )}
                         {activeResult.weakest_point && (
                           <div className="flex gap-2 items-start">
-                            <span className="shrink-0 text-[10px] font-medium py-0.5 px-2 rounded-full bg-amb-l text-amb-d font-shell">Watch out</span>
+                            <span className="shrink-0 text-[10px] font-medium py-0.5 px-2 rounded-full bg-custom-l text-custom-d font-shell">Watch out</span>
                             <span className="text-[12px] text-text-secondary font-shell">{activeResult.weakest_point as string}</span>
                           </div>
                         )}

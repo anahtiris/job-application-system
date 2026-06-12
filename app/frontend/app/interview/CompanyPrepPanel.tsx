@@ -33,7 +33,7 @@ const SEVERITY_NEXT: Record<string, "red" | "amber" | "green"> = {
 
 const SEVERITY_DOT_CLS: Record<string, string> = {
   red: "bg-badge-passed-fg",
-  amber: "bg-amb",
+  amber: "bg-custom",
   green: "bg-badge-interview-fg",
 };
 
@@ -174,7 +174,7 @@ export function CompanyPrepPanel({
 
   const pillBtnCls = (primary = false): string => {
     const border = primary ? "border-none" : "border-[0.5px] border-border-tertiary";
-    const bg = primary ? "bg-amb" : "bg-transparent";
+    const bg = primary ? "bg-custom" : "bg-transparent";
     const color = primary ? "text-white" : "text-text-secondary";
     return `inline-flex items-center gap-[5px] text-[11px] font-medium py-1 px-2.5 rounded-full cursor-pointer font-shell ${border} ${bg} ${color}`;
   };
@@ -239,7 +239,7 @@ export function CompanyPrepPanel({
                 <button onClick={clearDate} className="text-[11px] font-medium py-[5px] px-2.5 rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-secondary cursor-pointer font-shell">Clear</button>
               )}
               <button onClick={() => setShowDatePicker(false)} className="text-[11px] font-medium py-[5px] px-2.5 rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-secondary cursor-pointer font-shell">Cancel</button>
-              <button onClick={confirmDate} className="text-[11px] font-medium py-[5px] px-2.5 rounded-[6px] border-none bg-amb text-white cursor-pointer font-shell">Confirm</button>
+              <button onClick={confirmDate} className="text-[11px] font-medium py-[5px] px-2.5 rounded-[6px] border-none bg-custom text-white cursor-pointer font-shell">Confirm</button>
             </div>
           </div>
         )}
@@ -277,7 +277,7 @@ export function CompanyPrepPanel({
                           key={r}
                           onClick={() => setRound(r)}
                           className={`text-[11px] font-medium py-1 px-2.5 rounded-[6px] cursor-pointer font-shell ${
-                            round === r ? "border-none bg-amb text-white" : "border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
+                            round === r ? "border-none bg-custom text-white" : "border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
                           }`}
                         >
                           {r}
@@ -293,7 +293,7 @@ export function CompanyPrepPanel({
                           key={iv}
                           onClick={() => setInterviewer(iv)}
                           className={`text-[11px] font-medium py-1 px-2.5 rounded-[6px] cursor-pointer font-shell ${
-                            interviewer === iv ? "border-none bg-amb text-white" : "border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
+                            interviewer === iv ? "border-none bg-custom text-white" : "border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
                           }`}
                         >
                           {iv}
@@ -364,14 +364,14 @@ export function CompanyPrepPanel({
               return (
                 <div className={cardBoxCls}>
                   <div
-                    className={`${cardHeaderBarCls(isCollapsed, "bg-amb-l")} cursor-pointer`}
+                    className={`${cardHeaderBarCls(isCollapsed, "bg-custom-l")} cursor-pointer`}
                     onClick={() => setPrepAskCollapsed((v) => !v)}
                   >
-                    <span className="text-[10px] text-amb leading-none">{isCollapsed ? "▶" : "▼"}</span>
-                    <span className="flex-1 text-[12px] font-semibold text-amb-d font-shell">
+                    <span className="text-[10px] text-custom leading-none">{isCollapsed ? "▶" : "▼"}</span>
+                    <span className="flex-1 text-[12px] font-semibold text-custom-d font-shell">
                       Specific questions for this interview
                     </span>
-                    <span className="text-[10px] font-mono text-amb-d">
+                    <span className="text-[10px] font-mono text-custom-d">
                       {prepAskAsked}/{prepAskItems.length}
                     </span>
                   </div>
@@ -743,9 +743,9 @@ function PrepDisplay({ markdown, exclude = [] }: { markdown: string; exclude?: s
         return (
           <div key={title} className="border-[0.5px] border-border-tertiary rounded-card overflow-hidden">
             {/* Section header with amber left bar */}
-            <div className="flex items-center gap-2.5 py-[9px] px-3.5 border-b-[0.5px] border-border-tertiary bg-amb-l">
-              <div className="w-[3px] h-[14px] rounded-[2px] bg-amb shrink-0" />
-              <span className="text-[12px] font-semibold text-amb-d font-shell tracking-[0.01em]">
+            <div className="flex items-center gap-2.5 py-[9px] px-3.5 border-b-[0.5px] border-border-tertiary bg-custom-l">
+              <div className="w-[3px] h-[14px] rounded-[2px] bg-custom shrink-0" />
+              <span className="text-[12px] font-semibold text-custom-d font-shell tracking-[0.01em]">
                 {title}
               </span>
             </div>
