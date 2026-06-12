@@ -40,7 +40,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var s=localStorage.getItem('theme'),m=window.matchMedia('(prefers-color-scheme: dark)');if(s==='dark'||(!s&&m.matches))document.documentElement.classList.add('dark');m.addEventListener('change',function(e){if(!localStorage.getItem('theme'))document.documentElement.classList.toggle('dark',e.matches);});var z={'large':'1.15','xl':'1.3'};var fs=localStorage.getItem('fontSize');if(fs&&z[fs])document.documentElement.style.zoom=z[fs];})();`,
+            __html: `(function(){var s=localStorage.getItem('theme'),m=window.matchMedia('(prefers-color-scheme: dark)');if(s==='dark'||(!s&&m.matches))document.documentElement.classList.add('dark');m.addEventListener('change',function(e){if(!localStorage.getItem('theme'))document.documentElement.classList.toggle('dark',e.matches);});var z={'large':'1.15','xl':'1.3'};var fs=localStorage.getItem('fontSize');if(fs&&z[fs])document.documentElement.style.zoom=z[fs];var ac=localStorage.getItem('accentColor');if(ac)document.documentElement.style.setProperty('--custom',ac);})();`,
           }}
         />
       </head>
