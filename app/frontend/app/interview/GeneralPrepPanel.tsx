@@ -139,6 +139,7 @@ export function GeneralPrepPanel() {
                 isLast={i === prep[qaField].length - 1}
                 onPatch={(patch) => patchQA(qaField, item.id, patch)}
                 onDelete={() => deleteQA(qaField, item.id)}
+                accent
               />
             ))}
             <button

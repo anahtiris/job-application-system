@@ -60,12 +60,14 @@ export function QARow({
   isLast,
   onPatch,
   onDelete,
+  accent = false,
 }: {
   item: QAItem;
   lang: "en" | "de";
   isLast: boolean;
   onPatch: (patch: Partial<QAItem>) => void;
   onDelete: () => void;
+  accent?: boolean;
 }) {
   const qKey = lang === "en" ? "q_en" : "q_de";
   const aKey = lang === "en" ? "a_en" : "a_de";
@@ -76,7 +78,7 @@ export function QARow({
           value={item[qKey]}
           onChange={(v) => onPatch({ [qKey]: v })}
           placeholder="Question…"
-          className="font-medium text-text-primary"
+          className={`font-medium ${accent ? "!text-custom-d" : "text-text-primary"}`}
         />
         <button
           onClick={onDelete}

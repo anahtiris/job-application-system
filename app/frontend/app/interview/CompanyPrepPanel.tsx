@@ -3,7 +3,8 @@ import "@anahtiris/flipclock/dist/flipclock.css";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FlipClock } from "@anahtiris/flipclock";
 import ReactMarkdown from "react-markdown";
-import { Check, Trash2 } from "lucide-react";
+import { Check, Copy, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -227,13 +228,15 @@ export function CompanyPrepPanel({
         <SaveIndicator state={saveState} />
 
         {showDatePicker && (
-          <div className="absolute top-[calc(100%+6px)] left-4 z-40 bg-background-primary border-[0.5px] border-border-tertiary rounded-[12px] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] flex flex-col gap-3">
-            <FlipClock
-              mode="datetime" theme={isDark ? "dark" : "light"} size="sm"
-              hour12={false} showSeconds={false}
-              defaultValue={pendingDate ?? { year: new Date().getFullYear(), month: new Date().getMonth() + 1, day: new Date().getDate(), hour: 10, minute: 0 }}
-              onChange={(v) => setPendingDate(v as DateTimeValue)}
-            />
+          <div className="absolute top-[calc(100%+6px)] left-4 z-40 bg-background-primary border-[0.5px] border-border-tertiary rounded-[12px] p-3 shadow-[0_8px_32px_rgba(0,0,0,0.15)] flex flex-col gap-2">
+            <div className="flipclock-compact">
+              <FlipClock
+                mode="datetime" theme={isDark ? "dark" : "light"} size="xs"
+                hour12={false} showSeconds={false}
+                defaultValue={pendingDate ?? { year: new Date().getFullYear(), month: new Date().getMonth() + 1, day: new Date().getDate(), hour: 10, minute: 0 }}
+                onChange={(v) => setPendingDate(v as DateTimeValue)}
+              />
+            </div>
             <div className="flex gap-1.5 justify-end">
               {app.interview_date && (
                 <button onClick={clearDate} className="text-[11px] font-medium py-[5px] px-2.5 rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-secondary cursor-pointer font-shell">Clear</button>
@@ -254,7 +257,7 @@ export function CompanyPrepPanel({
 
             {/* Role at a Glance — JD */}
             {app.job_description && (
-              <RoleGlanceCard jd={app.job_description} />
+              <RoleGlanceCard company={app.company} jobTitle={app.job_title} jd={app.job_description} />
             )}
 
             {/* Generate / regenerate controls */}
@@ -665,8 +668,18 @@ const PREP_INTERVIEWERS = ["HR / Recruiter", "Hiring Manager", "Technical Peer"]
 
 // ─── Shared small components ───────────────────────────────────────────────────
 
-function RoleGlanceCard({ jd }: { jd: string }) {
+function RoleGlanceCard({ company, jobTitle, jd }: { company: string; jobTitle: string; jd: string }) {
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await navigator.clipboard.writeText(`${company} - ${jobTitle}\n\n${jd}`);
+    toast.success("Copied");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <div className={`${cardBoxCls} bg-background-primary`}>
       <div
@@ -676,7 +689,16 @@ function RoleGlanceCard({ jd }: { jd: string }) {
         }`}
       >
         <span className="text-[12px] font-medium font-shell">Role at a Glance</span>
-        <span className="text-[10px] text-text-tertiary">{expanded ? "▲ collapse" : "▼ expand"}</span>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={handleCopy}
+            title="Copy company, job title and description"
+            className={`${iconBtnCls} hover:text-text-primary ${copied ? "text-text-primary" : ""}`}
+          >
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+          </button>
+          <span className="text-[10px] text-text-tertiary">{expanded ? "▲ collapse" : "▼ expand"}</span>
+        </div>
       </div>
       {expanded && (
         <div className="py-2.5 px-[13px] text-[13px] leading-[1.7] text-text-secondary font-shell max-h-[320px] overflow-y-auto">

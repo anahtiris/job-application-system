@@ -227,6 +227,7 @@ function TechQAGroupCard({
               isLast={i === group.questions.length - 1}
               onPatch={(patch) => onPatchQuestion(item.id, patch)}
               onDelete={() => onDeleteQuestion(item.id)}
+              accent
             />
           ))}
           <button
