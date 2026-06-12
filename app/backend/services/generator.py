@@ -6,10 +6,55 @@ Guardrails enforced here (not just in prompts):
 - Email and phone are read from the master resume file at call time
 """
 import re
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from services.llm import generate, stream
+
+NOTICE_PERIODS = (
+    "immediate", "2_weeks",
+    "1_month", "2_months", "3_months", "4_months", "5_months", "6_months",
+    "custom",
+)
+
+
+def _add_months(d: date, months: int) -> date:
+    month_index = d.month - 1 + months
+    year = d.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(d.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+                       31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+    return date(year, month, day)
+
+
+def _first_of_next_month(d: date) -> date:
+    if d.month == 12:
+        return date(d.year + 1, 1, 1)
+    return date(d.year, d.month + 1, 1)
+
+
+def compute_start_date(period: str, custom_date: str = "") -> str:
+    """Return the cover letter availability date as DD.MM.YYYY.
+
+    `period` is "immediate", "2_weeks", "1_month".."6_months", or "custom"
+    (with `custom_date` as an ISO YYYY-MM-DD string). Unknown/empty periods
+    and an unset/invalid custom_date fall back to "immediate".
+    """
+    if period == "custom" and custom_date:
+        try:
+            return datetime.strptime(custom_date, "%Y-%m-%d").strftime("%d.%m.%Y")
+        except ValueError:
+            pass
+
+    today = date.today()
+    if period == "2_weeks":
+        base = today + timedelta(days=14)
+    elif period and period.endswith("_months") or period == "1_month":
+        base = _add_months(today, int(period.split("_")[0]))
+    else:
+        base = today
+
+    return _first_of_next_month(base).strftime("%d.%m.%Y")
 
 RESUME_SYSTEM = """You are a resume tailoring assistant with strict rules.
 
@@ -140,6 +185,7 @@ async def stream_generation(
     company_address: str,
     language: str,
     writer_model: str,
+    start_date: str,
     contact_email: str = "",
     contact_phone: str = "",
     cover_letter_notes: str = "",
@@ -166,9 +212,6 @@ async def stream_generation(
     except Exception:
         resume_md = master_md
     yield f"data: {{\"type\": \"resume_done\", \"markdown\": {json.dumps(resume_md)}}}\n\n"
-
-    today = date.today()
-    start_date = f"01.01.{today.year + 1}" if today.month == 12 else f"01.{today.month + 1:02d}.{today.year}"
 
     TIER_LABELS = {1: "Core", 2: "Proficient", 3: "Familiar", 4: "Exposure"}
     skills_block = ""

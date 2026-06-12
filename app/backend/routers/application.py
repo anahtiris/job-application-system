@@ -100,10 +100,16 @@ async def analyze_jd_endpoint(body: AnalyzeRequest, session: Session = Depends(g
         parts.append(f"Rejected: {', '.join(rejected_titles)}")
     past_decisions = ". ".join(parts) if parts else ""
 
-    return await analyzer.analyze_jd(
+    result = await analyzer.analyze_jd(
         app.job_description, skills_inventory, _model("research"),
         career_goal=goal_text, past_decisions=past_decisions,
     )
+
+    app.fit_analysis_json = _json.dumps(result)
+    session.add(app)
+    session.commit()
+
+    return result
 
 
 # ── Research ──────────────────────────────────────────────────────────────────
@@ -148,6 +154,11 @@ async def generate(body: GenerateRequest, session: Session = Depends(get_session
         except Exception:
             pass
 
+    start_date = generator.compute_start_date(
+        get_setting("notice.period", "immediate"),
+        get_setting("notice.custom_date", ""),
+    )
+
     async def event_stream() -> AsyncIterator[str]:
         resume_md = ""
         cl_md = ""
@@ -159,6 +170,7 @@ async def generate(body: GenerateRequest, session: Session = Depends(get_session
             company_address=body.company_address,
             language=body.language,
             writer_model=_model("writer"),
+            start_date=start_date,
             contact_email=contact["email"],
             contact_phone=contact["phone"],
             cover_letter_notes=cl_notes,

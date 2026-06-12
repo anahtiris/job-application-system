@@ -3,10 +3,11 @@ import os
 import tomllib
 from pathlib import Path
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from db import get_setting, set_setting
+from services.generator import NOTICE_PERIODS
 
 router = APIRouter()
 
@@ -97,6 +98,28 @@ async def update_general_prep(request: Request):
     data = await request.json()
     GENERAL_PREP.parent.mkdir(parents=True, exist_ok=True)
     GENERAL_PREP.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return {"saved": True}
+
+
+@router.get("/notice-period")
+def get_notice_period():
+    return {
+        "period": get_setting("notice.period", "immediate"),
+        "custom_date": get_setting("notice.custom_date", ""),
+    }
+
+
+class NoticePeriodUpdate(BaseModel):
+    period: str
+    custom_date: str = ""
+
+
+@router.put("/notice-period")
+def update_notice_period(body: NoticePeriodUpdate):
+    if body.period not in NOTICE_PERIODS:
+        raise HTTPException(422, f"Invalid period: {body.period}")
+    set_setting("notice.period", body.period)
+    set_setting("notice.custom_date", body.custom_date.strip())
     return {"saved": True}
 
 

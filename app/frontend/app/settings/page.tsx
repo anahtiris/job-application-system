@@ -48,6 +48,23 @@ const ACCENT_COLORS = [
 
 const DEFAULT_ACCENT_COLOR = ACCENT_COLORS[0].value;
 
+type NoticePeriod =
+  | "immediate" | "2_weeks"
+  | "1_month" | "2_months" | "3_months" | "4_months" | "5_months" | "6_months"
+  | "custom";
+
+const NOTICE_PERIOD_OPTIONS: { value: NoticePeriod; label: string }[] = [
+  { value: "immediate", label: "Immediately" },
+  { value: "2_weeks", label: "2 weeks notice" },
+  { value: "1_month", label: "1 month notice" },
+  { value: "2_months", label: "2 months notice" },
+  { value: "3_months", label: "3 months notice" },
+  { value: "4_months", label: "4 months notice" },
+  { value: "5_months", label: "5 months notice" },
+  { value: "6_months", label: "6 months notice" },
+  { value: "custom", label: "Custom date" },
+];
+
 function applyAccentColor(hex: string) {
   localStorage.setItem("accentColor", hex);
   document.documentElement.style.setProperty("--custom", hex);
@@ -108,6 +125,10 @@ export default function SettingsPage() {
   const [fontSize, setFontSize] = useState<FontSize>("normal");
   const [accentColor, setAccentColor] = useState<string>(DEFAULT_ACCENT_COLOR);
 
+  const [noticePeriod, setNoticePeriod] = useState<NoticePeriod>("immediate");
+  const [noticeCustomDate, setNoticeCustomDate] = useState("");
+  const [savingNotice, setSavingNotice] = useState(false);
+
   const [persona, setPersona]           = useState("");
   const [savingPersona, setSavingPersona] = useState(false);
 
@@ -133,6 +154,10 @@ export default function SettingsPage() {
     api.get("/api/settings/goal").then((r) => { if (r?.content) setGoal(r.content); }).catch(() => {});
     api.get("/api/settings/models").then((r) => { if (r) setModels(r); }).catch(() => {});
     api.get("/api/settings/api-keys").then((r) => { if (r) setApiKeys(r); }).catch(() => {});
+    api.get("/api/settings/notice-period").then((r) => {
+      if (r?.period) setNoticePeriod(r.period as NoticePeriod);
+      if (r?.custom_date) setNoticeCustomDate(r.custom_date);
+    }).catch(() => {});
   }, []);
 
   const savePersona = async () => {
@@ -147,6 +172,17 @@ export default function SettingsPage() {
     await api.put("/api/settings/goal", { content: goal });
     toast.success("Career goal saved.");
     setSavingGoal(false);
+  };
+
+  const saveNoticePeriod = async () => {
+    setSavingNotice(true);
+    const res = await api.put("/api/settings/notice-period", {
+      period: noticePeriod,
+      custom_date: noticeCustomDate,
+    });
+    if (res?.saved) toast.success("Notice period saved.");
+    else toast.error("Failed to save notice period.");
+    setSavingNotice(false);
   };
 
   const saveModels = async () => {
@@ -265,6 +301,39 @@ export default function SettingsPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </SectionCard>
+
+          {/* Availability */}
+          <SectionCard title="Availability">
+            <div className="flex flex-col gap-3.5">
+              <InfoText>
+                Used to compute the availability date in generated cover letters.
+              </InfoText>
+              <div>
+                <Label>Notice period</Label>
+                <select
+                  value={noticePeriod}
+                  onChange={(e) => setNoticePeriod(e.target.value as NoticePeriod)}
+                  className={inputCls}
+                >
+                  {NOTICE_PERIOD_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              {noticePeriod === "custom" && (
+                <div>
+                  <Label>Custom availability date</Label>
+                  <input
+                    type="date"
+                    value={noticeCustomDate}
+                    onChange={(e) => setNoticeCustomDate(e.target.value)}
+                    className={inputCls}
+                  />
+                </div>
+              )}
+              <SaveBtn onClick={saveNoticePeriod} loading={savingNotice} label="Save Notice Period" />
             </div>
           </SectionCard>
 
