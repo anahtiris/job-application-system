@@ -3,11 +3,14 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface Rewrite { original: string; rewrite: string; reviewer?: string; }
+interface PriorityIssue { issue: string; severity: "high" | "medium" | "low"; sources: string[]; }
 interface Consolidated {
   average_scores: Record<string, number | null>;
   critical_criteria: string[];
   all_issues: string[];
   all_rewrites: Rewrite[];
+  priority_issues?: PriorityIssue[];
+  resolved_rewrites?: Rewrite[];
 }
 interface ReviewResult {
   reviewers: string[];
@@ -164,11 +167,11 @@ export function ReviewPanel({
 }) {
   const noChangePatterns = /^(this should remain|no change|keep as is|looks good|unchanged|same as|n\/a)/i;
 
-  const cvItems: QueueItem[] = (result.cv_consolidated?.all_rewrites ?? [])
+  const cvItems: QueueItem[] = (result.cv_consolidated?.resolved_rewrites ?? result.cv_consolidated?.all_rewrites ?? [])
     .filter(rw => rw.original && resumeDraft.includes(rw.original) && rw.rewrite && !noChangePatterns.test(rw.rewrite.trim()))
     .map((rw, i) => ({ id: `cv-${i}`, doc: "cv" as const, original: rw.original, rewrite: rw.rewrite }))
     .sort((a, b) => resumeDraft.indexOf(a.original) - resumeDraft.indexOf(b.original));
-  const clItems: QueueItem[] = (result.cl_consolidated?.all_rewrites ?? [])
+  const clItems: QueueItem[] = (result.cl_consolidated?.resolved_rewrites ?? result.cl_consolidated?.all_rewrites ?? [])
     .filter(rw => rw.original && clDraft.includes(rw.original) && rw.rewrite && !noChangePatterns.test(rw.rewrite.trim()))
     .map((rw, i) => ({ id: `cl-${i}`, doc: "cl" as const, original: rw.original, rewrite: rw.rewrite }))
     .sort((a, b) => clDraft.indexOf(a.original) - clDraft.indexOf(b.original));
@@ -228,8 +231,20 @@ export function ReviewPanel({
     onApply(newResume, newCl);
   };
 
-  const cvIssues = result.cv_consolidated?.all_issues ?? [];
-  const clIssues = result.cl_consolidated?.all_issues ?? [];
+  type DisplayIssue = { issue: string; severity?: PriorityIssue["severity"]; sources?: string[] };
+  const toDisplayIssues = (consolidated?: Consolidated): DisplayIssue[] =>
+    consolidated?.priority_issues?.length
+      ? consolidated.priority_issues
+      : (consolidated?.all_issues ?? []).map(issue => ({ issue }));
+
+  const cvIssues = toDisplayIssues(result.cv_consolidated);
+  const clIssues = toDisplayIssues(result.cl_consolidated);
+
+  const severityStyles: Record<NonNullable<PriorityIssue["severity"]>, string> = {
+    high: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    medium: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    low: "bg-muted text-muted-foreground",
+  };
 
   if (allItems.length === 0) {
     return (
@@ -319,8 +334,23 @@ export function ReviewPanel({
               <div>
                 <p className="text-xs font-semibold mb-1.5">Resume</p>
                 <ul className="space-y-1">
-                  {cvIssues.map((s, i) => (
-                    <li key={i} className="flex gap-2 text-muted-foreground"><span className="shrink-0">•</span><span>{s}</span></li>
+                  {cvIssues.map((item, i) => (
+                    <li key={i} className="flex gap-2 text-muted-foreground">
+                      <span className="shrink-0">•</span>
+                      <span className="flex-1">
+                        {item.issue}
+                        {item.sources && item.sources.length > 0 && (
+                          <span className="ml-1.5 text-[10px] uppercase tracking-wide opacity-60">
+                            ({item.sources.join(", ")})
+                          </span>
+                        )}
+                      </span>
+                      {item.severity && (
+                        <span className={`shrink-0 h-fit text-[10px] px-1.5 py-0.5 rounded-full font-medium uppercase ${severityStyles[item.severity]}`}>
+                          {item.severity}
+                        </span>
+                      )}
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -329,8 +359,23 @@ export function ReviewPanel({
               <div>
                 <p className="text-xs font-semibold mb-1.5">Cover Letter</p>
                 <ul className="space-y-1">
-                  {clIssues.map((s, i) => (
-                    <li key={i} className="flex gap-2 text-muted-foreground"><span className="shrink-0">•</span><span>{s}</span></li>
+                  {clIssues.map((item, i) => (
+                    <li key={i} className="flex gap-2 text-muted-foreground">
+                      <span className="shrink-0">•</span>
+                      <span className="flex-1">
+                        {item.issue}
+                        {item.sources && item.sources.length > 0 && (
+                          <span className="ml-1.5 text-[10px] uppercase tracking-wide opacity-60">
+                            ({item.sources.join(", ")})
+                          </span>
+                        )}
+                      </span>
+                      {item.severity && (
+                        <span className={`shrink-0 h-fit text-[10px] px-1.5 py-0.5 rounded-full font-medium uppercase ${severityStyles[item.severity]}`}>
+                          {item.severity}
+                        </span>
+                      )}
+                    </li>
                   ))}
                 </ul>
               </div>

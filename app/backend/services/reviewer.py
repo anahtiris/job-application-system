@@ -114,6 +114,36 @@ OUTPUT FORMAT (JSON only, no markdown fences):
 }}"""
 
 
+SYNTHESIS_SYSTEM = """You are a synthesis agent reconciling feedback from multiple reviewers
+who each independently scored the same CV and cover letter.
+
+You receive each reviewer's top issues and suggested rewrites for both documents.
+Your job:
+
+1. Merge near-duplicate issues (different phrasings of the same point) into ONE entry.
+   Issues raised by multiple reviewers are more important — rank those higher and
+   mark them "high" severity. Order "priority_issues" most-important first.
+
+2. For rewrites, group candidates that target the same (or overlapping) "original" text.
+   When reviewers disagree, pick the single best rewrite, or merge the best ideas into
+   one improved rewrite. Output ONE rewrite per distinct "original".
+
+HARD RULE: every "original" you output must be copied CHARACTER-FOR-CHARACTER from one
+of the input candidates' "original" fields. Never invent or alter "original" text.
+
+OUTPUT FORMAT (JSON only, no markdown fences):
+{
+  "cv": {
+    "priority_issues": [{"issue": "...", "severity": "high|medium|low", "sources": ["FAANG Recruiter", "..."]}],
+    "rewrites": [{"original": "verbatim from a candidate", "rewrite": "resolved replacement", "sources": ["FAANG Recruiter", "..."]}]
+  },
+  "cover_letter": {
+    "priority_issues": [{"issue": "...", "severity": "high|medium|low", "sources": ["FAANG Recruiter", "..."]}],
+    "rewrites": [{"original": "verbatim from a candidate", "rewrite": "resolved replacement", "sources": ["FAANG Recruiter", "..."]}]
+  }
+}"""
+
+
 def _extract_json(raw: str) -> dict:
     """Parse JSON from LLM output, stripping markdown fences if present."""
     text = raw.strip()
@@ -181,6 +211,46 @@ def _consolidate(reviews: list[dict], doc_key: str, criteria: list[str]) -> dict
     }
 
 
+def _validated_rewrites(synth_rewrites: list[dict], candidates: list[dict]) -> list[dict]:
+    """Keep only synthesized rewrites whose 'original' matches a candidate verbatim."""
+    valid_originals = {c.get("original") for c in candidates if c.get("original")}
+    return [rw for rw in synth_rewrites if rw.get("original") in valid_originals and rw.get("rewrite")]
+
+
+async def _synthesize(reviews: list[dict], cv_consolidated: dict, cl_consolidated: dict, model: str) -> dict:
+    """Reconcile the independent persona reviews into prioritized issues + resolved rewrites."""
+    payload = {
+        "reviewers": [
+            {
+                "persona": r.get("persona", ""),
+                "cv": {
+                    "top_issues": r.get("cv", {}).get("top_issues", []),
+                    "rewrites": r.get("cv", {}).get("rewrites", []),
+                },
+                "cover_letter": {
+                    "top_issues": r.get("cover_letter", {}).get("top_issues", []),
+                    "rewrites": r.get("cover_letter", {}).get("rewrites", []),
+                },
+            }
+            for r in reviews
+        ],
+        "cv_scores": {
+            "average_scores": cv_consolidated["average_scores"],
+            "critical_criteria": cv_consolidated["critical_criteria"],
+        },
+        "cover_letter_scores": {
+            "average_scores": cl_consolidated["average_scores"],
+            "critical_criteria": cl_consolidated["critical_criteria"],
+        },
+    }
+    prompt = json.dumps(payload, indent=2)
+    try:
+        raw = await generate(model, prompt, system=SYNTHESIS_SYSTEM)
+        return _extract_json(raw)
+    except Exception:
+        return {}
+
+
 async def run_review(
     resume_md: str,
     cover_letter_md: str,
@@ -212,10 +282,25 @@ async def run_review(
     standard_reviews = list(results[1:])
     reviews = list(results)
 
+    cv_consolidated = _consolidate(reviews, "cv", CV_CRITERIA)
+    cl_consolidated = _consolidate(reviews, "cover_letter", CL_CRITERIA)
+
+    synthesis = await _synthesize(reviews, cv_consolidated, cl_consolidated, model)
+    if synthesis.get("cv"):
+        cv_consolidated["priority_issues"] = synthesis["cv"].get("priority_issues", [])
+        cv_consolidated["resolved_rewrites"] = _validated_rewrites(
+            synthesis["cv"].get("rewrites", []), cv_consolidated["all_rewrites"]
+        )
+    if synthesis.get("cover_letter"):
+        cl_consolidated["priority_issues"] = synthesis["cover_letter"].get("priority_issues", [])
+        cl_consolidated["resolved_rewrites"] = _validated_rewrites(
+            synthesis["cover_letter"].get("rewrites", []), cl_consolidated["all_rewrites"]
+        )
+
     return {
         "reviewers": [r["persona"] for r in reviews],
         "persona_review": user_review,
         "standard_reviews": standard_reviews,
-        "cv_consolidated": _consolidate(reviews, "cv", CV_CRITERIA),
-        "cl_consolidated": _consolidate(reviews, "cover_letter", CL_CRITERIA),
+        "cv_consolidated": cv_consolidated,
+        "cl_consolidated": cl_consolidated,
     }
