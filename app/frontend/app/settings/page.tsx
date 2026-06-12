@@ -35,6 +35,24 @@ function applyTheme(t: Theme) {
   }
 }
 
+const ACCENT_COLORS = [
+  { name: "Amber", value: "#BA7517" },
+  { name: "Red",   value: "#C0392B" },
+  { name: "Rose",  value: "#C1467E" },
+  { name: "Violet", value: "#7C5CBF" },
+  { name: "Blue",  value: "#3B6EA8" },
+  { name: "Teal",  value: "#2F8F82" },
+  { name: "Green", value: "#4F8B3A" },
+  { name: "Slate", value: "#5B6472" },
+] as const;
+
+const DEFAULT_ACCENT_COLOR = ACCENT_COLORS[0].value;
+
+function applyAccentColor(hex: string) {
+  localStorage.setItem("accentColor", hex);
+  document.documentElement.style.setProperty("--custom", hex);
+}
+
 // ── Shared UI ─────────────────────────────────────────────────────────────────
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -88,6 +106,7 @@ const inputCls = "w-full text-[13px] py-[7px] px-2.5 rounded-[6px] border-[0.5px
 export default function SettingsPage() {
   const [theme, setTheme]       = useState<Theme>("system");
   const [fontSize, setFontSize] = useState<FontSize>("normal");
+  const [accentColor, setAccentColor] = useState<string>(DEFAULT_ACCENT_COLOR);
 
   const [persona, setPersona]           = useState("");
   const [savingPersona, setSavingPersona] = useState(false);
@@ -105,6 +124,8 @@ export default function SettingsPage() {
     setTheme(stored ?? "system");
     const storedFs = localStorage.getItem("fontSize") as FontSize | null;
     setFontSize(storedFs ?? "normal");
+    const storedAccent = localStorage.getItem("accentColor");
+    setAccentColor(storedAccent ?? DEFAULT_ACCENT_COLOR);
   }, []);
 
   useEffect(() => {
@@ -169,6 +190,28 @@ export default function SettingsPage() {
                   options={(["normal", "large", "xl"] as FontSize[]).map((s) => ({ value: s, label: FONT_LABELS[s] }))}
                   onChange={(s) => { setFontSize(s); applyFontSize(s); }}
                 />
+              </div>
+              <div>
+                <Label>Accent color</Label>
+                <div className="flex gap-2.5">
+                  {ACCENT_COLORS.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      aria-label={c.name}
+                      title={c.name}
+                      onClick={() => { setAccentColor(c.value); applyAccentColor(c.value); }}
+                      className="w-6 h-6 rounded-full cursor-pointer border-none p-0"
+                      style={{
+                        backgroundColor: c.value,
+                        boxShadow:
+                          accentColor === c.value
+                            ? `0 0 0 2px var(--color-background-primary), 0 0 0 4px ${c.value}`
+                            : "none",
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </SectionCard>
