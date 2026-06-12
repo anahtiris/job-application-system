@@ -28,7 +28,7 @@ function InterviewCard({
       className={`block w-full text-left py-[9px] px-2.5 rounded-[7px] border-[0.5px] cursor-pointer mb-1.5 font-shell transition-colors ${
         active
           ? "border-custom bg-custom-l"
-          : "border-border-tertiary bg-background-primary hover:border-[#FAC775]"
+          : "border-border-tertiary bg-background-primary hover:border-custom-hover"
       } ${past && !active ? "opacity-60" : ""}`}
     >
       <div className={`text-[12px] font-medium ${active ? "text-custom-d" : "text-text-primary"}`}>
