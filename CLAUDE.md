@@ -39,7 +39,7 @@ pdfinfo <file.pdf> | grep Pages
 A local Next.js + FastAPI app that replaces the manual Claude Code workflow with a structured UI. It enforces all guardrails in code so the LLM cannot exaggerate.
 
 - **Backend**: `app/backend/` — FastAPI + SQLite. Routers: `/api/resume`, `/api/application`, `/api/tracker`, `/api/settings`, `/api/leads`, `/api/trash`. Services: `generator.py` (locked tailoring + streaming), `reviewer.py` (persona + 2 random reviewers), `researcher.py` (company scraper + tone classifier), `analyzer.py` (JD gap analysis), `interview.py` (prep + skills debrief), `pdf.py` (LibreOffice + 1-page check).
-- **Frontend**: `app/frontend/` — Next.js 14. Pages: dashboard (`/`), setup (`/setup`), skills inventory (`/skills`), trash (`/trash`), leads list (`/leads`), lead detail (`/leads/[id]`), 5-step wizard (`/apply/new`), detail (`/apply/[id]`), settings (`/settings`).
+- **Frontend**: `app/frontend/` — Next.js 16. Pages: dashboard (`/`), setup (`/setup`), skills inventory (`/skills`), trash (`/trash`), leads list (`/leads`), lead detail (`/leads/[id]`), 5-step wizard (`/apply/new`), detail (`/apply/[id]`), settings (`/settings`).
 - **Ollama models** (configured in `app/backend/config.toml`): all four roles (parser, writer, reviewer, research) are set there. Restart the backend after editing `config.toml` — it is read once at startup.
 - **Persona**: `data/persona.md` (gitignored) — the obligated personal reviewer. Edit via `/settings`.
 - **PDF gate**: the "Finalize & Generate PDFs" button is gated until review completes. The backend enforces a 1-page check and returns HTTP 422 if the CV overflows.

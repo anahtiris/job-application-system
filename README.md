@@ -141,7 +141,7 @@ app/
       providers/    ollama, anthropic, openai, perplexity, gemini
     office/         unpack.py / pack.py — DOCX ZIP editing helpers
     config.toml     Default model slugs and file paths
-  frontend/         Next.js 14
+  frontend/         Next.js 16
     app/            Pages: /, /setup, /skills, /trash, /leads, /leads/[id],
                            /apply/new, /apply/[id], /settings
     components/     ReviewPanel, Nav, shared UI
