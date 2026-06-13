@@ -43,6 +43,9 @@ app/backend/app.db
 app/backend/*.db
 /app.db
 data/*.db
+# DB backups/snapshots (e.g. app.db.bak-20260611235749) — contain PII
+*.db.bak*
+app/backend/*.bak*
 
 # Temporary unpacked DOCX folders (contain personal template content)
 unpacked_cv/
