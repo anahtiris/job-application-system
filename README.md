@@ -6,15 +6,31 @@ An AI-assisted pipeline that captures job leads from any job board, analyzes fit
 
 ## Screenshots
 
-**Dashboard — application tracker with status filters**
+**Dashboard — kanban tracker (Todo / Applied / Interview) with capture & interview counts**
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
-**Job Analysis — STRONG / HONEST / GAP breakdown per JD skill**
+**Captured Jobs — triage leads with fit verdicts (Strong / Maybe / Skip) before approving**
 
-![Job Analysis](docs/screenshots/job-analysis.png)
+![Captured Jobs](docs/screenshots/captured.png)
 
-**Settings — model assignment per role + API key status**
+**Applications — full list with search, status filter, and CSV export**
+
+![Applications](docs/screenshots/application-list.png)
+
+**Finalize — side-by-side review of the tailored resume and cover letter before export**
+
+![Finalize](docs/screenshots/finalize.png)
+
+**Interview Prep — general prep, technical questions, and per-skill debrief**
+
+![Interview Prep](docs/screenshots/interview.png)
+
+**Skills Inventory — tiered skills with evidence for honest, tier-appropriate language**
+
+![Skills Inventory](docs/screenshots/skills.png)
+
+**Settings — theme, font size, accent color, and per-role model assignments**
 
 ![Settings](docs/screenshots/settings.png)
 
@@ -30,6 +46,16 @@ An AI-assisted pipeline that captures job leads from any job board, analyzes fit
 
 ## Setup
 
+### Quick setup (macOS/Linux)
+
+```bash
+./setup.sh
+```
+
+This creates the Python virtualenv, installs backend and frontend dependencies, and seeds `.env` and `data/persona.md` / `data/skills.json` / `data/career_goal.md` from their `.example` counterparts (skipped if those files already exist).
+
+### Manual setup
+
 ```bash
 # Python dependencies
 python -m venv .venv
@@ -44,6 +70,14 @@ Copy `.env.example` to `.env` and fill in any API keys you want to use:
 
 ```bash
 cp .env.example .env
+```
+
+Seed the personal data files from their examples:
+
+```bash
+cp data/persona.example.md data/persona.md
+cp data/skills.example.json data/skills.json
+cp data/career_goal.example.md data/career_goal.md
 ```
 
 ## Running
@@ -67,6 +101,7 @@ Open [http://localhost:3000](http://localhost:3000).
 3. Go to **Skills** → add your skills with tier ratings (1=Core, 2=Proficient, 3=Familiar, 4=Exposure) and evidence snippets.
 4. Drop your CV and cover letter DOCX templates into `templates/resume/` and `templates/cover-letter/`.
 5. Go to **Setup** → upload your master resume (EN and/or DE). Your name is auto-extracted for PDF file naming.
+6. Go to **Settings** → set your notice period (Immediately, 2 weeks, 1–6 months, or a custom date) — used to compute the availability date in generated cover letters.
 
 ## Browser extension
 
@@ -92,18 +127,22 @@ Before committing to a full application, triage jobs in **Leads**:
 
 Output lands in `applications/[Company]/`.
 
+## Trash
+
+Deleting an application or a captured job moves it to **Trash** (sidebar icon, under Skills) instead of removing it immediately. From there you can **Restore** it back to its list, or **Delete forever** for a permanent removal.
+
 ## Structure
 
 ```
 app/
   backend/          FastAPI + SQLite
-    routers/        API routes (application, tracker, resume, settings, leads)
+    routers/        API routes (application, tracker, resume, settings, leads, trash)
     services/       analyzer, generator, reviewer, researcher, interview, pdf
       providers/    ollama, anthropic, openai, perplexity, gemini
     office/         unpack.py / pack.py — DOCX ZIP editing helpers
     config.toml     Default model slugs and file paths
   frontend/         Next.js 14
-    app/            Pages: /, /setup, /skills, /leads, /leads/[id],
+    app/            Pages: /, /setup, /skills, /trash, /leads, /leads/[id],
                            /apply/new, /apply/[id], /settings
     components/     ReviewPanel, Nav, shared UI
 browser-extension/  Chrome Manifest V3 — one-click job capture
@@ -118,4 +157,5 @@ resume_master_de.md Canonical DE resume
 
 - The CV **must be exactly 1 page**. The backend enforces this with a `pdfinfo` check and returns HTTP 422 if it overflows.
 - Model assignments are stored in the database and editable from **Settings** — no restart required.
+- Cover letter availability dates are never "ab sofort" — they're computed from your **Settings → Availability** notice period (rounded up to the 1st of a month) or a custom date you choose.
 - `data/` and `applications/` are gitignored. See `data/persona.example.md` and `data/skills.example.json` for the expected format.
