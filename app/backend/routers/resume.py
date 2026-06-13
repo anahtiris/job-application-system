@@ -6,9 +6,10 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from config import CONFIG, Paths
+from config import CONFIG, Paths, model
 from db import get_setting, set_setting
 from services.parser import parse_resume
+from services import skill_extractor
 
 router = APIRouter()
 
@@ -91,16 +92,49 @@ class SkillsRequest(BaseModel):
     skills: dict
 
 
+def _read_skills_dict() -> dict:
+    if not SKILLS.exists():
+        return {}
+    try:
+        return json.loads(SKILLS.read_text(encoding="utf-8")).get("skills", {})
+    except Exception:
+        return {}
+
+
+def _write_skills_dict(skills: dict) -> None:
+    SKILLS.parent.mkdir(parents=True, exist_ok=True)
+    data = {"last_updated": date.today().isoformat(), "skills": skills}
+    SKILLS.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
 @router.get("/skills")
 def get_skills():
-    if not SKILLS.exists():
-        return {"skills": {}}
-    return json.loads(SKILLS.read_text(encoding="utf-8"))
+    return {"skills": _read_skills_dict()}
 
 
 @router.put("/skills")
 def save_skills(body: SkillsRequest):
-    SKILLS.parent.mkdir(parents=True, exist_ok=True)
-    data = {"last_updated": date.today().isoformat(), "skills": body.skills}
-    SKILLS.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    _write_skills_dict(body.skills)
     return {"saved": True}
+
+
+@router.post("/skills/extract")
+async def extract_skills_endpoint():
+    if MASTER_EN.exists():
+        master_md = MASTER_EN.read_text(encoding="utf-8")
+    elif MASTER_DE.exists():
+        master_md = MASTER_DE.read_text(encoding="utf-8")
+    else:
+        raise HTTPException(404, "Upload a résumé first")
+    existing = _read_skills_dict()
+    extracted = await skill_extractor.extract_skills(master_md, existing, model("research"))
+    merged = skill_extractor.merge_skills(existing, extracted)
+    _write_skills_dict(merged)
+    return {"skills": merged}
+
+
+@router.post("/skills/merge")
+def merge_skills_endpoint(body: SkillsRequest):
+    merged = skill_extractor.merge_skills(_read_skills_dict(), body.skills)
+    _write_skills_dict(merged)
+    return {"skills": merged}
