@@ -3,8 +3,16 @@ import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { SKILLS_PROMPT } from "@/lib/prompts";
 
-interface Skill { name: string; tier: number; evidence: string; }
+interface Skill { name: string; tier: number; evidence: string; needsReview?: boolean; }
+
+function mapSkills(raw: Record<string, unknown>): Skill[] {
+  return Object.entries(raw).map(([name, s]) => {
+    const v = s as { tier: number; evidence?: string; needs_review?: boolean };
+    return { name, tier: v.tier, evidence: v.evidence ?? "", needsReview: v.needs_review === true };
+  });
+}
 
 const TIERS = [
   { value: 1, label: "Core",       cls: "bg-badge-interview-bg text-badge-interview-fg", outline: "outline-badge-interview-fg" },
@@ -59,7 +67,14 @@ function SkillRow({
   if (!editing) {
     return (
       <div className="grid grid-cols-[1fr_110px_1fr_88px] py-2 px-4 border-b-[0.5px] border-border-tertiary items-center gap-2.5 skill-row">
-        <span className="text-[13px] font-medium font-shell">{skill.name}</span>
+        <span className="text-[13px] font-medium font-shell flex items-center gap-1.5">
+          {skill.name}
+          {skill.needsReview && (
+            <span className="text-[9px] font-medium py-px px-[6px] rounded-full bg-custom-l text-custom-d font-shell">
+              review
+            </span>
+          )}
+        </span>
         <span className={`inline-flex items-center text-[10px] font-medium py-0.5 px-[9px] rounded-full font-shell w-fit ${tc.cls}`}>
           {tc.label}
         </span>
@@ -122,15 +137,20 @@ export default function SkillsPage() {
 
   useEffect(() => {
     api.get("/api/resume/skills").then((data) => {
-      const raw = data?.skills ?? {};
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setSkills(Object.entries(raw).map(([name, s]: [string, any]) => ({ name, tier: s.tier, evidence: s.evidence ?? "" })));
+      setSkills(mapSkills(data?.skills ?? {}));
       setLoading(false);
     });
   }, []);
 
   const persist = async (updated: Skill[]) => {
-    const skillsObj = Object.fromEntries(updated.map((s) => [s.name, { tier: s.tier, evidence: s.evidence }]));
+    const skillsObj = Object.fromEntries(
+      updated.map((s) => [
+        s.name,
+        s.needsReview
+          ? { tier: s.tier, evidence: s.evidence, needs_review: true }
+          : { tier: s.tier, evidence: s.evidence },
+      ])
+    );
     await api.put("/api/resume/skills", { skills: skillsObj });
     toast.success("Skills saved.");
   };
@@ -149,6 +169,25 @@ export default function SkillsPage() {
 
   const addSkill = () => setSkills((p) => [...p, { name: "", tier: 2, evidence: "" }]);
 
+  const [extracting, setExtracting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const reload = () =>
+    api.get("/api/resume/skills").then((data) => setSkills(mapSkills(data?.skills ?? {})));
+
+  const extractOllama = async () => {
+    setExtracting(true);
+    const res = await api.post("/api/resume/skills/extract", {}).catch((err) => { toast.error(err.message); return null; });
+    setExtracting(false);
+    if (res?.skills) { await reload(); toast.success("Skills extracted — review the flagged rows."); }
+  };
+
+  const copyClaudePrompt = async () => {
+    await navigator.clipboard.writeText(SKILLS_PROMPT);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Topbar */}
@@ -157,7 +196,15 @@ export default function SkillsPage() {
         <span className="text-[12px] font-medium font-mono bg-background-secondary text-text-tertiary py-0.5 px-2 rounded-full">
           {skills.length}
         </span>
-        <button onClick={addSkill} className={`${btnCls(true)} ml-auto`}>+ Add Skill</button>
+        <div className="ml-auto flex items-center gap-2">
+          <button onClick={copyClaudePrompt} className={btnCls(false)}>
+            {copied ? "Copied" : "Copy prompt for Claude"}
+          </button>
+          <button onClick={extractOllama} disabled={extracting} className={btnCls(false, extracting)}>
+            {extracting ? "Extracting…" : "Extract with Ollama"}
+          </button>
+          <button onClick={addSkill} className={btnCls(true)}>+ Add Skill</button>
+        </div>
       </div>
 
       {/* Content */}
