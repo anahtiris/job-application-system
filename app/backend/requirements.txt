@@ -9,3 +9,6 @@ pypdf>=4.0.0
 lxml>=5.0.0
 aiofiles>=23.0.0
 python-dotenv>=1.0.0
+
+# Dev/test
+pytest>=8.0.0
