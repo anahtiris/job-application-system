@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 from uuid import uuid4
 
@@ -7,6 +7,11 @@ from sqlmodel import Field, Session, SQLModel, create_engine
 
 DATABASE_URL = "sqlite:///./app.db"
 engine = create_engine(DATABASE_URL)
+
+
+def now_utc() -> datetime:
+    """Timezone-aware UTC now (replaces the deprecated datetime.utcnow)."""
+    return datetime.now(timezone.utc)
 
 
 class Setting(SQLModel, table=True):
@@ -46,8 +51,8 @@ class JobLead(SQLModel, table=True):
     company_tone: Optional[str] = None
     company_research: Optional[str] = None
     application_id: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(default_factory=now_utc)
     deleted_at: Optional[datetime] = None
 
 
@@ -78,8 +83,8 @@ class Application(SQLModel, table=True):
     interview_date: Optional[str] = None
     interview_notes_json: Optional[str] = None
     fit_analysis_json: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(default_factory=now_utc)
     deleted_at: Optional[datetime] = None
 
 

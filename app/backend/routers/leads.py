@@ -1,6 +1,6 @@
 """CRUD + analysis endpoints for job leads."""
 import json
-from datetime import datetime
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -9,10 +9,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from db import Application, JobLead, get_session, get_setting
+from db import Application, JobLead, get_session, get_setting, now_utc
 from services import analyzer, llm, researcher
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 with open(Path(__file__).parent.parent / "config.toml", "rb") as f:
     _cfg = tomllib.load(f)
@@ -93,7 +94,7 @@ def update_lead(lead_id: str, body: UpdateLeadRequest, session: Session = Depend
         lead.job_title = body.job_title
     if body.language is not None:
         lead.language = body.language
-    lead.updated_at = datetime.utcnow()
+    lead.updated_at = now_utc()
     session.add(lead)
     session.commit()
     return lead
@@ -104,7 +105,7 @@ def delete_lead(lead_id: str, session: Session = Depends(get_session)):
     lead = session.get(JobLead, lead_id)
     if not lead:
         raise HTTPException(404, "Lead not found")
-    lead.deleted_at = datetime.utcnow()
+    lead.deleted_at = now_utc()
     session.add(lead)
     session.commit()
     return {"deleted": True}
@@ -117,7 +118,7 @@ async def analyze_lead(lead_id: str, session: Session = Depends(get_session)):
         raise HTTPException(404, "Lead not found")
 
     lead.status = "analyzing"
-    lead.updated_at = datetime.utcnow()
+    lead.updated_at = now_utc()
     session.add(lead)
     session.commit()
 
@@ -126,14 +127,14 @@ async def analyze_lead(lead_id: str, session: Session = Depends(get_session)):
         try:
             skills_inventory = json.loads(SKILLS.read_text(encoding="utf-8")).get("skills", {})
         except Exception:
-            pass
+            logger.warning("Failed to load skills inventory from %s", SKILLS, exc_info=True)
 
     goal_text = ""
     if CAREER_GOAL.exists():
         try:
             goal_text = CAREER_GOAL.read_text(encoding="utf-8").strip()
         except Exception:
-            pass
+            logger.warning("Failed to read career goal from %s", CAREER_GOAL, exc_info=True)
 
     recent = session.exec(
         select(JobLead)
@@ -174,7 +175,7 @@ async def analyze_lead(lead_id: str, session: Session = Depends(get_session)):
     lead.company_tone = research_result.get("tone", "direct")
     lead.company_research = research_result.get("tone_reasoning", "")
     lead.status = "analyzed"
-    lead.updated_at = datetime.utcnow()
+    lead.updated_at = now_utc()
     session.add(lead)
     session.commit()
     session.refresh(lead)
@@ -204,7 +205,7 @@ def approve_lead(lead_id: str, session: Session = Depends(get_session)):
 
     lead.application_id = app.id
     lead.status = "approved"
-    lead.updated_at = datetime.utcnow()
+    lead.updated_at = now_utc()
     session.add(lead)
     session.commit()
     return {"application_id": app.id}
@@ -278,7 +279,7 @@ Page text:
         lead.language = data.get("language", "en")
         lead.job_description = data.get("job_description", "")[:14000]
         lead.status = "new"
-        lead.updated_at = datetime.utcnow()
+        lead.updated_at = now_utc()
         session.add(lead)
         results.append(lead.id)
 
@@ -324,7 +325,7 @@ def save_processed_lead(lead_id: str, body: ProcessedLeadRequest, session: Sessi
     lead.fit_verdict = _verdict(score, is_poor)
     lead.fit_analysis_json = json.dumps(body.fit_analysis)
     lead.status = "analyzed"
-    lead.updated_at = datetime.utcnow()
+    lead.updated_at = now_utc()
     session.add(lead)
     session.commit()
     session.refresh(lead)
@@ -337,7 +338,7 @@ def reject_lead(lead_id: str, session: Session = Depends(get_session)):
     if not lead:
         raise HTTPException(404, "Lead not found")
     lead.status = "rejected"
-    lead.updated_at = datetime.utcnow()
+    lead.updated_at = now_utc()
     session.add(lead)
     session.commit()
     return {"status": "rejected"}

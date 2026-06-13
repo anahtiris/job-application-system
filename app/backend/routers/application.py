@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import AsyncIterator
 
@@ -12,6 +13,7 @@ from services import analyzer, generator, interview, researcher, reviewer
 from services.pdf import build_pdfs
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 with open(Path(__file__).parent.parent / "config.toml", "rb") as f:
     _cfg = tomllib.load(f)
@@ -50,7 +52,7 @@ def _extract_contact(template_path: Path) -> dict:
             elif re.search(r"[\+\d][\d\s\(\)\-\.]{6,}", text):
                 phone = re.search(r"[\+\d][\d\s\(\)\-\.]{6,}", text).group(0).strip()
     except Exception:
-        pass
+        logger.warning("Failed to extract contact details from %s", template_path, exc_info=True)
     return {"email": email, "phone": phone}
 
 
@@ -74,14 +76,14 @@ async def analyze_jd_endpoint(body: AnalyzeRequest, session: Session = Depends(g
         try:
             skills_inventory = _json.loads(SKILLS.read_text(encoding="utf-8")).get("skills", {})
         except Exception:
-            pass
+            logger.warning("Failed to load skills inventory from %s", SKILLS, exc_info=True)
 
     goal_text = ""
     if CAREER_GOAL.exists():
         try:
             goal_text = CAREER_GOAL.read_text(encoding="utf-8").strip()
         except Exception:
-            pass
+            logger.warning("Failed to read career goal from %s", CAREER_GOAL, exc_info=True)
 
     from db import JobLead
     from sqlmodel import select as _select
@@ -152,7 +154,7 @@ async def generate(body: GenerateRequest, session: Session = Depends(get_session
         try:
             skills_inventory = _json.loads(skills_path.read_text(encoding="utf-8")).get("skills", {})
         except Exception:
-            pass
+            logger.warning("Failed to load skills inventory from %s", skills_path, exc_info=True)
 
     start_date = generator.compute_start_date(
         get_setting("notice.period", "immediate"),
@@ -375,7 +377,7 @@ async def generate_interview_debrief(body: InterviewPrepRequest, session: Sessio
         try:
             skills_inventory = _json.loads(SKILLS.read_text(encoding="utf-8")).get("skills", {})
         except Exception:
-            pass
+            logger.warning("Failed to load skills inventory from %s", SKILLS, exc_info=True)
 
     md = await interview.generate_skills_debrief(
         resume_md=resume_md,

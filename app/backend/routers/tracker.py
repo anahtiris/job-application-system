@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from db import Application, get_session
+from db import Application, get_session, now_utc
 
 router = APIRouter()
 
@@ -180,7 +180,7 @@ def delete_application(app_id: str, session: Session = Depends(get_session)):
     app = session.get(Application, app_id)
     if not app:
         raise HTTPException(404, "Application not found")
-    app.deleted_at = datetime.utcnow()
+    app.deleted_at = now_utc()
     session.add(app)
     session.commit()
     return {"deleted": True}

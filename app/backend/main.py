@@ -1,4 +1,5 @@
 import tomllib
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -17,7 +18,14 @@ BASE_DIR = Path(__file__).parent.parent.parent  # repo root
 with open(Path(__file__).parent / "config.toml", "rb") as f:
     config = tomllib.load(f)
 
-app = FastAPI(title="Job Application System")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_db()
+    yield
+
+
+app = FastAPI(title="Job Application System", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,11 +56,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 pdf_dir = BASE_DIR / config["paths"]["applications_dir"]
 pdf_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/files", StaticFiles(directory=str(pdf_dir)), name="files")
-
-
-@app.on_event("startup")
-def on_startup():
-    create_db()
 
 
 @app.get("/api/health")
