@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { MarkdownEditor } from "@/components/MarkdownEditor";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { SKILLS_PROMPT } from "@/lib/prompts";
 
 function btnCls(primary = true, disabled = false): string {
   const border = primary ? "border-none" : "border-[0.5px] border-border-tertiary";
@@ -19,6 +20,25 @@ export default function SetupPage() {
   const [parseStatus, setParseStatus] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const extractOllama = async () => {
+    setExtracting(true);
+    const res = await api
+      .post("/api/resume/skills/extract", {})
+      .catch((err) => { toast.error(err.message); return null; });
+    setExtracting(false);
+    if (res?.skills) {
+      toast.success(`Extracted ${Object.keys(res.skills).length} skills — review on the Skills page.`);
+    }
+  };
+
+  const copyClaudePrompt = async () => {
+    await navigator.clipboard.writeText(SKILLS_PROMPT);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   const load = async (lang: "en" | "de") => {
     const res = await api.get(`/api/resume/master?language=${lang}`).catch(() => null);
@@ -93,7 +113,22 @@ export default function SetupPage() {
       <div className="flex-1 overflow-auto py-6 px-5">
         <div className="max-w-[680px] mx-auto">
           {markdown ? (
-            <MarkdownEditor value={markdown} onChange={setMarkdown} />
+            <>
+              <MarkdownEditor value={markdown} onChange={setMarkdown} />
+              <div className="mt-5 py-3.5 px-4 border-[0.5px] border-border-tertiary rounded-card bg-background-secondary flex items-center gap-3 flex-wrap">
+                <span className="text-[12px] text-text-secondary font-shell">
+                  Generate your skills inventory from this resume:
+                </span>
+                <div className="ml-auto flex items-center gap-2">
+                  <button onClick={copyClaudePrompt} className={btnCls(false)}>
+                    {copied ? "Copied" : "Copy prompt for Claude"}
+                  </button>
+                  <button onClick={extractOllama} disabled={extracting} className={btnCls(true, extracting)}>
+                    {extracting ? "Extracting…" : "Extract with Ollama"}
+                  </button>
+                </div>
+              </div>
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center py-[60px] px-5 gap-3 border-[0.5px] border-border-tertiary rounded-card bg-background-secondary">
               <span className="text-[13px] text-text-tertiary font-shell">
