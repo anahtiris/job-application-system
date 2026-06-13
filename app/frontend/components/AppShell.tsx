@@ -3,11 +3,24 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Briefcase, FileUser, Brain, Settings, Trash2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { api, ApiError } from "@/lib/api";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [hasInterview, setHasInterview] = useState(false);
+
+  // Surface any uncaught API error as a toast instead of a silent rejection.
+  useEffect(() => {
+    const onRejection = (e: PromiseRejectionEvent) => {
+      if (e.reason instanceof ApiError) {
+        toast.error(e.reason.detail || `Request failed (HTTP ${e.reason.status})`);
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => window.removeEventListener("unhandledrejection", onRejection);
+  }, []);
 
   useEffect(() => {
     api
