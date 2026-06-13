@@ -43,9 +43,8 @@ _SOFFICE_CANDIDATES = [
 
 
 def _find_soffice() -> str:
-    import shutil as _shutil
     for candidate in _SOFFICE_CANDIDATES:
-        if _shutil.which(candidate) or Path(candidate).exists():
+        if shutil.which(candidate) or Path(candidate).exists():
             return candidate
     raise RuntimeError(
         "LibreOffice not found. Install it with: brew install --cask libreoffice\n"

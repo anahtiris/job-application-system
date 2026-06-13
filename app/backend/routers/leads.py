@@ -1,30 +1,20 @@
 """CRUD + analysis endpoints for job leads."""
+import asyncio
 import json
 import logging
-from pathlib import Path
+import re
 from typing import Optional
 
-import tomllib
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from db import Application, JobLead, get_session, get_setting, now_utc
+from config import load_career_goal, load_skills_inventory, model
+from db import Application, JobLead, get_session, now_utc
 from services import analyzer, llm, researcher
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-with open(Path(__file__).parent.parent / "config.toml", "rb") as f:
-    _cfg = tomllib.load(f)
-
-BASE = Path(__file__).parent.parent.parent.parent
-SKILLS = BASE / _cfg["paths"]["skills"]
-CAREER_GOAL = BASE / _cfg["paths"]["career_goal"]
-
-
-def _model(role: str) -> str:
-    return get_setting(f"model.{role}", _cfg["models"].get(role, ""))
 
 
 def _verdict(score: int, is_poor_match: bool) -> str:
@@ -122,19 +112,8 @@ async def analyze_lead(lead_id: str, session: Session = Depends(get_session)):
     session.add(lead)
     session.commit()
 
-    skills_inventory: dict = {}
-    if SKILLS.exists():
-        try:
-            skills_inventory = json.loads(SKILLS.read_text(encoding="utf-8")).get("skills", {})
-        except Exception:
-            logger.warning("Failed to load skills inventory from %s", SKILLS, exc_info=True)
-
-    goal_text = ""
-    if CAREER_GOAL.exists():
-        try:
-            goal_text = CAREER_GOAL.read_text(encoding="utf-8").strip()
-        except Exception:
-            logger.warning("Failed to read career goal from %s", CAREER_GOAL, exc_info=True)
+    skills_inventory = load_skills_inventory()
+    goal_text = load_career_goal()
 
     recent = session.exec(
         select(JobLead)
@@ -153,13 +132,12 @@ async def analyze_lead(lead_id: str, session: Session = Depends(get_session)):
     if parts:
         past_decisions = ". ".join(parts)
 
-    import asyncio
     fit_result, research_result = await asyncio.gather(
         analyzer.analyze_jd(
-            lead.job_description, skills_inventory, _model("research"),
+            lead.job_description, skills_inventory, model("research"),
             career_goal=goal_text, past_decisions=past_decisions,
         ),
-        researcher.research_company(lead.company, _model("research"), lead.source_url or ""),
+        researcher.research_company(lead.company, model("research"), lead.source_url or ""),
     )
 
     score = fit_result.get("match_score", 0)
@@ -240,8 +218,6 @@ def create_lead_from_text(body: FromTextRequest, session: Session = Depends(get_
 
 @router.post("/extract-captured")
 async def extract_captured(session: Session = Depends(get_session)):
-    import re
-
     leads = session.exec(select(JobLead).where(JobLead.status == "captured")).all()
     if not leads:
         return {"processed": 0}
@@ -264,7 +240,7 @@ Page text:
 {lead.raw_text[:15000]}"""
 
         try:
-            raw = await llm.generate(_model("research"), prompt)
+            raw = await llm.generate(model("research"), prompt)
             clean = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.MULTILINE)
             clean = re.sub(r"\s*```$", "", clean.strip(), flags=re.MULTILINE)
             m = re.search(r"\{.*\}", clean, re.DOTALL)

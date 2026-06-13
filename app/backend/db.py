@@ -105,16 +105,11 @@ def create_db():
             except Exception:
                 pass
     # Seed model settings from config.toml if not already in DB
-    import tomllib
-    from pathlib import Path
-    cfg_path = Path(__file__).parent / "config.toml"
-    if cfg_path.exists():
-        with open(cfg_path, "rb") as f:
-            cfg = tomllib.load(f)
-        for role in ("parser", "writer", "reviewer", "research"):
-            key = f"model.{role}"
-            if not get_setting(key):
-                set_setting(key, cfg.get("models", {}).get(role, ""))
+    from config import CONFIG
+    for role in ("parser", "writer", "reviewer", "research"):
+        key = f"model.{role}"
+        if not get_setting(key):
+            set_setting(key, CONFIG.get("models", {}).get(role, ""))
 
 
 def get_session():

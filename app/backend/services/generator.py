@@ -5,6 +5,7 @@ Guardrails enforced here (not just in prompts):
 - Bullet points are passed as a numbered read-only list; only their ORDER may change
 - Email and phone are read from the master resume file at call time
 """
+import json
 import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -137,7 +138,6 @@ async def generate_resume(
         f"JOB_DESCRIPTION:\n{job_description}"
     )
 
-    import json
     raw = await generate(model, prompt, system=RESUME_SYSTEM)
     try:
         data = json.loads(raw.strip())
@@ -205,7 +205,6 @@ async def stream_generation(
         resume_raw += chunk
         yield f"data: {{\"type\": \"resume_chunk\", \"text\": {repr(chunk)}}}\n\n"
 
-    import json
     try:
         data = json.loads(resume_raw.strip())
         resume_md = _apply_tailoring(master_md, data.get("summary", ""), data.get("skills", ""))

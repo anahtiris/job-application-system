@@ -1,24 +1,23 @@
 import json
+import re
 from datetime import date
 from pathlib import Path
 
-import tomllib
 from fastapi import APIRouter, HTTPException, UploadFile
 from pydantic import BaseModel
 
+from config import CONFIG, Paths
 from db import get_setting, set_setting
 from services.parser import parse_resume
 
 router = APIRouter()
 
-with open(Path(__file__).parent.parent / "config.toml", "rb") as f:
-    _cfg = tomllib.load(f)
+MASTER_EN = Paths.MASTER_EN
+MASTER_DE = Paths.MASTER_DE
+PERSONA = Paths.PERSONA
+SKILLS = Paths.SKILLS
 
-BASE = Path(__file__).parent.parent.parent.parent  # repo root
-MASTER_EN = BASE / _cfg["paths"]["resume_master_en"]
-MASTER_DE = BASE / _cfg["paths"]["resume_master_de"]
-PERSONA = BASE / _cfg["paths"]["persona"]
-SKILLS = BASE / _cfg["paths"]["skills"]
+
 def _master_path(language: str) -> Path:
     return MASTER_DE if language == "de" else MASTER_EN
 
@@ -37,7 +36,7 @@ async def parse(file: UploadFile, language: str = "en"):
         raise HTTPException(400, "Only PDF and DOCX files are supported")
 
     content = await file.read()
-    markdown = await parse_resume(content, file.filename, get_setting("model.parser", _cfg["models"].get("parser", "")))
+    markdown = await parse_resume(content, file.filename, get_setting("model.parser", CONFIG["models"].get("parser", "")))
 
     path = _master_path(language)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -45,7 +44,6 @@ async def parse(file: UploadFile, language: str = "en"):
 
     # Auto-save person name from # Contact section if not already set
     if not get_setting("person.name"):
-        import re
         m = re.search(r"#\s*Contact\s*\n([^\n]+)", markdown)
         if m:
             raw_name = m.group(1).strip().lstrip("#").strip()

@@ -1,4 +1,5 @@
 """Anthropic provider — blocking and streaming via the Messages API."""
+import json
 import os
 from typing import AsyncIterator
 
@@ -58,7 +59,6 @@ async def stream(model: str, prompt: str, system: str = "") -> AsyncIterator[str
                 raw = line[5:].strip()
                 if raw in ("", "[DONE]"):
                     continue
-                import json
                 event = json.loads(raw)
                 if event.get("type") == "content_block_delta":
                     yield event["delta"].get("text", "")

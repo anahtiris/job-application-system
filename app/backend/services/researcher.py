@@ -1,4 +1,5 @@
 """Scrape company website for address and tone classification."""
+import json
 import re
 
 import httpx
@@ -88,7 +89,6 @@ async def _classify_tone(company_name: str, base_url: str | None, model: str) ->
             continue
 
     prompt = f"Company: {company_name}\n\nWebsite text:\n{page_text or '(no page found)'}"
-    import json
     raw = await generate(model, prompt, system=TONE_SYSTEM)
     try:
         return json.loads(raw.strip())

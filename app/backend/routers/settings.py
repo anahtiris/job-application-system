@@ -1,22 +1,17 @@
 import json
 import os
-import tomllib
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from config import BASE_DIR, CONFIG, Paths
 from db import get_setting, set_setting
 from services.generator import NOTICE_PERIODS
 
 router = APIRouter()
 
-with open(Path(__file__).parent.parent / "config.toml", "rb") as f:
-    _cfg = tomllib.load(f)
-
-BASE = Path(__file__).parent.parent.parent.parent
-CAREER_GOAL = BASE / _cfg["paths"]["career_goal"]
-GENERAL_PREP = BASE / "data" / "general_prep.json"
+CAREER_GOAL = Paths.CAREER_GOAL
+GENERAL_PREP = BASE_DIR / "data" / "general_prep.json"
 
 _ROLES = ("parser", "writer", "reviewer", "research")
 
@@ -30,7 +25,7 @@ _API_KEY_ENV = {
 
 @router.get("/models")
 def get_models():
-    defaults = _cfg.get("models", {})
+    defaults = CONFIG.get("models", {})
     return {
         role: get_setting(f"model.{role}", defaults.get(role, ""))
         for role in _ROLES

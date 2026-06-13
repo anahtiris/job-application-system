@@ -1,37 +1,30 @@
+import json
 import logging
+import re
 from pathlib import Path
 from typing import AsyncIterator
 
-import tomllib
+from docx import Document
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from sqlmodel import Session
+from sqlmodel import Session, select
 
-from db import Application, get_session, get_setting
+from config import Paths, load_career_goal, load_skills_inventory, model
+from db import Application, JobLead, get_session, get_setting
 from services import analyzer, generator, interview, researcher, reviewer
 from services.pdf import build_pdfs
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-with open(Path(__file__).parent.parent / "config.toml", "rb") as f:
-    _cfg = tomllib.load(f)
-
-BASE = Path(__file__).parent.parent.parent.parent
-MASTER_EN = BASE / _cfg["paths"]["resume_master_en"]
-MASTER_DE = BASE / _cfg["paths"]["resume_master_de"]
-PERSONA = BASE / _cfg["paths"]["persona"]
-TMPL_CV_EN = BASE / _cfg["paths"]["templates_resume_en"]
-TMPL_CV_DE = BASE / _cfg["paths"]["templates_resume_de"]
-TMPL_CL = BASE / _cfg["paths"]["templates_cover_letter"]
-APPS_DIR = BASE / _cfg["paths"]["applications_dir"]
-SKILLS = BASE / _cfg["paths"]["skills"]
-CAREER_GOAL = BASE / _cfg["paths"]["career_goal"]
-
-
-def _model(role: str) -> str:
-    return get_setting(f"model.{role}", _cfg["models"].get(role, ""))
+MASTER_EN = Paths.MASTER_EN
+MASTER_DE = Paths.MASTER_DE
+PERSONA = Paths.PERSONA
+TMPL_CV_EN = Paths.TMPL_CV_EN
+TMPL_CV_DE = Paths.TMPL_CV_DE
+TMPL_CL = Paths.TMPL_CL
+APPS_DIR = Paths.APPS_DIR
 
 
 def _master(language: str) -> Path:
@@ -40,8 +33,6 @@ def _master(language: str) -> Path:
 
 def _extract_contact(template_path: Path) -> dict:
     """Read email and phone from the cover letter template header paragraphs."""
-    from docx import Document
-    import re
     email, phone = "", ""
     try:
         doc = Document(str(template_path))
@@ -70,25 +61,11 @@ async def analyze_jd_endpoint(body: AnalyzeRequest, session: Session = Depends(g
     if not app.job_description:
         raise HTTPException(400, "Application has no job description")
 
-    import json as _json
-    skills_inventory: dict = {}
-    if SKILLS.exists():
-        try:
-            skills_inventory = _json.loads(SKILLS.read_text(encoding="utf-8")).get("skills", {})
-        except Exception:
-            logger.warning("Failed to load skills inventory from %s", SKILLS, exc_info=True)
+    skills_inventory = load_skills_inventory()
+    goal_text = load_career_goal()
 
-    goal_text = ""
-    if CAREER_GOAL.exists():
-        try:
-            goal_text = CAREER_GOAL.read_text(encoding="utf-8").strip()
-        except Exception:
-            logger.warning("Failed to read career goal from %s", CAREER_GOAL, exc_info=True)
-
-    from db import JobLead
-    from sqlmodel import select as _select
     recent = session.exec(
-        _select(JobLead)
+        select(JobLead)
         .where(JobLead.status.in_(["approved", "rejected"]))
         .order_by(JobLead.updated_at.desc())
         .limit(10)
@@ -103,11 +80,11 @@ async def analyze_jd_endpoint(body: AnalyzeRequest, session: Session = Depends(g
     past_decisions = ". ".join(parts) if parts else ""
 
     result = await analyzer.analyze_jd(
-        app.job_description, skills_inventory, _model("research"),
+        app.job_description, skills_inventory, model("research"),
         career_goal=goal_text, past_decisions=past_decisions,
     )
 
-    app.fit_analysis_json = _json.dumps(result)
+    app.fit_analysis_json = json.dumps(result)
     session.add(app)
     session.commit()
 
@@ -123,7 +100,7 @@ class ResearchRequest(BaseModel):
 
 @router.post("/research")
 async def research(body: ResearchRequest):
-    return await researcher.research_company(body.company, _model("research"), body.company_url)
+    return await researcher.research_company(body.company, model("research"), body.company_url)
 
 
 # ── Generate (streaming SSE) ──────────────────────────────────────────────────
@@ -147,14 +124,7 @@ async def generate(body: GenerateRequest, session: Session = Depends(get_session
     app_record = session.get(Application, body.application_id)
     cl_notes = app_record.cover_letter_notes or "" if app_record else ""
 
-    import json as _json
-    skills_path = BASE / _cfg["paths"]["skills"]
-    skills_inventory: dict = {}
-    if skills_path.exists():
-        try:
-            skills_inventory = _json.loads(skills_path.read_text(encoding="utf-8")).get("skills", {})
-        except Exception:
-            logger.warning("Failed to load skills inventory from %s", skills_path, exc_info=True)
+    skills_inventory = load_skills_inventory()
 
     start_date = generator.compute_start_date(
         get_setting("notice.period", "immediate"),
@@ -171,7 +141,7 @@ async def generate(body: GenerateRequest, session: Session = Depends(get_session
             company_tone=body.company_tone,
             company_address=body.company_address,
             language=body.language,
-            writer_model=_model("writer"),
+            writer_model=model("writer"),
             start_date=start_date,
             contact_email=contact["email"],
             contact_phone=contact["phone"],
@@ -179,11 +149,9 @@ async def generate(body: GenerateRequest, session: Session = Depends(get_session
             skills_inventory=skills_inventory,
         ):
             if '"type": "resume_done"' in chunk:
-                import json
                 data = json.loads(chunk.removeprefix("data: ").strip())
                 resume_md = data.get("markdown", "")
             elif '"type": "cl_done"' in chunk:
-                import json
                 data = json.loads(chunk.removeprefix("data: ").strip())
                 cl_md = data.get("markdown", "")
             yield chunk
@@ -244,7 +212,7 @@ async def review(body: ReviewRequest, session: Session = Depends(get_session)):
         cover_letter_md=app.cover_letter_draft_md,
         master_path=_master(app.language),
         persona_path=PERSONA,
-        model=_model("reviewer"),
+        model=model("reviewer"),
     )
 
     app.resume_final_md = result["cv_consolidated"].get("revised_draft", app.resume_draft_md)
@@ -298,9 +266,8 @@ async def generate_pdf(body: PdfRequest, session: Session = Depends(get_session)
     if not app.resume_final_md or not app.cover_letter_final_md:
         raise HTTPException(400, "Final documents not found")
 
-    import re as _re
     def _slug(s: str) -> str:
-        return _re.sub(r"[^\w-]", "_", s.strip()).strip("_") or "unknown"
+        return re.sub(r"[^\w-]", "_", s.strip()).strip("_") or "unknown"
 
     company_dir = APPS_DIR / _slug(app.company)
     position_slug = _slug(app.job_title or "unknown")
@@ -311,9 +278,8 @@ async def generate_pdf(body: PdfRequest, session: Session = Depends(get_session)
     if company_dir.exists():
         top_files = [f for f in company_dir.iterdir() if f.is_file() and f.suffix in (".docx", ".pdf")]
         if top_files:
-            from sqlmodel import select as _select
             other = session.exec(
-                _select(Application)
+                select(Application)
                 .where(Application.company == app.company)
                 .where(Application.id != app.id)
                 .where(Application.resume_pdf_path != None)  # noqa: E711
@@ -371,19 +337,13 @@ async def generate_interview_debrief(body: InterviewPrepRequest, session: Sessio
     if not resume_md:
         raise HTTPException(400, "Generate documents first before running a skills debrief")
 
-    import json as _json
-    skills_inventory: dict = {}
-    if SKILLS.exists():
-        try:
-            skills_inventory = _json.loads(SKILLS.read_text(encoding="utf-8")).get("skills", {})
-        except Exception:
-            logger.warning("Failed to load skills inventory from %s", SKILLS, exc_info=True)
+    skills_inventory = load_skills_inventory()
 
     md = await interview.generate_skills_debrief(
         resume_md=resume_md,
         job_description=app.job_description,
         skills_inventory=skills_inventory,
-        model=_model("writer"),
+        model=model("writer"),
     )
     app.interview_debrief_md = md
     session.add(app)
@@ -409,7 +369,7 @@ async def generate_interview_prep(body: InterviewPrepRequest, session: Session =
         interview_round=body.interview_round,
         interviewer_type=body.interviewer_type,
         focus_skills=body.focus_skills,
-        model=_model("writer"),
+        model=model("writer"),
         resume_final=app.resume_final_md or app.resume_draft_md or "",
         cover_letter=app.cover_letter_final_md or app.cover_letter_draft_md or "",
     )
