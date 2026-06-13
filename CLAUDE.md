@@ -93,6 +93,25 @@ When the user says **"process my captured jobs"**, Claude Code does extraction *
 
 The `/leads` page shows color-coded status badges and fit verdict chips. The `/leads/[id]` detail page shows must-haves/nice-to-haves/ATS keywords from `fit_analysis_json`; all three arrays default to `[]` if missing (LLM sometimes uses non-standard field names).
 
+### Building the skills inventory — "process my skills"
+
+When the user says **"process my skills"** (or clicks "Copy prompt for Claude" on the
+Setup or Skills page), Claude Code builds the tiered skills inventory itself — do NOT
+call the Ollama `/api/resume/skills/extract` endpoint (that is the offline fallback):
+
+1. Read the master résumé (`resume_master.md` / `resume_master_de.md`),
+   `data/skills.json` (existing inventory), and `data/career_goal.md` from disk.
+2. Follow `skills/skill-assessment/SKILL.md`: draft a tier (1–4) + evidence per skill
+   from concrete résumé evidence; **never fabricate**.
+3. **Interview the user** (batched questions) about any skill whose tier the résumé
+   cannot settle. Surface skills mentioned in answers that weren't on the résumé.
+4. Save via `PUT`/`POST http://localhost:8000/api/resume/skills/merge` with
+   `{"skills": {"Name": {"tier": 1, "evidence": "...", "needs_review": false}}}`. The
+   backend merges keep-my-edits (existing entries win on collision) and persists.
+
+The Ollama fallback (`POST /api/resume/skills/extract`) does the same extraction in
+one offline pass with no interview, flagging low-confidence guesses `needs_review`.
+
 ### Browser extension (`browser-extension/`)
 
 Manifest V3. Click → `chrome.scripting.executeScript` grabs `{text: body.innerText, url: location.href}` from the active tab → `POST /api/leads/from-text` → opens `localhost:3000/leads/{id}`. Returns in ~1 second (no LLM on the capture path). Deduplication: if a non-rejected lead already exists for the URL, shows "Already captured" and opens the existing lead.
