@@ -94,6 +94,19 @@ cd app/frontend && npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Testing
+
+```bash
+# Backend unit + integration tests (no LLM or LibreOffice required)
+cd app/backend && source ../../.venv/bin/activate && pytest
+
+# Frontend type check
+cd app/frontend && npx tsc --noEmit
+```
+
+CI (`.github/workflows/ci.yml`) runs the backend test suite and the frontend
+type check on every push and pull request.
+
 ## First-time setup
 
 1. Go to **Settings** → configure which model handles each role (parser / writer / reviewer / research) using `provider/model` format (e.g. `anthropic/claude-sonnet-4-6`, `ollama/qwen3.6:latest`).
