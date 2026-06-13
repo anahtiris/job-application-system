@@ -142,6 +142,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const stored = localStorage.getItem("theme") as Theme | null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only hydration from localStorage (cannot run during SSR)
     setTheme(stored ?? "system");
     const storedFs = localStorage.getItem("fontSize") as FontSize | null;
     setFontSize(storedFs ?? "normal");

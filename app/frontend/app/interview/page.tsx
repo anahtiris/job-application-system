@@ -63,7 +63,6 @@ export default function InterviewPage() {
       const all = data as Interview[];
       setInterviews(all.filter((a) => a.status === "Interview"));
     }).catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { loadInterviews(); }, [loadInterviews]);

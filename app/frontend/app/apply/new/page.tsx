@@ -213,6 +213,7 @@ function NewApplicationPageInner() {
 
   useEffect(() => {
     if (step !== 1 || analysisResult || analyzing || !appId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- runs an async fetch on step entry; the loading flag is intentional
     setAnalyzing(true);
     setAnalyzeError("");
     api.post("/api/application/analyze-jd", { application_id: appId })
@@ -228,6 +229,7 @@ function NewApplicationPageInner() {
 
   useEffect(() => {
     if (step !== 2 || researchResult || researchingCompany || !company) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- runs an async fetch on step entry; the loading flag is intentional
     setResearchingCompany(true);
     api.post("/api/application/research", { company, company_url: companyUrl })
       .then((res) => {
@@ -252,6 +254,7 @@ function NewApplicationPageInner() {
   useEffect(() => {
     if (step !== 4) {
       finalsBaselineRef.current = null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets autosave status when leaving the finalize step
       setAutoSaveStatus("idle");
       return;
     }

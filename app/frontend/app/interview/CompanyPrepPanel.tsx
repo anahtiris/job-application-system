@@ -68,7 +68,12 @@ export function CompanyPrepPanel({
   // General prep questions (for Questions tab)
   const [generalPrep, setGeneralPrep] = useState<GeneralPrep>(DEFAULT_PREP);
 
-  useEffect(() => {
+  // Reset all local editing state when a different application is selected.
+  // Derived from the `app` prop during render (keyed on app.id) instead of in
+  // an effect — React's recommended pattern for resetting state on prop change.
+  const [lastAppId, setLastAppId] = useState(app.id);
+  if (app.id !== lastAppId) {
+    setLastAppId(app.id);
     let parsed: Partial<InterviewNotes> = {};
     if (app.interview_notes_json) {
       try { parsed = JSON.parse(app.interview_notes_json); } catch {}
@@ -85,8 +90,7 @@ export function CompanyPrepPanel({
     setPrepMd(app.interview_prep_md ?? "");
     setPendingDate(parseDate(app.interview_date));
     setShowDatePicker(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.id]);
+  }
 
   useEffect(() => {
     api.get("/api/settings/general-prep").then((data) => {

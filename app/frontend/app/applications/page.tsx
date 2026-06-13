@@ -252,6 +252,7 @@ export default function ApplicationsPage() {
       if (stored) {
         const parsed: FilterLabel[] = JSON.parse(stored);
         const valid = parsed.filter((l) => (FILTER_LABELS as readonly string[]).includes(l));
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only hydration from localStorage (cannot run during SSR)
         if (valid.length) setActiveFilters(new Set(valid));
       }
     } catch {}
@@ -265,7 +266,8 @@ export default function ApplicationsPage() {
   const toggleFilter = (label: FilterLabel) => {
     setActiveFilters((prev) => {
       const next = new Set(prev);
-      next.has(label) ? next.delete(label) : next.add(label);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
       return next;
     });
   };
@@ -301,6 +303,7 @@ export default function ApplicationsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time data fetch; the loading flag inside load() is intentional
   useEffect(() => { load(); }, [load]);
 
   const handleStatusChange = async (id: string, newStatus: string) => {

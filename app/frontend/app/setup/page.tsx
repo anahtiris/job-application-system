@@ -25,6 +25,7 @@ export default function SetupPage() {
     setMarkdown(res?.markdown ?? "");
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetches resume markdown on language change; setState is the point
   useEffect(() => { load(language); }, [language]);
 
   const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {

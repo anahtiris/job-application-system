@@ -34,5 +34,4 @@ jobs:
           cache-dependency-path: app/frontend/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
-      # `npm run lint` is intentionally not gated yet: 12 pre-existing eslint 9
-      # errors (mostly react-hooks/set-state-in-effect) need a cleanup pass first.
+      - run: npm run lint

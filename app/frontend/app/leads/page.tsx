@@ -70,6 +70,7 @@ export default function LeadsPage() {
     setLoading(true);
     api.get("/api/leads/").then((data) => { setLeads(data); setLoading(false); });
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time data fetch; the loading flag inside load() is intentional
   useEffect(() => { load(); }, []);
 
   const handleApprove = async (leadId: string) => {

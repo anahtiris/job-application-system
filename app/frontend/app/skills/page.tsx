@@ -122,7 +122,6 @@ export default function SkillsPage() {
 
   useEffect(() => {
     api.get("/api/resume/skills").then((data) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const raw = data?.skills ?? {};
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setSkills(Object.entries(raw).map(([name, s]: [string, any]) => ({ name, tier: s.tier, evidence: s.evidence ?? "" })));

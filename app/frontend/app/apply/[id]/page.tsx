@@ -332,6 +332,7 @@ export default function ApplicationDetailPage() {
   // Run analysis when Analysis tab is first opened
   useEffect(() => {
     if (tab !== "Analysis" || analysisRan || analysisLoading) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- runs an async fetch on tab open; the loading flag is intentional
     setAnalysisLoading(true);
     api.post("/api/application/analyze-jd", { application_id: id })
       .then((r) => { setAnalysisResult(r); })

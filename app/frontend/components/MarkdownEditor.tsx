@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface Props {
   value: string;
@@ -10,7 +10,13 @@ interface Props {
 export function MarkdownEditor({ value, onChange, label }: Props) {
   const [text, setText] = useState(value);
 
-  useEffect(() => { setText(value); }, [value]);
+  // Sync local edits when the parent supplies a new value — adjusted during
+  // render (React's recommended pattern) rather than in an effect.
+  const [lastValue, setLastValue] = useState(value);
+  if (value !== lastValue) {
+    setLastValue(value);
+    setText(value);
+  }
 
   const handleChange = (v: string) => {
     setText(v);
