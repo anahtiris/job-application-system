@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MarkdownEditor } from "@/components/MarkdownEditor";
-import { ReviewPanel } from "@/components/ReviewPanel";
+import { ReviewPanel, type ReviewResult } from "@/components/ReviewPanel";
 import { api } from "@/lib/api";
 import { SectionCard } from "@/components/ui-kit";
 
@@ -183,7 +183,7 @@ function NewApplicationPageInner() {
   const savedMdRef = useRef({ resume: "", cl: "" });
 
   // Step 3
-  const [reviewResult, setReviewResult] = useState<Record<string, unknown> | null>(null);
+  const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
   const [reviewing, setReviewing] = useState(false);
   const [reviewError, setReviewError] = useState("");
 
@@ -634,8 +634,7 @@ function NewApplicationPageInner() {
                     <Btn onClick={() => { setReviewResult(null); handleReview(); }}>Re-review</Btn>
                   </div>
                   <ReviewPanel
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    result={reviewResult as any}
+                    result={reviewResult}
                     resumeDraft={resumeMd}
                     clDraft={clMd}
                     onApply={applyRewrites}

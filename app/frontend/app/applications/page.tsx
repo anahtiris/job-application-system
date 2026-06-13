@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { FlipClock } from "@anahtiris/flipclock";
 import "@anahtiris/flipclock/dist/flipclock.css";
 import { api } from "@/lib/api";
+import { useIsDark } from "@/hooks/useIsDark";
 import { isoToDateValue, dateValueToISO } from "@/lib/utils";
 
 interface Application {
@@ -239,14 +240,7 @@ export default function ApplicationsPage() {
   const [search, setSearch] = useState("");
 
   // Dark mode detection (for FlipClock theme)
-  const [isDark, setIsDark] = useState(false);
-  useEffect(() => {
-    const check = () => setIsDark(document.documentElement.classList.contains("dark"));
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributeFilter: ["class"] });
-    return () => obs.disconnect();
-  }, []);
+  const isDark = useIsDark();
 
   // Filter state — empty set means "All"; persisted in localStorage
   const [activeFilters, setActiveFilters] = useState<Set<FilterLabel>>(new Set());

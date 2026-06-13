@@ -12,7 +12,7 @@ interface Consolidated {
   priority_issues?: PriorityIssue[];
   resolved_rewrites?: Rewrite[];
 }
-interface ReviewResult {
+export interface ReviewResult {
   reviewers: string[];
   cv_consolidated: Consolidated;
   cl_consolidated: Consolidated;

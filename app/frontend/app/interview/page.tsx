@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useIsDark } from "@/hooks/useIsDark";
 import { mutedTextCls, monoMutedCls, sectionLabelCls } from "@/components/ui-kit";
 import type { Interview } from "./types";
 import { formatDate } from "./helpers";
@@ -55,15 +56,7 @@ export default function InterviewPage() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [selected, setSelected] = useState<"general" | string>("general");
   const [panelCollapsed, setPanelCollapsed] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    const check = () => setIsDark(document.documentElement.classList.contains("dark"));
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributeFilter: ["class"] });
-    return () => obs.disconnect();
-  }, []);
+  const isDark = useIsDark();
 
   const loadInterviews = useCallback(() => {
     api.get("/api/tracker/").then((data) => {

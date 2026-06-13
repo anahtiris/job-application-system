@@ -776,8 +776,7 @@ function PrepDisplay({ markdown, exclude = [] }: { markdown: string; exclude?: s
               <ReactMarkdown
                 components={{
                   strong: MdStrong,
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  h3: ({ children }: any) => (
+                  h3: ({ children }: { children?: React.ReactNode }) => (
                     <div className="text-[12px] font-semibold text-text-primary mt-3 mb-1 font-shell">
                       {children}
                     </div>
@@ -785,12 +784,11 @@ function PrepDisplay({ markdown, exclude = [] }: { markdown: string; exclude?: s
                   li: ({ children }) => {
                     const kids = React.Children.toArray(children);
                     const first = kids[0];
-                    if (React.isValidElement(first) && first.type === MdStrong && kids.length > 1) {
+                    if (React.isValidElement<{ children?: React.ReactNode }>(first) && first.type === MdStrong && kids.length > 1) {
                       return (
                         <li className="mb-2">
                           <div className="font-semibold text-text-primary mb-[3px] font-shell">
-                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                            {(first as any).props.children}
+                            {first.props.children}
                           </div>
                           <div>{kids.slice(1)}</div>
                         </li>
@@ -801,12 +799,11 @@ function PrepDisplay({ markdown, exclude = [] }: { markdown: string; exclude?: s
                   p: ({ children }) => {
                     const kids = React.Children.toArray(children);
                     const first = kids[0];
-                    if (React.isValidElement(first) && first.type === MdStrong && kids.length > 1) {
+                    if (React.isValidElement<{ children?: React.ReactNode }>(first) && first.type === MdStrong && kids.length > 1) {
                       return (
                         <div className="mb-2">
                           <div className="font-semibold text-text-primary mb-[3px] font-shell">
-                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                            {(first as any).props.children}
+                            {first.props.children}
                           </div>
                           <div>{kids.slice(1)}</div>
                         </div>

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { FlipClock, type DateValue } from "@anahtiris/flipclock";
 import "@anahtiris/flipclock/dist/flipclock.css";
 import { api, BASE } from "@/lib/api";
+import { useIsDark } from "@/hooks/useIsDark";
 import { pillBtnCls, SectionCard } from "@/components/ui-kit";
 import { isoToDateValue, dateValueToISO } from "@/lib/utils";
 
@@ -310,18 +311,10 @@ export default function ApplicationDetailPage() {
   const [analysisRan, setAnalysisRan] = useState(false);
 
   // Applied-date picker state
-  const [isDark, setIsDark] = useState(false);
+  const isDark = useIsDark();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pendingDate, setPendingDate] = useState<DateValue | undefined>(undefined);
   const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
-
-  useEffect(() => {
-    const check = () => setIsDark(document.documentElement.classList.contains("dark"));
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributeFilter: ["class"] });
-    return () => obs.disconnect();
-  }, []);
 
   useEffect(() => {
     api.get(`/api/tracker/${id}`).then((a) => {
