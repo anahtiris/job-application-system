@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { applyFaviconColor } from "@/lib/favicon";
 import { SectionCard } from "@/components/ui-kit";
 
 const ROLE_LABELS: Record<string, { label: string; hint: string }> = {
@@ -68,6 +69,7 @@ const NOTICE_PERIOD_OPTIONS: { value: NoticePeriod; label: string }[] = [
 function applyAccentColor(hex: string) {
   localStorage.setItem("accentColor", hex);
   document.documentElement.style.setProperty("--custom", hex);
+  applyFaviconColor(hex);
 }
 
 // ── Shared UI ─────────────────────────────────────────────────────────────────
