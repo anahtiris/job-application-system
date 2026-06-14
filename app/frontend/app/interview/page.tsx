@@ -5,9 +5,9 @@ import { useIsDark } from "@/hooks/useIsDark";
 import { mutedTextCls, monoMutedCls, sectionLabelCls } from "@/components/ui-kit";
 import type { Interview } from "./types";
 import { formatDate } from "./helpers";
-import { GeneralPrepPanel } from "./GeneralPrepPanel";
-import { TechnicalQuestionsPanel } from "./TechnicalQuestionsPanel";
-import { CompanyPrepPanel } from "./CompanyPrepPanel";
+import { GeneralPrepPanel } from "./general-prep/GeneralPrepPanel";
+import { TechnicalQuestionsPanel } from "./technical-prep/TechnicalQuestionsPanel";
+import { CompanyPrepPanel } from "./company-prep/CompanyPrepPanel";
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 

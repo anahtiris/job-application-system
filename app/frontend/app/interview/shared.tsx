@@ -3,7 +3,7 @@ import React from "react";
 import { Trash2, GripVertical } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GrowTextarea, iconBtnCls } from "@/components/ui-kit";
+import { GrowTextarea, iconBtnCls, cardBoxCls, SaveIndicator, type SaveState } from "@/components/ui-kit";
 import type { QAItem } from "./types";
 
 // ─── Shared UI helpers ─────────────────────────────────────────────────────────
@@ -93,6 +93,35 @@ export function QARow({
         placeholder="Answer…"
         className="mt-1"
       />
+    </div>
+  );
+}
+
+export function EditablePrepSection({
+  title,
+  value,
+  onChange,
+  saveState,
+}: {
+  title: string;
+  value: string;
+  onChange: (v: string) => void;
+  saveState: SaveState;
+}) {
+  return (
+    <div className={`${cardBoxCls} bg-background-primary`}>
+      <div className="flex items-center justify-between py-[9px] px-[13px] border-b-[0.5px] border-border-tertiary">
+        <span className="text-[12px] font-medium font-shell">{title}</span>
+        <SaveIndicator state={saveState} />
+      </div>
+      <div className="pt-1 px-[13px] pb-3">
+        <GrowTextarea
+          value={value}
+          onChange={onChange}
+          placeholder="No content yet — generate prep to populate."
+          className="leading-[1.75]"
+        />
+      </div>
     </div>
   );
 }

@@ -14,9 +14,9 @@ import {
   SaveIndicator, useAutoSave,
   cardBoxCls, cardHeaderBarCls, iconBtnCls, mutedTextCls, monoMutedCls,
 } from "@/components/ui-kit";
-import { type GeneralPrep, type QAItem, type TechQAGroup, DEFAULT_PREP } from "./types";
-import { uid } from "./helpers";
-import { LangToggle, QARow } from "./shared";
+import { type GeneralPrep, type QAItem, type TechQAGroup, DEFAULT_PREP } from "../types";
+import { uid } from "../helpers";
+import { LangToggle, QARow } from "../shared";
 
 // ─── Technical Questions Panel ─────────────────────────────────────────────────
 
