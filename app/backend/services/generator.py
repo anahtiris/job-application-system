@@ -190,6 +190,7 @@ async def stream_generation(
     contact_phone: str = "",
     cover_letter_notes: str = "",
     skills_inventory: dict | None = None,
+    relevant_skills: list[str] | None = None,
 ):
     """Yield SSE-formatted chunks for resume then cover letter."""
     master_md = master_path.read_text(encoding="utf-8")
@@ -214,10 +215,13 @@ async def stream_generation(
 
     TIER_LABELS = {1: "Core", 2: "Proficient", 3: "Familiar", 4: "Exposure"}
     skills_block = ""
-    if skills_inventory:
+    if skills_inventory and relevant_skills:
+        relevant_inventory = {
+            name: s for name, s in skills_inventory.items() if name in relevant_skills
+        }
         lines = [
             f"- {name}: Tier {s['tier']} ({TIER_LABELS.get(s['tier'], s['tier'])}) — {s.get('evidence', '')}"
-            for name, s in skills_inventory.items()
+            for name, s in relevant_inventory.items()
         ]
         if lines:
             skills_block = "\nSKILLS_INVENTORY (match proficiency descriptions to these tiers):\n" + "\n".join(lines)

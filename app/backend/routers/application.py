@@ -124,6 +124,10 @@ async def generate(body: GenerateRequest, session: Session = Depends(get_session
     app_record = session.get(Application, body.application_id)
     cl_notes = app_record.cover_letter_notes or "" if app_record else ""
 
+    relevant_skills: list[str] = []
+    if app_record and app_record.fit_analysis_json:
+        relevant_skills = json.loads(app_record.fit_analysis_json).get("relevant_skills", [])
+
     skills_inventory = load_skills_inventory()
 
     start_date = generator.compute_start_date(
@@ -147,6 +151,7 @@ async def generate(body: GenerateRequest, session: Session = Depends(get_session
             contact_phone=contact["phone"],
             cover_letter_notes=cl_notes,
             skills_inventory=skills_inventory,
+            relevant_skills=relevant_skills,
         ):
             if '"type": "resume_done"' in chunk:
                 data = json.loads(chunk.removeprefix("data: ").strip())

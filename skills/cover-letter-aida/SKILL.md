@@ -52,18 +52,18 @@ These rules are mandatory. Violations are lies.
 
 ## Skills Depth Constraints
 
-Before writing ANY technical claim, cross-reference against the
-skills inventory below. This overrides resume text.
+Before writing ANY technical claim, cross-reference against the skills inventory below. This overrides resume text.
 
 TIER 1 — use: "built", "delivered", "deep experience with", "specialized in"
-TIER 2 — use: "worked with", "contributed to", "experience with", "proficient in"  
-TIER 3 — use: "familiar with", "exposure to" — never feature prominently
-TIER 4 — DO NOT MENTION
+TIER 2 — use: "worked with", "contributed to", "experience with", "proficient in"
+TIER 3/4 — DO NOT MENTION under any circumstances
 
 [PASTE skills_inventory.json here at runtime]
 
-If a JD requirement maps to TIER 3 or below → omit or reframe around
-a related TIER 1/2 skill instead. Never claim depth that isn't in the inventory.
+Rules:
+- Only mention skills that are TIER 1 or TIER 2 AND directly relevant to the JD
+- Weave skills into achievement stories only — never list or summarize them in isolation
+- If a JD requirement maps to TIER 3/4, omit it — do not acknowledge the gap
 
 ---
 

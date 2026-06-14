@@ -8,13 +8,14 @@ ANALYSIS_SYSTEM = """You are analyzing a job description against a candidate's s
 Output JSON only — no markdown fences, no explanation:
 {
   "core_theme": "one sentence describing what this role does day-to-day",
-  "must_haves": [{"skill": "...", "status": "STRONG|HONEST|GAP|UNKNOWN", "tier": 1|2|3|4|null, "evidence": "..."}],
-  "nice_to_haves": [{"skill": "...", "status": "STRONG|HONEST|GAP|UNKNOWN", "tier": 1|2|3|4|null, "evidence": "..."}],
+  "must_haves": [{"skill": "...", "status": "STRONG|HONEST|GAP|UNKNOWN", "tier": 1|2|3|4|null, "evidence": "...", "inventory_match": "exact SKILLS_INVENTORY name or null"}],
+  "nice_to_haves": [{"skill": "...", "status": "STRONG|HONEST|GAP|UNKNOWN", "tier": 1|2|3|4|null, "evidence": "...", "inventory_match": "exact SKILLS_INVENTORY name or null"}],
   "ats_keywords": ["top 5-8 keywords an ATS will scan for"],
   "match_score": 85,
   "strongest_angle": "what makes this candidate genuinely competitive for this role",
   "weakest_point": "what the interviewer will push back on most",
-  "is_poor_match": false
+  "is_poor_match": false,
+  "relevant_skills": ["..."]
 }
 
 Classify each required/optional skill from the JD against SKILLS_INVENTORY:
@@ -22,6 +23,15 @@ Classify each required/optional skill from the JD against SKILLS_INVENTORY:
 - HONEST: Tier 3 in inventory
 - GAP: not in inventory, Tier 4, or skill clearly needed but absent
 - UNKNOWN: no SKILLS_INVENTORY provided (use this for all skills when inventory is missing)
+
+inventory_match is the exact skill name as it appears as a key in SKILLS_INVENTORY that this
+JD skill corresponds to (the JD may phrase it differently). Use null if there is no matching
+inventory entry (e.g. status is GAP or UNKNOWN).
+
+Second step — after classifying every skill, derive relevant_skills: take the inventory_match
+values from must_haves and nice_to_haves where status is STRONG or HONEST AND tier is 1 or 2,
+order them by tier ascending, remove duplicates, and cap the list at 8 entries. Use the exact
+inventory name for each entry.
 
 is_poor_match = true if ≥50% of must_haves are GAP
 
@@ -72,4 +82,22 @@ async def analyze_jd(
         text = m.group(0)
     # Remove trailing commas before } or ] (common LLM JSON mistake)
     text = re.sub(r",\s*([}\]])", r"\1", text)
-    return json.loads(text)
+    result = json.loads(text)
+
+    # Safety net: recompute relevant_skills rather than trusting the LLM's cap/ordering.
+    classification = result.get("must_haves", []) + result.get("nice_to_haves", [])
+    candidates = [
+        s for s in classification
+        if s.get("status") in ("STRONG", "HONEST")
+        and s.get("tier") in (1, 2)
+        and s.get("inventory_match") is not None
+    ]
+    candidates.sort(key=lambda s: s["tier"])
+    relevant: list[str] = []
+    for s in candidates:
+        name = s["inventory_match"]
+        if name not in relevant:
+            relevant.append(name)
+    result["relevant_skills"] = relevant[:8]
+
+    return result
