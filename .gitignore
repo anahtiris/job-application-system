@@ -59,6 +59,9 @@ unpacked_*/
 outputs/
 *.bak
 
+# Superpowers planning artifacts (ephemeral, not project docs)
+docs/superpowers/
+
 # ─── Frontend build ──────────────────────────────────────────────────────────
 app/frontend/.next/
 app/frontend/node_modules/
