@@ -67,7 +67,7 @@ export default function Dashboard() {
     fetchData();
   };
 
-  const todoApps = apps.filter((a) => a.status === "New" || a.status === "Draft");
+  const todoApps = apps.filter((a) => a.status === "New" || a.status === "Draft" || a.status === "Finalized");
   const appliedApps = apps.filter((a) => a.status === "Applied");
   const interviewApps = apps.filter((a) => a.status === "Interview");
 
@@ -210,6 +210,11 @@ export default function Dashboard() {
                     {app.status === "Draft" && (
                       <span className="text-[9px] font-medium py-0.5 px-[5px] rounded-[4px] mb-[5px] inline-block bg-background-secondary text-text-tertiary">
                         Draft
+                      </span>
+                    )}
+                    {app.status === "Finalized" && (
+                      <span className="text-[9px] font-medium py-0.5 px-[5px] rounded-[4px] mb-[5px] inline-block bg-badge-finalized-bg text-badge-finalized-fg">
+                        Finalized
                       </span>
                     )}
                     <div className="text-[12px] font-medium mb-0.5">

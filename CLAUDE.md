@@ -118,11 +118,12 @@ Manifest V3. Click → `chrome.scripting.executeScript` grabs `{text: body.inner
 
 ### Application status flow
 
-`New → Draft → Applied → Interview → Offer / Rejected`
+`New → Draft → Finalized → Applied → Interview → Offer / Rejected`
 
 - **New**: application created from an approved lead, no documents yet.
-- **Draft**: documents written (either via the wizard Generate step or via `PUT /api/application/drafts` or `PUT /api/application/finals`). Both endpoints auto-promote `New → Draft`.
-- Further transitions are manual via `PATCH /api/tracker/{id}/status`.
+- **Draft**: markdown drafts generated, not yet exported. Set via the wizard Generate step's `PUT /api/application/drafts` (auto-promotes `New → Draft`) or `PUT /api/application/finals`.
+- **Finalized**: PDFs/DOCX exported via `POST /api/application/pdf` (the Finalize step), auto-promotes `New|Draft → Finalized`. If drafts are regenerated afterwards, `PUT /api/application/drafts` demotes `Finalized → Draft` since the exported files are now stale.
+- Further transitions (`Draft|Finalized → Applied`, etc.) are manual via `PATCH /api/tracker/{id}/status`.
 
 ### Trash / soft delete (`/api/trash/`)
 

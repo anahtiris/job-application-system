@@ -191,7 +191,7 @@ def save_drafts(body: SaveDraftsRequest, session: Session = Depends(get_session)
         raise HTTPException(404, "Application not found")
     app.resume_draft_md = body.resume_md
     app.cover_letter_draft_md = body.cover_letter_md
-    if app.status == "New":
+    if app.status in ("New", "Finalized"):
         app.status = "Draft"
     session.add(app)
     session.commit()
@@ -318,6 +318,8 @@ async def generate_pdf(body: PdfRequest, session: Session = Depends(get_session)
     app.cover_letter_pdf_path = paths["cover_letter_pdf"]
     app.resume_docx_path = paths["resume_docx"]
     app.cover_letter_docx_path = paths["cover_letter_docx"]
+    if app.status in ("New", "Draft"):
+        app.status = "Finalized"
     session.add(app)
     session.commit()
 

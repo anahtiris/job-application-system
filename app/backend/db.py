@@ -61,7 +61,7 @@ class Application(SQLModel, table=True):
     company: str
     job_title: str
     language: str  # 'en' | 'de'
-    status: str = "Draft"  # Draft | Applied | Interview | Offer | Rejected
+    status: str = "Draft"  # New | Draft | Finalized | Applied | Interview | Offer | Rejected | Ghosted
     date_applied: Optional[date] = None
     job_description: str
     source_url: Optional[str] = None  # job posting URL, carried over from the lead
@@ -104,6 +104,15 @@ def create_db():
                 conn.commit()
             except Exception:
                 pass
+        # Backfill: applications that already have PDFs but predate the "Finalized" status
+        try:
+            conn.execute(text(
+                "UPDATE application SET status = 'Finalized' "
+                "WHERE status = 'Draft' AND resume_pdf_path IS NOT NULL"
+            ))
+            conn.commit()
+        except Exception:
+            pass
     # Seed model settings from config.toml if not already in DB
     from config import CONFIG
     for role in ("parser", "writer", "reviewer", "research"):

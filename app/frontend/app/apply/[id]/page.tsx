@@ -15,12 +15,13 @@ import { isoToDateValue, dateValueToISO } from "@/lib/utils";
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_DISPLAY: Record<string, string> = {
-  New: "Analyzed", Draft: "Draft", Applied: "Applied",
+  New: "Analyzed", Draft: "Draft", Finalized: "Finalized", Applied: "Applied",
   Interview: "Interview", Offer: "Offer", Rejected: "Rejected", Ghosted: "Ghosted",
 };
 
 const NEXT_STATUSES: Record<string, string[]> = {
   Draft: ["Applied"],
+  Finalized: ["Applied"],
   Applied: ["Interview", "Offer", "Rejected", "Ghosted"],
   Interview: ["Applied", "Offer", "Rejected", "Ghosted"],
   Offer: ["Rejected"],
@@ -50,6 +51,7 @@ function badgeCls(status: string): string {
     label === "Rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
     label === "Ghosted"   ? "bg-badge-ghosted-bg text-badge-ghosted-fg" :
     label === "Draft"     ? "bg-badge-responded-bg text-badge-responded-fg" :
+    label === "Finalized" ? "bg-badge-finalized-bg text-badge-finalized-fg" :
                             "bg-badge-analyzed-bg text-badge-analyzed-fg";
   return `inline-flex items-center text-[12px] font-medium py-[3px] px-2.5 rounded-full border-none font-shell ${color}`;
 }
@@ -398,8 +400,9 @@ export default function ApplicationDetailPage() {
     );
   }
 
-  const canContinue = !app.resume_pdf_path && (app.status === "New" || app.status === "Draft");
-  const canRegen = !canContinue && (app.status === "New" || app.status === "Draft");
+  const isPreApplied = app.status === "New" || app.status === "Draft" || app.status === "Finalized";
+  const canContinue = !app.resume_pdf_path && isPreApplied;
+  const canRegen = !canContinue && isPreApplied;
   const canEdit = !!app.resume_final_md && !canContinue;
 
   const cvPdf  = app.resume_pdf_path    ? `${BASE}/files/${app.resume_pdf_path.split("/applications/")[1]}`    : undefined;

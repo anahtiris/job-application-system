@@ -69,6 +69,8 @@
   --color-badge-offer-fg: var(--badge-offer-fg);
   --color-badge-responded-bg: var(--badge-responded-bg);
   --color-badge-responded-fg: var(--badge-responded-fg);
+  --color-badge-finalized-bg: var(--badge-finalized-bg);
+  --color-badge-finalized-fg: var(--badge-finalized-fg);
   --color-badge-passed-bg: var(--badge-passed-bg);
   --color-badge-passed-fg: var(--badge-passed-fg);
   --color-badge-ghosted-bg: var(--badge-ghosted-bg);
@@ -93,6 +95,8 @@
   --badge-offer-fg: #5B21B6;
   --badge-responded-bg: #E6F1FB;
   --badge-responded-fg: #185FA5;
+  --badge-finalized-bg: #E6F7F5;
+  --badge-finalized-fg: #0F766E;
   --badge-passed-bg: #FCEBEB;
   --badge-passed-fg: #A32D2D;
   --badge-ghosted-bg: #EDEDED;
@@ -165,6 +169,8 @@
   --badge-offer-fg: #A78BFA;
   --badge-responded-bg: rgba(24, 95, 165, 0.15);
   --badge-responded-fg: #7BB3E8;
+  --badge-finalized-bg: rgba(15, 118, 110, 0.18);
+  --badge-finalized-fg: #5EEAD4;
   --badge-passed-bg: rgba(163, 45, 45, 0.15);
   --badge-passed-fg: #E07070;
   --badge-ghosted-bg: rgba(255, 255, 255, 0.08);

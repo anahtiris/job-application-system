@@ -23,6 +23,7 @@ interface Application {
 const STATUS_DISPLAY: Record<string, string> = {
   New: "Analyzed",
   Draft: "Draft",
+  Finalized: "Finalized",
   Applied: "Applied",
   Interview: "Interview",
   Offer: "Offer",
@@ -34,6 +35,7 @@ const STATUS_DISPLAY: Record<string, string> = {
 const FILTER_MAP: Record<string, string[]> = {
   Analyzed: ["New"],
   Draft: ["Draft"],
+  Finalized: ["Finalized"],
   Applied: ["Applied"],
   Interview: ["Interview"],
   Offer: ["Offer"],
@@ -41,7 +43,7 @@ const FILTER_MAP: Record<string, string[]> = {
   Ghosted: ["Ghosted"],
 };
 
-const FILTER_LABELS = ["Analyzed", "Draft", "Applied", "Interview", "Offer", "Rejected", "Ghosted"] as const;
+const FILTER_LABELS = ["Analyzed", "Draft", "Finalized", "Applied", "Interview", "Offer", "Rejected", "Ghosted"] as const;
 
 // Backend statuses where the company chip is amber (active)
 const ACTIVE_STATUSES = new Set(["Applied", "Interview", "Offer"]);
@@ -49,6 +51,7 @@ const ACTIVE_STATUSES = new Set(["Applied", "Interview", "Offer"]);
 // Allowed status transitions (backend values)
 const NEXT_STATUSES: Record<string, string[]> = {
   Draft: ["Applied"],
+  Finalized: ["Applied"],
   Applied: ["Interview", "Offer", "Rejected", "Ghosted"],
   Interview: ["Applied", "Offer", "Rejected", "Ghosted"],
   Offer: ["Rejected"],
@@ -91,6 +94,7 @@ function labelBadgeCls(label: string): string {
     case "Rejected":  return "bg-badge-passed-bg text-badge-passed-fg";
     case "Ghosted":   return "bg-badge-ghosted-bg text-badge-ghosted-fg";
     case "Draft":     return "bg-badge-responded-bg text-badge-responded-fg";
+    case "Finalized": return "bg-badge-finalized-bg text-badge-finalized-fg";
     case "Analyzed":  return "bg-badge-analyzed-bg text-badge-analyzed-fg";
     default:          return "bg-custom-l text-custom-d";
   }
@@ -106,6 +110,7 @@ function badgeCls(backendStatus: string): string {
     label === "Rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
     label === "Ghosted"   ? "bg-badge-ghosted-bg text-badge-ghosted-fg" :
     label === "Draft"     ? "bg-badge-responded-bg text-badge-responded-fg" :
+    label === "Finalized" ? "bg-badge-finalized-bg text-badge-finalized-fg" :
                             "bg-badge-analyzed-bg text-badge-analyzed-fg";
   return `inline-flex items-center text-[12px] font-medium py-[3px] px-[9px] rounded-full border-none whitespace-nowrap font-shell ${color}`;
 }
