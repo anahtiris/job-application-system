@@ -10,12 +10,16 @@ from sqlmodel import Session, SQLModel, create_engine
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
     """A TestClient backed by a fresh in-memory DB, isolated per test.
 
     A StaticPool keeps the single in-memory connection alive across requests so
     rows persist within a test. We override get_session rather than touching the
-    real app.db, and never enter the app lifespan (which would migrate app.db)."""
+    real app.db, and never enter the app lifespan (which would migrate app.db).
+
+    get_setting/set_setting (and config.model(), which calls get_setting) read the
+    module-level db.engine directly rather than the injected session, so it must
+    also point at the in-memory engine or those calls hit the real app.db."""
     import db  # registers JobLead/Application/Setting on SQLModel.metadata
     from main import app
 
@@ -25,6 +29,7 @@ def client():
         poolclass=StaticPool,
     )
     SQLModel.metadata.create_all(engine)
+    monkeypatch.setattr(db, "engine", engine)
 
     def override_get_session():
         with Session(engine) as session:
