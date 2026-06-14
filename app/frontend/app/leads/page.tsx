@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Trash2, Search, Check } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 
@@ -65,6 +65,7 @@ export default function LeadsPage() {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvingAll, setApprovingAll] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = () => {
     setLoading(true);
@@ -120,9 +121,15 @@ export default function LeadsPage() {
     return acc;
   }, {});
 
-  const visible = tab
+  const q = search.trim().toLowerCase();
+  const visible = (tab
     ? leads.filter((l) => l.status === tab)
-    : leads.filter((l) => l.status !== "captured");
+    : leads.filter((l) => l.status !== "captured")
+  ).filter((l) =>
+    q
+      ? l.company.toLowerCase().includes(q) || l.job_title.toLowerCase().includes(q)
+      : true
+  );
   const captured = leads.filter((l) => l.status === "captured");
   const unanalyzed = leads.filter((l) => l.status === "captured" || l.status === "new");
 
@@ -254,6 +261,21 @@ export default function LeadsPage() {
           {visible.length}
         </span>
 
+        {/* Search */}
+        <div className="relative ml-2">
+          <Search
+            size={13}
+            className="absolute left-[9px] top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search…"
+            className="text-[12px] py-1 pr-2.5 pl-7 rounded-full border-[0.5px] border-border-tertiary bg-background-secondary text-text-primary font-shell outline-none w-[180px]"
+          />
+        </div>
+
         {/* Approve all */}
         {leads.some((l) => l.status === "analyzed") && (
           <button
@@ -382,11 +404,16 @@ export default function LeadsPage() {
                   <button
                     disabled={approvingId === lead.id}
                     onClick={() => handleApprove(lead.id)}
-                    className={`text-[11px] font-medium py-[3px] px-[9px] rounded-full border-none bg-badge-interview-bg text-badge-interview-fg font-shell whitespace-nowrap ${
+                    className={`inline-flex items-center gap-1 text-[11px] font-medium py-[3px] px-[9px] rounded-[6px] border-none bg-custom text-white font-shell whitespace-nowrap ${
                       approvingId === lead.id ? "opacity-60 cursor-default" : "opacity-100 cursor-pointer"
                     }`}
                   >
-                    {approvingId === lead.id ? "…" : "Approve"}
+                    {approvingId === lead.id ? "…" : (
+                      <>
+                        <Check size={12} />
+                        Approve
+                      </>
+                    )}
                   </button>
                 )}
               </div>
