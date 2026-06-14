@@ -111,7 +111,7 @@ type check on every push and pull request.
 
 1. Go to **Settings** → configure which model handles each role (parser / writer / reviewer / research) using `provider/model` format (e.g. `anthropic/claude-sonnet-4-6`, `ollama/qwen3.6:latest`).
 2. Go to **Settings** → paste your persona description (your personal review guardrails).
-3. Go to **Skills** → add your skills with tier ratings (1=Core, 2=Proficient, 3=Familiar, 4=Exposure) and evidence snippets.
+3. Go to **Skills** → add your skills with tier ratings (1=Core, 2=Proficient, 3=Familiar, 4=Exposure) and evidence snippets. Or, once a master resume is uploaded (step 5), generate the inventory automatically: **Copy prompt for Claude** (Claude reads your resume and interviews you on anything ambiguous) or **Extract with Ollama** (one offline pass that flags low-confidence guesses for review) — both on the Setup and Skills pages. Re-running never overwrites edits you've made.
 4. Drop your CV and cover letter DOCX templates into `templates/resume/` and `templates/cover-letter/`.
 5. Go to **Setup** → upload your master resume (EN and/or DE). Your name is auto-extracted for PDF file naming.
 6. Go to **Settings** → set your notice period (Immediately, 2 weeks, 1–6 months, or a custom date) — used to compute the availability date in generated cover letters.
