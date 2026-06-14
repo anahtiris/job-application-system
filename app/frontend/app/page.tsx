@@ -43,10 +43,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    Promise.all([api.get("/api/tracker/"), api.get("/api/leads/")])
+  const fetchData = useCallback(() => {
+    return Promise.all([api.get("/api/tracker/"), api.get("/api/leads/")])
       .then(([appData, leadData]) => {
         setApps(appData as Application[]);
         setCapturedCount(
@@ -60,8 +58,14 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    fetchData();
+  }, [fetchData]);
+
+  const retry = () => {
+    setLoading(true);
+    setError(null);
+    fetchData();
+  };
 
   const todoApps = apps.filter((a) => a.status === "New" || a.status === "Draft");
   const appliedApps = apps.filter((a) => a.status === "Applied");
@@ -120,7 +124,7 @@ export default function Dashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 text-[12px] text-text-tertiary">
         <p>{error}</p>
-        <button onClick={load} className={pillBtnCls(true)}>
+        <button onClick={retry} className={pillBtnCls(true)}>
           Retry
         </button>
       </div>
