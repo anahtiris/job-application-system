@@ -193,6 +193,8 @@ function NewApplicationPageInner() {
   const [companyAddress, setCompanyAddress] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const finalsBaselineRef = useRef<{ resume: string; cl: string; address: string } | null>(null);
+  const hadExistingPdfRef = useRef(false);
+  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
 
   useEffect(() => {
     if (!existingId) return;
@@ -206,6 +208,7 @@ function NewApplicationPageInner() {
       setCompanyAddress(app.company_address ?? "");
       setClNotes(app.cover_letter_notes ?? "");
       setSourceUrl(app.source_url ?? "");
+      hadExistingPdfRef.current = !!app.resume_pdf_path;
       setStep(regen ? 2 : inferStep(app));
       setLoading(false);
     });
@@ -374,12 +377,22 @@ function NewApplicationPageInner() {
     setStep(4);
   };
 
-  const handlePdf = async () => {
+  const doGeneratePdf = async () => {
     setGeneratingPdf(true); setPdfError("");
     await api.put("/api/application/finals", { application_id: appId, resume_md: resumeMd, cover_letter_md: clMd, company_address: companyAddress });
     const res = await api.post("/api/application/pdf", { application_id: appId }).catch((e: unknown) => ({ error: (e as Error).message }));
     if (res?.detail || res?.error) { setPdfError(res.detail ?? res.error); setGeneratingPdf(false); return; }
     router.push(`/apply/${appId}`);
+  };
+
+  const handlePdf = () => {
+    if (hadExistingPdfRef.current) { setShowOverwriteConfirm(true); return; }
+    doGeneratePdf();
+  };
+
+  const confirmOverwrite = () => {
+    setShowOverwriteConfirm(false);
+    doGeneratePdf();
   };
 
   const activeResult = analysisResult as {
@@ -681,6 +694,19 @@ function NewApplicationPageInner() {
                   {generatingPdf ? "Finalizing…" : "Finalize & Generate PDFs"}
                 </Btn>
               </div>
+              {showOverwriteConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                  <div className="bg-background-primary border-[0.5px] border-border-tertiary rounded-card p-5 max-w-[360px] flex flex-col gap-3 shadow-[0_8px_32px_rgba(0,0,0,0.15)]">
+                    <p className="text-[13px] font-shell text-text-primary m-0">
+                      This will overwrite the existing CV and Cover Letter files (PDF + DOCX). Continue?
+                    </p>
+                    <div className="flex gap-2 justify-end">
+                      <Btn onClick={() => setShowOverwriteConfirm(false)}>Cancel</Btn>
+                      <Btn primary onClick={confirmOverwrite}>Overwrite</Btn>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
