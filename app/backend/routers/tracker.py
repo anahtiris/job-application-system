@@ -9,14 +9,15 @@ from db import Application, get_session, now_utc
 
 router = APIRouter()
 
-VALID_STATUSES = {"Draft", "Applied", "Interview", "Offer", "Rejected"}
+VALID_STATUSES = {"Draft", "Applied", "Interview", "Offer", "Rejected", "Ghosted"}
 
 NEXT_STATUSES: dict[str, set[str]] = {
     "Draft":     {"Applied"},
-    "Applied":   {"Interview", "Offer", "Rejected"},
-    "Interview": {"Applied", "Offer", "Rejected"},
+    "Applied":   {"Interview", "Offer", "Rejected", "Ghosted"},
+    "Interview": {"Applied", "Offer", "Rejected", "Ghosted"},
     "Offer":     {"Rejected"},
     "Rejected":  {"Applied", "Interview"},
+    "Ghosted":   {"Applied", "Interview", "Rejected"},
 }
 
 

@@ -16,15 +16,16 @@ import { isoToDateValue, dateValueToISO } from "@/lib/utils";
 
 const STATUS_DISPLAY: Record<string, string> = {
   New: "Analyzed", Draft: "Draft", Applied: "Applied",
-  Interview: "Interview", Offer: "Offer", Rejected: "Rejected",
+  Interview: "Interview", Offer: "Offer", Rejected: "Rejected", Ghosted: "Ghosted",
 };
 
 const NEXT_STATUSES: Record<string, string[]> = {
   Draft: ["Applied"],
-  Applied: ["Interview", "Offer", "Rejected"],
-  Interview: ["Applied", "Offer", "Rejected"],
+  Applied: ["Interview", "Offer", "Rejected", "Ghosted"],
+  Interview: ["Applied", "Offer", "Rejected", "Ghosted"],
   Offer: ["Rejected"],
   Rejected: ["Applied", "Interview"],
+  Ghosted: ["Applied", "Interview", "Rejected"],
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -47,6 +48,7 @@ function badgeCls(status: string): string {
     label === "Interview" ? "bg-badge-interview-bg text-badge-interview-fg" :
     label === "Offer"     ? "bg-badge-offer-bg text-badge-offer-fg" :
     label === "Rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
+    label === "Ghosted"   ? "bg-badge-ghosted-bg text-badge-ghosted-fg" :
     label === "Draft"     ? "bg-badge-responded-bg text-badge-responded-fg" :
                             "bg-badge-analyzed-bg text-badge-analyzed-fg";
   return `inline-flex items-center text-[12px] font-medium py-[3px] px-2.5 rounded-full border-none font-shell ${color}`;

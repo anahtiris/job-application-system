@@ -71,6 +71,8 @@
   --color-badge-responded-fg: var(--badge-responded-fg);
   --color-badge-passed-bg: var(--badge-passed-bg);
   --color-badge-passed-fg: var(--badge-passed-fg);
+  --color-badge-ghosted-bg: var(--badge-ghosted-bg);
+  --color-badge-ghosted-fg: var(--badge-ghosted-fg);
   --radius-card: var(--border-radius-md);
   --radius-chip: var(--border-radius-sm);
 }
@@ -93,6 +95,8 @@
   --badge-responded-fg: #185FA5;
   --badge-passed-bg: #FCEBEB;
   --badge-passed-fg: #A32D2D;
+  --badge-ghosted-bg: #EDEDED;
+  --badge-ghosted-fg: #5C5C5C;
   --color-background-primary: var(--background);
   --color-background-secondary: oklch(0.97 0 0);
   --color-background-tertiary: oklch(0.95 0 0);
@@ -163,6 +167,8 @@
   --badge-responded-fg: #7BB3E8;
   --badge-passed-bg: rgba(163, 45, 45, 0.15);
   --badge-passed-fg: #E07070;
+  --badge-ghosted-bg: rgba(255, 255, 255, 0.08);
+  --badge-ghosted-fg: #A3A3A3;
 
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);

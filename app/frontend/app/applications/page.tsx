@@ -27,6 +27,7 @@ const STATUS_DISPLAY: Record<string, string> = {
   Interview: "Interview",
   Offer: "Offer",
   Rejected: "Rejected",
+  Ghosted: "Ghosted",
 };
 
 // Which backend statuses each filter option covers
@@ -37,9 +38,10 @@ const FILTER_MAP: Record<string, string[]> = {
   Interview: ["Interview"],
   Offer: ["Offer"],
   Rejected: ["Rejected"],
+  Ghosted: ["Ghosted"],
 };
 
-const FILTER_LABELS = ["Analyzed", "Draft", "Applied", "Interview", "Offer", "Rejected"] as const;
+const FILTER_LABELS = ["Analyzed", "Draft", "Applied", "Interview", "Offer", "Rejected", "Ghosted"] as const;
 
 // Backend statuses where the company chip is amber (active)
 const ACTIVE_STATUSES = new Set(["Applied", "Interview", "Offer"]);
@@ -47,10 +49,11 @@ const ACTIVE_STATUSES = new Set(["Applied", "Interview", "Offer"]);
 // Allowed status transitions (backend values)
 const NEXT_STATUSES: Record<string, string[]> = {
   Draft: ["Applied"],
-  Applied: ["Interview", "Offer", "Rejected"],
-  Interview: ["Applied", "Offer", "Rejected"],
+  Applied: ["Interview", "Offer", "Rejected", "Ghosted"],
+  Interview: ["Applied", "Offer", "Rejected", "Ghosted"],
   Offer: ["Rejected"],
   Rejected: ["Applied", "Interview"],
+  Ghosted: ["Applied", "Interview", "Rejected"],
 };
 
 // Shared column grid for both header and rows
@@ -86,6 +89,7 @@ function labelBadgeCls(label: string): string {
     case "Interview": return "bg-badge-interview-bg text-badge-interview-fg";
     case "Offer":     return "bg-badge-offer-bg text-badge-offer-fg";
     case "Rejected":  return "bg-badge-passed-bg text-badge-passed-fg";
+    case "Ghosted":   return "bg-badge-ghosted-bg text-badge-ghosted-fg";
     case "Draft":     return "bg-badge-responded-bg text-badge-responded-fg";
     case "Analyzed":  return "bg-badge-analyzed-bg text-badge-analyzed-fg";
     default:          return "bg-custom-l text-custom-d";
@@ -100,6 +104,7 @@ function badgeCls(backendStatus: string): string {
     label === "Interview" ? "bg-badge-interview-bg text-badge-interview-fg" :
     label === "Offer"     ? "bg-badge-offer-bg text-badge-offer-fg" :
     label === "Rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
+    label === "Ghosted"   ? "bg-badge-ghosted-bg text-badge-ghosted-fg" :
     label === "Draft"     ? "bg-badge-responded-bg text-badge-responded-fg" :
                             "bg-badge-analyzed-bg text-badge-analyzed-fg";
   return `inline-flex items-center text-[12px] font-medium py-[3px] px-[9px] rounded-full border-none whitespace-nowrap font-shell ${color}`;
