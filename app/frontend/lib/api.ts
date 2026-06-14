@@ -13,6 +13,23 @@ export class ApiError extends Error {
   }
 }
 
+/** Thrown when the request never reaches the backend (e.g. server not running). */
+export class NetworkError extends Error {
+  constructor() {
+    super("Cannot reach the backend — is the server running?");
+    this.name = "NetworkError";
+  }
+}
+
+/** fetch() that converts connection failures into a NetworkError. */
+async function doFetch(path: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(`${BASE}${path}`, init);
+  } catch {
+    throw new NetworkError();
+  }
+}
+
 async function parse(r: Response) {
   if (!r.ok) {
     let detail = "";
@@ -38,24 +55,23 @@ async function parse(r: Response) {
 
 const withBody =
   (method: "POST" | "PUT" | "PATCH") => (path: string, body?: unknown) =>
-    fetch(`${BASE}${path}`, {
+    doFetch(path, {
       method,
       headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }).then(parse);
 
 export const api = {
-  get: (path: string) => fetch(`${BASE}${path}`).then(parse),
+  get: (path: string) => doFetch(path).then(parse),
   post: withBody("POST"),
   put: withBody("PUT"),
   patch: withBody("PATCH"),
-  delete: (path: string) =>
-    fetch(`${BASE}${path}`, { method: "DELETE" }).then(parse),
+  delete: (path: string) => doFetch(path, { method: "DELETE" }).then(parse),
   upload: (path: string, formData: FormData) =>
-    fetch(`${BASE}${path}`, { method: "POST", body: formData }).then(parse),
+    doFetch(path, { method: "POST", body: formData }).then(parse),
   // SSE / streaming — returns the raw Response; caller checks `.ok` and reads the body.
   stream: (path: string, body: unknown) =>
-    fetch(`${BASE}${path}`, {
+    doFetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Inbox, Send, Calendar } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, NetworkError } from "@/lib/api";
+import { pillBtnCls } from "@/components/ui-kit";
 
 interface Application {
   id: string;
@@ -40,8 +41,11 @@ export default function Dashboard() {
   const [apps, setApps] = useState<Application[]>([]);
   const [capturedCount, setCapturedCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
     Promise.all([api.get("/api/tracker/"), api.get("/api/leads/")])
       .then(([appData, leadData]) => {
         setApps(appData as Application[]);
@@ -49,8 +53,15 @@ export default function Dashboard() {
           (leadData as Lead[]).filter((l) => PENDING_LEAD_STATUSES.has(l.status)).length
         );
       })
+      .catch((err) => {
+        setError(err instanceof NetworkError ? err.message : "Failed to load dashboard data.");
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const todoApps = apps.filter((a) => a.status === "New" || a.status === "Draft");
   const appliedApps = apps.filter((a) => a.status === "Applied");
@@ -101,6 +112,17 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center h-full text-[12px] text-text-tertiary">
         Loading…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-[12px] text-text-tertiary">
+        <p>{error}</p>
+        <button onClick={load} className={pillBtnCls(true)}>
+          Retry
+        </button>
       </div>
     );
   }
