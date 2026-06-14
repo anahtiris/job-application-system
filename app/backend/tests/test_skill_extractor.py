@@ -67,3 +67,12 @@ async def test_extract_unparseable_returns_empty(monkeypatch):
         return "I could not produce JSON."
     monkeypatch.setattr(se, "generate", fake_generate)
     assert await se.extract_skills("r", {}, "m") == {}
+
+
+async def test_extract_handles_quoted_boolean_needs_review(monkeypatch):
+    async def fake_generate(model, prompt, system=""):
+        return '{"A": {"tier": 2, "evidence": "e", "needs_review": "false"}, "B": {"tier": 3, "needs_review": "true"}}'
+    monkeypatch.setattr(se, "generate", fake_generate)
+    out = await se.extract_skills("r", {}, "m")
+    assert out["A"]["needs_review"] is False   # quoted "false" is not truthy
+    assert out["B"]["needs_review"] is True

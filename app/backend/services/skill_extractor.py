@@ -46,6 +46,14 @@ def _sanitise(raw: str) -> dict:
         return {}
 
 
+def _as_bool(value) -> bool:
+    """Coerce a model-emitted flag to bool. Small models sometimes emit a quoted
+    boolean ("false"), which is truthy under bool() — treat those as the words."""
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes")
+    return bool(value)
+
+
 def _normalise(entry: dict) -> dict:
     try:
         tier = int(entry.get("tier", 3))
@@ -55,7 +63,7 @@ def _normalise(entry: dict) -> dict:
     return {
         "tier": tier,
         "evidence": str(entry.get("evidence", "")).strip(),
-        "needs_review": bool(entry.get("needs_review", False)),
+        "needs_review": _as_bool(entry.get("needs_review", False)),
     }
 
 
