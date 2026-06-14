@@ -400,6 +400,7 @@ export default function ApplicationDetailPage() {
 
   const canContinue = !app.resume_pdf_path && (app.status === "New" || app.status === "Draft");
   const canRegen = !canContinue && (app.status === "New" || app.status === "Draft");
+  const canEdit = !!app.resume_final_md && !canContinue;
 
   const cvPdf  = app.resume_pdf_path    ? `${BASE}/files/${app.resume_pdf_path.split("/applications/")[1]}`    : undefined;
   const cvDocx = app.resume_docx_path   ? `${BASE}/files/${app.resume_docx_path.split("/applications/")[1]}`   : undefined;
@@ -467,6 +468,11 @@ export default function ApplicationDetailPage() {
         {canRegen && (
           <Link href={`/apply/new?id=${id}&regen=1`} className={pillBtnCls()}>
             Regenerate
+          </Link>
+        )}
+        {canEdit && (
+          <Link href={`/apply/new?id=${id}`} className={pillBtnCls()}>
+            Edit documents
           </Link>
         )}
 
