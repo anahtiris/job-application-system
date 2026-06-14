@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Search, Check } from "lucide-react";
+import { Trash2, Search, Check, CheckCheck, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { pillBtnCls } from "@/components/ui-kit";
 
 type Lead = {
   id: string;
@@ -21,6 +22,10 @@ const STATUS_TABS = ["new", "analyzing", "analyzed", "approved", "rejected"] as 
 const CLAUDE_PROMPT = "process my captured jobs";
 
 const COL_GRID_CLS = "grid-cols-[2fr_2fr_64px_100px_90px_70px_66px]";
+
+const FIT_VERDICTS = ["strong", "maybe", "skip"] as const;
+
+const selectCls = "text-[12px] font-medium py-1 px-2.5 rounded-full border-[0.5px] border-border-tertiary bg-background-secondary text-text-secondary font-shell cursor-pointer outline-none capitalize";
 
 function hostname(url: string | null): string {
   if (!url) return "captured job";
@@ -54,6 +59,48 @@ function colHeader(label: string) {
   );
 }
 
+function FitFilterDropdown({ selected, onChange }: { selected: string[]; onChange: (v: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+
+  const toggle = (v: string) =>
+    onChange(selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v]);
+
+  const label =
+    selected.length === 0 || selected.length === FIT_VERDICTS.length
+      ? "All fits"
+      : selected.map((v) => v.charAt(0).toUpperCase() + v.slice(1)).join(", ");
+
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen((o) => !o)} className={`${selectCls} inline-flex items-center gap-1`}>
+        {label}
+        <ChevronDown size={11} />
+      </button>
+      {open && (
+        <div className="absolute top-[calc(100%+4px)] right-0 z-30 bg-background-primary border-[0.5px] border-border-tertiary rounded-card p-1 min-w-[110px] shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
+          {FIT_VERDICTS.map((v) => (
+            <label
+              key={v}
+              className="flex items-center gap-2 text-[12px] font-medium py-1.5 px-2 rounded-[5px] text-text-secondary font-shell capitalize cursor-pointer hover:bg-background-secondary"
+            >
+              <input type="checkbox" checked={selected.includes(v)} onChange={() => toggle(v)} />
+              {v}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LeadsPage() {
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -66,6 +113,7 @@ export default function LeadsPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvingAll, setApprovingAll] = useState(false);
   const [search, setSearch] = useState("");
+  const [fitFilters, setFitFilters] = useState<string[]>([]);
 
   const load = () => {
     setLoading(true);
@@ -125,11 +173,13 @@ export default function LeadsPage() {
   const visible = (tab
     ? leads.filter((l) => l.status === tab)
     : leads.filter((l) => l.status !== "captured")
-  ).filter((l) =>
-    q
-      ? l.company.toLowerCase().includes(q) || l.job_title.toLowerCase().includes(q)
-      : true
-  );
+  )
+    .filter((l) => (fitFilters.length === 0 ? true : !!l.fit_verdict && fitFilters.includes(l.fit_verdict)))
+    .filter((l) =>
+      q
+        ? l.company.toLowerCase().includes(q) || l.job_title.toLowerCase().includes(q)
+        : true
+    );
   const captured = leads.filter((l) => l.status === "captured");
   const unanalyzed = leads.filter((l) => l.status === "captured" || l.status === "new");
 
@@ -281,39 +331,28 @@ export default function LeadsPage() {
           <button
             onClick={handleApproveAll}
             disabled={approvingAll}
-            className={`text-[12px] font-medium py-1 px-2.5 rounded-[6px] border-none bg-badge-interview-bg text-badge-interview-fg font-shell ${
-              approvingAll ? "opacity-60 cursor-default" : "opacity-100 cursor-pointer"
-            }`}
+            className={`${pillBtnCls(true)} ${approvingAll ? "opacity-60 cursor-default" : "opacity-100 cursor-pointer"}`}
           >
+            <CheckCheck size={12} />
             {approvingAll ? "Approving…" : "Approve all analyzed"}
           </button>
         )}
 
-        {/* Filter tabs */}
-        <div className="flex gap-[5px] ml-auto flex-wrap">
-          <button
-            onClick={() => setTab(null)}
-            className={`text-[12px] font-medium py-1 px-2.5 rounded-full cursor-pointer font-shell ${
-              !tab
-                ? "border-none bg-background-secondary text-text-primary"
-                : "border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
-            }`}
+        {/* Filters */}
+        <div className="flex gap-[5px] ml-auto">
+          <FitFilterDropdown selected={fitFilters} onChange={setFitFilters} />
+          <select
+            value={tab ?? ""}
+            onChange={(e) => setTab(e.target.value || null)}
+            className={selectCls}
           >
-            All
-          </button>
-          {STATUS_TABS.filter((s) => counts[s] > 0).map((s) => (
-            <button
-              key={s}
-              onClick={() => setTab(tab === s ? null : s)}
-              className={`text-[12px] font-medium py-1 px-2.5 rounded-full cursor-pointer font-shell capitalize ${
-                tab === s
-                  ? "border-none bg-background-secondary text-text-primary"
-                  : "border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
+            <option value="">All statuses</option>
+            {STATUS_TABS.filter((s) => counts[s] > 0).map((s) => (
+              <option key={s} value={s}>
+                {s.charAt(0).toUpperCase() + s.slice(1)} ({counts[s]})
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
