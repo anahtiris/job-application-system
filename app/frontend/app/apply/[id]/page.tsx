@@ -542,14 +542,14 @@ export default function ApplicationDetailPage() {
 
             {/* Resume */}
             {tab === "Resume" && app.resume_final_md && (
-              <div className="text-[13px] leading-[1.7] text-text-secondary font-shell">
+              <div className="markdown-doc">
                 <ReactMarkdown>{app.resume_final_md}</ReactMarkdown>
               </div>
             )}
 
             {/* Cover Letter */}
             {tab === "Cover Letter" && app.cover_letter_final_md && (
-              <div className="text-[13px] leading-[1.7] text-text-secondary font-shell">
+              <div className="markdown-doc">
                 <ReactMarkdown>{app.cover_letter_final_md}</ReactMarkdown>
               </div>
             )}

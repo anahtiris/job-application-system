@@ -232,6 +232,39 @@
   opacity: 1;
 }
 
+/* Resume / cover letter rendered markdown */
+.markdown-doc {
+  font-family: var(--font-shell);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+}
+.markdown-doc h1,
+.markdown-doc h2,
+.markdown-doc h3 {
+  font-family: var(--font-shell);
+  font-weight: 600;
+  letter-spacing: normal;
+  color: var(--color-text-primary);
+  margin: 16px 0 8px;
+}
+.markdown-doc h1:first-child,
+.markdown-doc h2:first-child,
+.markdown-doc h3:first-child {
+  margin-top: 0;
+}
+.markdown-doc p,
+.markdown-doc ul,
+.markdown-doc ol {
+  margin: 0 0 10px;
+}
+.markdown-doc li {
+  margin-bottom: 4px;
+}
+.markdown-doc > *:last-child {
+  margin-bottom: 0;
+}
+
 /* Compact FlipClock for the interview date/time picker */
 .flipclock-compact .fc-xs {
   --fc-card-w: 28px;
