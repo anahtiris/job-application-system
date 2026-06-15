@@ -13,10 +13,10 @@ const ROLE_LABELS: Record<string, { label: string; hint: string }> = {
 };
 
 type Theme    = "light" | "system" | "dark";
-type FontSize = "normal" | "large" | "xl";
+type FontSize = "small" | "normal" | "large" | "xl";
 
-const FONT_ZOOM: Record<FontSize, string>   = { normal: "1", large: "1.15", xl: "1.3" };
-const FONT_LABELS: Record<FontSize, string> = { normal: "Normal", large: "Large", xl: "XL" };
+const FONT_ZOOM: Record<FontSize, string>   = { small: "1", normal: "1.15", large: "1.3", xl: "1.45" };
+const FONT_LABELS: Record<FontSize, string> = { small: "Small", normal: "Normal", large: "Large", xl: "XL" };
 
 function applyFontSize(size: FontSize) {
   localStorage.setItem("fontSize", size);
@@ -116,7 +116,7 @@ const inputCls = inputClsFn("mono");
 
 export default function SettingsPage() {
   const [theme, setTheme]       = useState<Theme>("system");
-  const [fontSize, setFontSize] = useState<FontSize>("normal");
+  const [fontSize, setFontSize] = useState<FontSize>("small");
   const [accentColor, setAccentColor] = useState<string>(DEFAULT_ACCENT_COLOR);
 
   const [noticePeriod, setNoticePeriod] = useState<NoticePeriod>("immediate");
@@ -139,7 +139,7 @@ export default function SettingsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only hydration from localStorage (cannot run during SSR)
     setTheme(stored ?? "system");
     const storedFs = localStorage.getItem("fontSize") as FontSize | null;
-    setFontSize(storedFs ?? "normal");
+    setFontSize(storedFs ?? "small");
     const storedAccent = localStorage.getItem("accentColor");
     setAccentColor(storedAccent ?? DEFAULT_ACCENT_COLOR);
   }, []);
@@ -218,7 +218,7 @@ export default function SettingsPage() {
                 <Label>Font size</Label>
                 <SegmentGroup<FontSize>
                   value={fontSize}
-                  options={(["normal", "large", "xl"] as FontSize[]).map((s) => ({ value: s, label: FONT_LABELS[s] }))}
+                  options={(["small", "normal", "large", "xl"] as FontSize[]).map((s) => ({ value: s, label: FONT_LABELS[s] }))}
                   onChange={(s) => { setFontSize(s); applyFontSize(s); }}
                 />
               </div>
