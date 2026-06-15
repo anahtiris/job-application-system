@@ -7,7 +7,9 @@ import { FlipClock } from "@anahtiris/flipclock";
 import "@anahtiris/flipclock/dist/flipclock.css";
 import { api } from "@/lib/api";
 import { useIsDark } from "@/hooks/useIsDark";
-import { isoToDateValue, dateValueToISO } from "@/lib/utils";
+import { isoToDateValue, dateValueToISO, shortDate } from "@/lib/utils";
+import { StatusBadge, useClickOutside, appLabelStyleCls } from "@/components/ui-kit";
+import { STATUS_DISPLAY } from "@/lib/status";
 
 interface Application {
   id: string;
@@ -18,18 +20,6 @@ interface Application {
   created_at: string;
   language: string;
 }
-
-// Map backend status → display label shown in the list
-const STATUS_DISPLAY: Record<string, string> = {
-  New: "Analyzed",
-  Draft: "Draft",
-  Finalized: "Finalized",
-  Applied: "Applied",
-  Interview: "Interview",
-  Offer: "Offer",
-  Rejected: "Rejected",
-  Ghosted: "Ghosted",
-};
 
 // Which backend statuses each filter option covers
 const FILTER_MAP: Record<string, string[]> = {
@@ -48,21 +38,23 @@ const FILTER_LABELS = ["Analyzed", "Draft", "Finalized", "Applied", "Interview",
 // Backend statuses where the company chip is amber (active)
 const ACTIVE_STATUSES = new Set(["Applied", "Interview", "Offer"]);
 
-// Allowed status transitions (backend values)
-const NEXT_STATUSES: Record<string, string[]> = {
-  Draft: ["Applied"],
-  Finalized: ["Applied"],
-  Applied: ["Interview", "Offer", "Rejected", "Ghosted"],
-  Interview: ["Applied", "Offer", "Rejected", "Ghosted"],
-  Offer: ["Rejected"],
-  Rejected: ["Applied", "Interview"],
-  Ghosted: ["Applied", "Interview", "Rejected"],
-};
-
 // Shared column grid for both header and rows
 const COL_GRID_CLS = "grid-cols-[2fr_2fr_130px_90px_66px]";
 
 type FilterLabel = (typeof FILTER_LABELS)[number];
+
+// List sort order: Finalized → Draft → Analyzed (New) → Applied, then the rest.
+// Within a status, most recent first (date_applied, falling back to created_at).
+const STATUS_RANK: Record<string, number> = {
+  Finalized: 0,
+  Draft: 1,
+  New: 2,
+  Applied: 3,
+  Interview: 4,
+  Offer: 5,
+  Rejected: 6,
+  Ghosted: 7,
+};
 
 function companyChip(name: string): string {
   const clean = name.replace(/[^a-zA-Z0-9\s]/g, "").trim();
@@ -78,97 +70,6 @@ function companyChip(name: string): string {
     .join("");
 }
 
-function shortDate(d: string | null | undefined): string {
-  if (!d) return "—";
-  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(
-    new Date(d + "T00:00:00")
-  );
-}
-
-// Badge colors keyed by filter/display label
-function labelBadgeCls(label: string): string {
-  switch (label) {
-    case "Applied":   return "bg-custom-l text-custom-d";
-    case "Interview": return "bg-badge-interview-bg text-badge-interview-fg";
-    case "Offer":     return "bg-badge-offer-bg text-badge-offer-fg";
-    case "Rejected":  return "bg-badge-passed-bg text-badge-passed-fg";
-    case "Ghosted":   return "bg-badge-ghosted-bg text-badge-ghosted-fg";
-    case "Draft":     return "bg-badge-responded-bg text-badge-responded-fg";
-    case "Finalized": return "bg-badge-finalized-bg text-badge-finalized-fg";
-    case "Analyzed":  return "bg-badge-analyzed-bg text-badge-analyzed-fg";
-    default:          return "bg-custom-l text-custom-d";
-  }
-}
-
-// Full status-badge class for a backend status; default = "Analyzed"
-function badgeCls(backendStatus: string): string {
-  const label = STATUS_DISPLAY[backendStatus] ?? backendStatus;
-  const color =
-    label === "Applied"   ? "bg-custom-l text-custom-d" :
-    label === "Interview" ? "bg-badge-interview-bg text-badge-interview-fg" :
-    label === "Offer"     ? "bg-badge-offer-bg text-badge-offer-fg" :
-    label === "Rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
-    label === "Ghosted"   ? "bg-badge-ghosted-bg text-badge-ghosted-fg" :
-    label === "Draft"     ? "bg-badge-responded-bg text-badge-responded-fg" :
-    label === "Finalized" ? "bg-badge-finalized-bg text-badge-finalized-fg" :
-                            "bg-badge-analyzed-bg text-badge-analyzed-fg";
-  return `inline-flex items-center text-[12px] font-medium py-[3px] px-[9px] rounded-full border-none whitespace-nowrap font-shell ${color}`;
-}
-
-// Inline dropdown for changing application status
-function StatusBadge({
-  app,
-  onUpdate,
-}: {
-  app: Application;
-  onUpdate: (id: string, newStatus: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const nextOptions = NEXT_STATUSES[app.status] ?? [];
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative inline-block">
-      <button
-        className={`${badgeCls(app.status)} ${nextOptions.length ? "cursor-pointer" : "cursor-default"}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (nextOptions.length) setOpen((o) => !o);
-        }}
-      >
-        {STATUS_DISPLAY[app.status] ?? app.status}
-      </button>
-
-      {open && (
-        <div className="absolute top-[calc(100%+4px)] left-0 z-30 bg-background-primary border-[0.5px] border-border-tertiary rounded-card p-1 min-w-[110px] shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
-          {nextOptions.map((s) => (
-            <button
-              key={s}
-              onClick={(e) => {
-                e.stopPropagation();
-                onUpdate(app.id, s);
-                setOpen(false);
-              }}
-              className="block w-full text-left text-[12px] font-medium py-1.5 px-2 rounded-[5px] border-none cursor-pointer bg-transparent font-shell text-text-secondary hover:bg-background-secondary"
-            >
-              {STATUS_DISPLAY[s] ?? s}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Multiselect dropdown for filtering by status
 function FilterDropdown({
   activeFilters,
@@ -182,15 +83,7 @@ function FilterDropdown({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const count = activeFilters.size;
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  useClickOutside(ref, open, () => setOpen(false));
 
   return (
     <div ref={ref} className="relative">
@@ -217,7 +110,7 @@ function FilterDropdown({
                 onChange={() => onToggle(label)}
                 className="cursor-pointer accent-custom"
               />
-              <span className={`inline-flex items-center text-[11px] font-medium py-0.5 px-2 rounded-full font-shell ${labelBadgeCls(label)}`}>
+              <span className={`inline-flex items-center text-[11px] font-medium py-0.5 px-2 rounded-full font-shell ${appLabelStyleCls(label)}`}>
                 {label}
               </span>
             </label>
@@ -375,6 +268,13 @@ export default function ApplicationsPage() {
       );
     }
     return true;
+  }).sort((a, b) => {
+    const ra = STATUS_RANK[a.status] ?? 99;
+    const rb = STATUS_RANK[b.status] ?? 99;
+    if (ra !== rb) return ra - rb;
+    const da = a.date_applied ?? a.created_at ?? "";
+    const db = b.date_applied ?? b.created_at ?? "";
+    return db.localeCompare(da);
   });
 
   const colHeader = (label: string) => (
@@ -499,7 +399,7 @@ export default function ApplicationsPage() {
 
                 {/* Status badge */}
                 <div onClick={(e) => e.stopPropagation()}>
-                  <StatusBadge app={app} onUpdate={handleStatusChange} />
+                  <StatusBadge status={app.status} onSelect={(s) => handleStatusChange(app.id, s)} stopPropagation />
                 </div>
 
                 {/* Date */}

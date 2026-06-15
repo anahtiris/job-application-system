@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { SKILLS_PROMPT } from "@/lib/prompts";
+import { inputCls as inputClsFn } from "@/components/ui-kit";
 
 interface Skill { name: string; tier: number; evidence: string; needsReview?: boolean; }
 
@@ -23,7 +24,7 @@ const TIERS = [
 
 function tierConf(tier: number) { return TIERS.find((t) => t.value === tier) ?? TIERS[2]; }
 
-const inputCls = "w-full text-[13px] py-1.5 px-[9px] rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-primary font-shell outline-none";
+const inputCls = inputClsFn();
 
 function btnCls(primary = true, disabled = false): string {
   const border = primary ? "border-none" : "border-[0.5px] border-border-tertiary";
@@ -226,15 +227,23 @@ export default function SkillsPage() {
               No skills yet — add your first one above.
             </div>
           ) : (
-            skills.map((skill, i) => (
-              <SkillRow
-                key={`${skill.name}-${i}`}
-                skill={skill}
-                startEditing={!skill.name}
-                onSave={(u) => handleSave(i, u)}
-                onDelete={() => handleDelete(i)}
-              />
-            ))
+            skills
+              .map((skill, index) => ({ skill, index }))
+              .sort((a, b) => {
+                // Keep freshly-added (unnamed) rows at the bottom; otherwise Core → Exposure.
+                const an = !a.skill.name, bn = !b.skill.name;
+                if (an !== bn) return an ? 1 : -1;
+                return a.skill.tier - b.skill.tier;
+              })
+              .map(({ skill, index }) => (
+                <SkillRow
+                  key={`${skill.name}-${index}`}
+                  skill={skill}
+                  startEditing={!skill.name}
+                  onSave={(u) => handleSave(index, u)}
+                  onDelete={() => handleDelete(index)}
+                />
+              ))
           )}
 
           {/* Tier legend */}
