@@ -129,7 +129,7 @@ export function CompanyQuestionsTab({
                           update({ my_q_state: { ...(notes.my_q_state ?? {}), [key]: { ...cur, note: v } } });
                         }}
                         placeholder="Their answer…"
-                        className="ml-[23px] mt-0.5 !text-[12px]"
+                        className="ml-[23px] mt-2 !text-[12px]"
                       />
                     </div>
                   );
@@ -189,7 +189,7 @@ export function CompanyQuestionsTab({
                                 value={state.note}
                                 onChange={(v) => setMyQNote(q.id, v)}
                                 placeholder="Their answer…"
-                                className="ml-[23px] mt-0.5 !text-[12px]"
+                                className="ml-[23px] mt-2 !text-[12px]"
                               />
                             </div>
                           );

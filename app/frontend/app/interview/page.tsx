@@ -71,6 +71,17 @@ export default function InterviewPage() {
     setInterviews((prev) => prev.map((a) => (a.id === id ? { ...a, interview_date: iso } : a)));
   };
 
+  // Keep the in-memory list in sync with edits so a remount (switching panels /
+  // interviews and back) re-initializes from the latest value instead of the
+  // page-load snapshot. Mirrors handleDateChange.
+  const handlePrepChange = (id: string, md: string) => {
+    setInterviews((prev) => prev.map((a) => (a.id === id ? { ...a, interview_prep_md: md } : a)));
+  };
+
+  const handleNotesChange = (id: string, json: string) => {
+    setInterviews((prev) => prev.map((a) => (a.id === id ? { ...a, interview_notes_json: json } : a)));
+  };
+
   const selectedApp = interviews.find((a) => a.id === selected) ?? null;
 
   const now = new Date();
@@ -183,7 +194,13 @@ export default function InterviewPage() {
         ) : selected === "technical" ? (
           <TechnicalQuestionsPanel />
         ) : selectedApp ? (
-          <CompanyPrepPanel app={selectedApp} isDark={isDark} onDateChange={handleDateChange} />
+          <CompanyPrepPanel
+            app={selectedApp}
+            isDark={isDark}
+            onDateChange={handleDateChange}
+            onPrepChange={handlePrepChange}
+            onNotesChange={handleNotesChange}
+          />
         ) : null}
       </div>
     </div>

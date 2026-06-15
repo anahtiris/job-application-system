@@ -39,11 +39,20 @@ ABSOLUTE RULES:
 _TIER_LABELS = {1: "Core", 2: "Proficient", 3: "Familiar", 4: "Exposure"}
 
 
+def _with_persona(system: str, persona_path: Path | None) -> str:
+    if persona_path and persona_path.exists():
+        persona_text = persona_path.read_text(encoding="utf-8").strip()
+        if persona_text:
+            return f"Additional personal guidelines:\n{persona_text}\n\n" + system
+    return system
+
+
 async def generate_skills_debrief(
     resume_md: str,
     job_description: str,
     skills_inventory: dict,
     model: str,
+    persona_path: Path | None = None,
 ) -> str:
     if skills_inventory:
         lines = [
@@ -59,7 +68,7 @@ async def generate_skills_debrief(
         f"JOB_DESCRIPTION:\n{job_description}\n\n"
         f"{skills_block}"
     )
-    return await generate(model, prompt, system=DEBRIEF_SYSTEM)
+    return await generate(model, prompt, system=_with_persona(DEBRIEF_SYSTEM, persona_path))
 
 INTERVIEW_SYSTEM = """You are preparing a candidate for a job interview.
 
@@ -98,6 +107,7 @@ async def generate_interview_prep(
     model: str,
     resume_final: str = "",
     cover_letter: str = "",
+    persona_path: Path | None = None,
 ) -> str:
     master_md = master_path.read_text(encoding="utf-8")
     prompt = (
@@ -112,4 +122,4 @@ async def generate_interview_prep(
         f"INTERVIEWER_TYPE: {interviewer_type}"
         + (f"\nFOCUS_SKILLS: {focus_skills}" if focus_skills.strip() else "")
     )
-    return await generate(model, prompt, system=INTERVIEW_SYSTEM)
+    return await generate(model, prompt, system=_with_persona(INTERVIEW_SYSTEM, persona_path))

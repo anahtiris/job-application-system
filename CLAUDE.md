@@ -177,7 +177,7 @@ Two independent generation blocks, both only active when `app.status === "Interv
 
 **Two ways to generate Interview Prep** (mirrors the captured-jobs pattern):
 - **Generate with Ollama** — `POST /api/application/interview-prep` runs `interview.generate_interview_prep` offline. Company Analysis is inferred from the JD (no web), labelled "(inferred — verify)".
-- **Copy prompt for Claude** — the button copies an instruction referencing the application id. When the user pastes it, Claude Code: (1) `GET /api/tracker/{id}` for company/JD/CV/cover letter; (2) reads `data/skills.json`, `data/career_goal.md`, and the master resume from disk; (3) **web-researches the company** (reviews, salary, news, sentiment — cite sources, say "no reliable data found" when thin, **never fabricate**); (4) drafts all seven `## ` sections in the page's language; (5) saves via `PUT /api/application/{id}/interview-prep` with `{markdown}`. This is the **Interview prep — Claude path**.
+- **Copy prompt for Claude** — the button copies an instruction referencing the application id, round, interviewer type, and focus skills. When the user pastes it, Claude Code follows `skills/interview-prep/SKILL.md`: gathers context from `/api/tracker/{id}` and disk, **web-researches the company** (never fabricate), drafts all seven `## ` sections in the page's language, and saves via `PUT /api/application/{id}/interview-prep`. This is the **Interview prep — Claude path**.
 
 ### Templates
 `templates/resume/resume_en.docx` and `templates/resume/resume_de.docx` are the base CV DOCX files. `templates/cover-letter/cover_letter.docx` is the cover letter base. All are gitignored — `.gitkeep` preserves the folders.

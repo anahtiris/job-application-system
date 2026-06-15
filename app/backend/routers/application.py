@@ -351,6 +351,7 @@ async def generate_interview_debrief(body: InterviewPrepRequest, session: Sessio
         job_description=app.job_description,
         skills_inventory=skills_inventory,
         model=model("writer"),
+        persona_path=PERSONA,
     )
     app.interview_debrief_md = md
     session.add(app)
@@ -379,6 +380,7 @@ async def generate_interview_prep(body: InterviewPrepRequest, session: Session =
         model=model("writer"),
         resume_final=app.resume_final_md or app.resume_draft_md or "",
         cover_letter=app.cover_letter_final_md or app.cover_letter_draft_md or "",
+        persona_path=PERSONA,
     )
     app.interview_prep_md = md
     session.add(app)

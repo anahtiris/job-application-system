@@ -27,10 +27,14 @@ export function CompanyPrepPanel({
   app,
   isDark,
   onDateChange,
+  onPrepChange,
+  onNotesChange,
 }: {
   app: Interview;
   isDark: boolean;
   onDateChange: (id: string, iso: string | null) => void;
+  onPrepChange: (id: string, md: string) => void;
+  onNotesChange: (id: string, json: string) => void;
 }) {
   const [notes, setNotes] = useState<InterviewNotes>(DEFAULT_NOTES);
   const [tab, setTab] = useState<CompanyTab>("Overview");
@@ -71,8 +75,10 @@ export function CompanyPrepPanel({
   }
 
   const saveFn = useCallback(async (n: InterviewNotes) => {
-    await api.patch(`/api/tracker/${app.id}/interview-notes`, { notes_json: JSON.stringify(n) });
-  }, [app.id]);
+    const json = JSON.stringify(n);
+    await api.patch(`/api/tracker/${app.id}/interview-notes`, { notes_json: json });
+    onNotesChange(app.id, json);
+  }, [app.id, onNotesChange]);
 
   const saveState = useAutoSave(notes, saveFn);
   const update = (patch: Partial<InterviewNotes>) => setNotes((n) => ({ ...n, ...patch }));
@@ -85,10 +91,11 @@ export function CompanyPrepPanel({
     setPrepSaveState("saving");
     prepSaveTimer.current = setTimeout(async () => {
       await api.put(`/api/application/${app.id}/interview-prep`, { markdown: md });
+      onPrepChange(app.id, md);
       setPrepSaveState("saved");
       setTimeout(() => setPrepSaveState("idle"), 2000);
     }, 1000);
-  }, [app.id]);
+  }, [app.id, onPrepChange]);
 
   const editSection = (section: string, body: string) => {
     setPrepMd((prev) => {
@@ -122,7 +129,10 @@ export function CompanyPrepPanel({
       interviewer_type: interviewer,
       focus_skills: focus,
     }).catch(() => null);
-    if (result?.markdown) setPrepMd(result.markdown);
+    if (result?.markdown) {
+      setPrepMd(result.markdown);
+      onPrepChange(app.id, result.markdown);
+    }
     setGeneratingPrep(false);
   };
 
