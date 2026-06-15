@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Trash2, Search, Check, CheckCheck, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { pillBtnCls } from "@/components/ui-kit";
+import { pillBtnCls, useClickOutside, statusChipStyleCls, verdictStyleCls } from "@/components/ui-kit";
 
 type Lead = {
   id: string;
@@ -33,22 +33,11 @@ function hostname(url: string | null): string {
 }
 
 function leadBadgeCls(status: string): string {
-  const color =
-    status === "approved"  ? "bg-badge-interview-bg text-badge-interview-fg" :
-    status === "rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
-    status === "analyzed"  ? "bg-badge-analyzed-bg text-badge-analyzed-fg" :
-    status === "analyzing" ? "bg-custom-l text-custom-d" :
-    status === "new"       ? "bg-badge-responded-bg text-badge-responded-fg" :
-                             "bg-background-secondary text-text-tertiary";
-  return `inline-flex items-center text-[12px] font-medium py-[3px] px-[9px] rounded-full font-shell capitalize ${color}`;
+  return `inline-flex items-center text-[12px] font-medium py-[3px] px-[9px] rounded-full font-shell capitalize ${statusChipStyleCls(status)}`;
 }
 
 function verdictCls(verdict: string): string {
-  const color =
-    verdict === "strong" ? "bg-badge-interview-bg text-badge-interview-fg" :
-    verdict === "skip"   ? "bg-badge-passed-bg text-badge-passed-fg" :
-                           "bg-custom-l text-custom-d"; // maybe
-  return `text-[11px] font-semibold py-0.5 px-[7px] rounded-full font-shell capitalize ${color}`;
+  return `text-[11px] font-semibold py-0.5 px-[7px] rounded-full font-shell capitalize ${verdictStyleCls(verdict)}`;
 }
 
 function colHeader(label: string) {
@@ -62,13 +51,7 @@ function colHeader(label: string) {
 function FitFilterDropdown({ selected, onChange }: { selected: string[]; onChange: (v: string[]) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [open]);
+  useClickOutside(ref, open, () => setOpen(false));
 
   const toggle = (v: string) =>
     onChange(selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v]);

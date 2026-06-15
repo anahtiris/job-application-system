@@ -15,3 +15,11 @@ export function isoToDateValue(iso: string | null | undefined): { year: number; 
 export function dateValueToISO(v: { year: number; month: number; day: number }): string {
   return `${v.year}-${String(v.month).padStart(2, "0")}-${String(v.day).padStart(2, "0")}`;
 }
+
+// "12 Mar" — day + short month, no year. Returns "—" for empty values.
+export function shortDate(d: string | null | undefined): string {
+  if (!d) return "—";
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(
+    new Date(d + "T00:00:00")
+  );
+}

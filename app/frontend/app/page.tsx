@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Inbox, Send, Calendar } from "lucide-react";
 import { api, NetworkError } from "@/lib/api";
 import { pillBtnCls } from "@/components/ui-kit";
+import { shortDate } from "@/lib/utils";
 
 interface Application {
   id: string;
@@ -21,13 +22,6 @@ interface Lead {
 }
 
 const PENDING_LEAD_STATUSES = new Set(["captured", "new", "analyzing", "analyzed"]);
-
-function shortDate(d: string | null | undefined): string {
-  if (!d) return "—";
-  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(
-    new Date(d + "T00:00:00")
-  );
-}
 
 function shortInterviewDate(iso: string | null | undefined): string {
   if (!iso) return "TBD";
@@ -67,7 +61,9 @@ export default function Dashboard() {
     fetchData();
   };
 
-  const todoApps = apps.filter((a) => a.status === "New" || a.status === "Draft" || a.status === "Finalized");
+  const todoApps = apps
+    .filter((a) => a.status === "New" || a.status === "Draft" || a.status === "Finalized")
+    .sort((a, b) => (a.status === "Finalized" ? -1 : 0) - (b.status === "Finalized" ? -1 : 0));
   const appliedApps = apps.filter((a) => a.status === "Applied");
   const interviewApps = apps.filter((a) => a.status === "Interview");
 

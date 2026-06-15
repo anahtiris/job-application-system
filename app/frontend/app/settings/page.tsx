@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { applyFaviconColor } from "@/lib/favicon";
-import { SectionCard } from "@/components/ui-kit";
+import { SectionCard, Label, inputCls as inputClsFn } from "@/components/ui-kit";
 
 const ROLE_LABELS: Record<string, { label: string; hint: string }> = {
   parser:   { label: "Parser",   hint: "Resume parsing — high context recommended" },
@@ -74,14 +74,6 @@ function applyAccentColor(hex: string) {
 
 // ── Shared UI ─────────────────────────────────────────────────────────────────
 
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mb-[5px] text-[11px] font-medium tracking-[0.04em] uppercase text-text-tertiary font-shell">
-      {children}
-    </div>
-  );
-}
-
 function InfoText({ children }: { children: React.ReactNode }) {
   return <p className="text-[11px] text-text-tertiary font-shell mt-1">{children}</p>;
 }
@@ -118,7 +110,7 @@ function SaveBtn({ onClick, loading, label }: { onClick: () => void; loading: bo
   );
 }
 
-const inputCls = "w-full text-[13px] py-[7px] px-2.5 rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-primary font-mono outline-none";
+const inputCls = inputClsFn("mono");
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 

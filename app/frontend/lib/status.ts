@@ -1,5 +1,22 @@
 export const STATUS_ORDER = ["New", "Draft", "Finalized", "Applied", "Interview", "Offer", "Rejected"] as const;
 
+// Backend status → display label. `New` shows as "Analyzed".
+export const STATUS_DISPLAY: Record<string, string> = {
+  New: "Analyzed", Draft: "Draft", Finalized: "Finalized", Applied: "Applied",
+  Interview: "Interview", Offer: "Offer", Rejected: "Rejected", Ghosted: "Ghosted",
+};
+
+// Allowed status transitions (backend values).
+export const NEXT_STATUSES: Record<string, string[]> = {
+  Draft: ["Applied"],
+  Finalized: ["Applied"],
+  Applied: ["Interview", "Offer", "Rejected", "Ghosted"],
+  Interview: ["Applied", "Offer", "Rejected", "Ghosted"],
+  Offer: ["Rejected"],
+  Rejected: ["Applied", "Interview"],
+  Ghosted: ["Applied", "Interview", "Rejected"],
+};
+
 export const STATUS_CLASSES: Record<string, string> = {
   New:       "bg-indigo-50 text-indigo-700 border border-indigo-200",
   Draft:     "bg-muted/60 text-muted-foreground border border-border",

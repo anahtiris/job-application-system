@@ -2,32 +2,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Copy, FileText, Download, ChevronDown } from "lucide-react";
+import { Copy, FileText, Download, ChevronDown, ExternalLink } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { FlipClock, type DateValue } from "@anahtiris/flipclock";
 import "@anahtiris/flipclock/dist/flipclock.css";
 import { api, BASE } from "@/lib/api";
 import { useIsDark } from "@/hooks/useIsDark";
-import { pillBtnCls, SectionCard } from "@/components/ui-kit";
+import { pillBtnCls, SectionCard, SkillRow, StatusBadge, useClickOutside } from "@/components/ui-kit";
 import { isoToDateValue, dateValueToISO } from "@/lib/utils";
-
-// ─── Constants ─────────────────────────────────────────────────────────────────
-
-const STATUS_DISPLAY: Record<string, string> = {
-  New: "Analyzed", Draft: "Draft", Finalized: "Finalized", Applied: "Applied",
-  Interview: "Interview", Offer: "Offer", Rejected: "Rejected", Ghosted: "Ghosted",
-};
-
-const NEXT_STATUSES: Record<string, string[]> = {
-  Draft: ["Applied"],
-  Finalized: ["Applied"],
-  Applied: ["Interview", "Offer", "Rejected", "Ghosted"],
-  Interview: ["Applied", "Offer", "Rejected", "Ghosted"],
-  Offer: ["Rejected"],
-  Rejected: ["Applied", "Interview"],
-  Ghosted: ["Applied", "Interview", "Rejected"],
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -40,20 +23,6 @@ function formatAppliedDate(iso: string): string {
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(
     new Date(iso + "T00:00:00")
   );
-}
-
-function badgeCls(status: string): string {
-  const label = STATUS_DISPLAY[status] ?? status;
-  const color =
-    label === "Applied"   ? "bg-custom-l text-custom-d" :
-    label === "Interview" ? "bg-badge-interview-bg text-badge-interview-fg" :
-    label === "Offer"     ? "bg-badge-offer-bg text-badge-offer-fg" :
-    label === "Rejected"  ? "bg-badge-passed-bg text-badge-passed-fg" :
-    label === "Ghosted"   ? "bg-badge-ghosted-bg text-badge-ghosted-fg" :
-    label === "Draft"     ? "bg-badge-responded-bg text-badge-responded-fg" :
-    label === "Finalized" ? "bg-badge-finalized-bg text-badge-finalized-fg" :
-                            "bg-badge-analyzed-bg text-badge-analyzed-fg";
-  return `inline-flex items-center text-[12px] font-medium py-[3px] px-2.5 rounded-full border-none font-shell ${color}`;
 }
 
 // ─── Shared UI ─────────────────────────────────────────────────────────────────
@@ -83,13 +52,7 @@ function TabBar({ tabs, active, onChange }: { tabs: string[]; active: string; on
 function DownloadDropdown({ label, pdf, docx }: { label: string; pdf?: string; docx?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [open]);
+  useClickOutside(ref, open, () => setOpen(false));
 
   if (!pdf && !docx) return null;
 
@@ -128,71 +91,7 @@ function DownloadDropdown({ label, pdf, docx }: { label: string; pdf?: string; d
   );
 }
 
-// ─── Status badge w/ dropdown ──────────────────────────────────────────────────
-
-function StatusBadge({ app, onUpdate, onRequestApplied }: { app: { id: string; status: string }; onUpdate: (id: string, s: string) => void; onRequestApplied: () => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const nextOptions = NEXT_STATUSES[app.status] ?? [];
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        className={`${badgeCls(app.status)} ${nextOptions.length ? "cursor-pointer" : "cursor-default"}`}
-        onClick={() => { if (nextOptions.length) setOpen((o) => !o); }}
-      >
-        {STATUS_DISPLAY[app.status] ?? app.status}
-      </button>
-      {open && (
-        <div className="absolute top-[calc(100%+4px)] left-0 z-30 bg-background-primary border-[0.5px] border-border-tertiary rounded-card p-1 min-w-[110px] shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
-          {nextOptions.map((s) => (
-            <button
-              key={s}
-              onClick={() => { setOpen(false); if (s === "Applied") { onRequestApplied(); } else { onUpdate(app.id, s); } }}
-              className="block w-full text-left text-[12px] font-medium py-1.5 px-2 rounded-[5px] border-none cursor-pointer bg-transparent font-shell text-text-secondary hover:bg-background-secondary"
-            >
-              {STATUS_DISPLAY[s] ?? s}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Analysis tab ──────────────────────────────────────────────────────────────
-
-const SKILL_STYLE: Record<string, { cls: string; label: string }> = {
-  STRONG:  { cls: "bg-badge-interview-bg text-badge-interview-fg", label: "Strong" },
-  HONEST:  { cls: "bg-custom-l text-custom-d",                           label: "Honest" },
-  GAP:     { cls: "bg-badge-passed-bg text-badge-passed-fg",       label: "Gap" },
-  UNKNOWN: { cls: "bg-background-secondary text-text-tertiary",    label: "Unknown" },
-};
-
-function SkillRow({ skill, status, tier, evidence }: { skill: string; status: string; tier: number | null; evidence: string }) {
-  const s = SKILL_STYLE[status] ?? SKILL_STYLE.UNKNOWN;
-  return (
-    <div className="grid grid-cols-[170px_72px_1fr] gap-2.5 items-baseline py-[5px] border-b-[0.5px] border-border-tertiary">
-      <span className="text-[12px] font-medium font-shell text-text-primary">
-        {skill}
-        {tier && <span className="ml-[5px] text-[10px] text-text-tertiary font-mono">T{tier}</span>}
-      </span>
-      <span className={`inline-flex items-center text-[10px] font-medium py-0.5 px-[7px] rounded-full font-shell ${s.cls}`}>
-        {s.label}
-      </span>
-      <span className="text-[11px] text-text-tertiary font-shell">{evidence}</span>
-    </div>
-  );
-}
 
 interface AnalysisResult {
   core_theme?: string;
@@ -249,13 +148,13 @@ function AnalysisView({ result, onRefresh }: { result: AnalysisResult; onRefresh
 
       {(result.must_haves?.length ?? 0) > 0 && (
         <SectionCard title={`Must-haves (${result.must_haves!.length})`}>
-          <div>{result.must_haves!.map((item, i) => <SkillRow key={i} {...item} />)}</div>
+          <div>{result.must_haves!.map((item, i) => <SkillRow key={i} {...item} variant="detail" />)}</div>
         </SectionCard>
       )}
 
       {(result.nice_to_haves?.length ?? 0) > 0 && (
         <SectionCard title={`Nice-to-haves (${result.nice_to_haves!.length})`}>
-          <div>{result.nice_to_haves!.map((item, i) => <SkillRow key={i} {...item} />)}</div>
+          <div>{result.nice_to_haves!.map((item, i) => <SkillRow key={i} {...item} variant="detail" />)}</div>
         </SectionCard>
       )}
 
@@ -438,7 +337,7 @@ export default function ApplicationDetailPage() {
 
         <div className="relative">
           <div className="flex items-center gap-1.5">
-            <StatusBadge app={{ id, status: app.status }} onUpdate={updateStatus} onRequestApplied={() => openDatePicker("Applied")} />
+            <StatusBadge status={app.status} onSelect={(s) => (s === "Applied" ? openDatePicker("Applied") : updateStatus(id, s))} />
             {app.date_applied && (
               <button
                 onClick={() => openDatePicker(null)}
@@ -521,6 +420,16 @@ export default function ApplicationDetailPage() {
                 >
                   <Copy size={13} />
                 </button>
+                {app.source_url && (
+                  <a
+                    href={app.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mb-2.5 text-[12px] text-custom font-shell no-underline"
+                  >
+                    <ExternalLink size={12} /> View job posting
+                  </a>
+                )}
                 <pre className="font-shell text-[13px] leading-[1.7] whitespace-pre-wrap text-text-secondary m-0 pr-7">
                   {app.job_description}
                 </pre>
