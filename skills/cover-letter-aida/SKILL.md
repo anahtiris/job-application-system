@@ -90,6 +90,25 @@ This is the most important part (70% of impact). Tell one coherent story using a
 *A – Action (Call to Action)*
 A clear statement of mutual benefit that sounds like the end of a real conversation.
 
+---
+
+## Contractions
+
+Never use contractions in any form. Expand all of them.
+
+- "that's" → "that is"
+- "it's" → "it is"  
+- "I've" → "I have"
+- "I'm" → "I am"
+- "I'd" → "I would"
+- "haven't" → "have not"
+- "doesn't" → "does not"
+- "won't" → "will not"
+
+This applies to every sentence in the letter without exception.
+
+---
+
 **Required elements — both must be present:**
 
 1. **Availability date**: State the next realistic start date — the first of the following month from today, or later if notice period requires it. Format: `01.MM.YYYY`. Never write "ab sofort" (sounds desperate). Never leave it vague with "zeitnah" alone.
