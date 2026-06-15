@@ -1,6 +1,6 @@
 "use client";
 import { forwardRef, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { pillBtnCls } from "@/components/ui-kit";
 
 interface Rewrite { original: string; rewrite: string; reviewer?: string; }
 interface PriorityIssue { issue: string; severity: "high" | "medium" | "low"; sources: string[]; }
@@ -81,11 +81,11 @@ const ItemCard = forwardRef<HTMLDivElement, {
 
       {!done && (
         <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <Button size="sm" className="h-6 text-xs px-2" onClick={() => onAccept(editText)}>Accept</Button>
-          <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={() => setEditing(e => !e)}>
+          <button className={pillBtnCls(true, false, "sm")} onClick={() => onAccept(editText)}>Accept</button>
+          <button className={pillBtnCls(false, false, "sm")} onClick={() => setEditing(e => !e)}>
             {editing ? "Done" : "Edit"}
-          </Button>
-          <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={onSkip}>Skip</Button>
+          </button>
+          <button className={pillBtnCls(false, false, "sm")} onClick={onSkip}>Skip</button>
         </div>
       )}
     </div>
@@ -252,7 +252,7 @@ export function ReviewPanel({
         <p className="text-sm text-muted-foreground border rounded-lg p-4 bg-muted/10">
           Reviewers had no rewrite suggestions. Documents look good.
         </p>
-        <Button onClick={handleApply} className="w-full">Apply & Continue</Button>
+        <button onClick={handleApply} className={`${pillBtnCls(true)} w-full justify-center`}>Apply & Continue</button>
       </div>
     );
   }
@@ -262,12 +262,12 @@ export function ReviewPanel({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
-          <Button size="sm" variant={activeDoc === "cv" ? "default" : "outline"} onClick={() => setActiveDoc("cv")}>
+          <button className={pillBtnCls(activeDoc === "cv", false, "sm")} onClick={() => setActiveDoc("cv")}>
             CV {cvPending > 0 && <span className="ml-1.5 opacity-60">{cvPending}</span>}
-          </Button>
-          <Button size="sm" variant={activeDoc === "cl" ? "default" : "outline"} onClick={() => setActiveDoc("cl")}>
+          </button>
+          <button className={pillBtnCls(activeDoc === "cl", false, "sm")} onClick={() => setActiveDoc("cl")}>
             Cover Letter {clPending > 0 && <span className="ml-1.5 opacity-60">{clPending}</span>}
-          </Button>
+          </button>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{reviewed} / {total}</span>
@@ -384,11 +384,11 @@ export function ReviewPanel({
         </details>
       )}
 
-      <Button onClick={handleApply} className="w-full">
+      <button onClick={handleApply} className={`${pillBtnCls(true)} w-full justify-center`}>
         {reviewed === total
           ? "Apply & Continue"
           : `Apply & Continue (${total - reviewed} remaining will be skipped)`}
-      </Button>
+      </button>
     </div>
   );
 }
