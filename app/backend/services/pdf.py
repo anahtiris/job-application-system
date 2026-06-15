@@ -3,6 +3,7 @@
 Resume: unpack template → edit XML → repack → 1-page check → LibreOffice PDF
 Cover letter: python-docx body replacement → LibreOffice PDF
 """
+import copy
 import re
 import shutil
 import subprocess
@@ -14,6 +15,7 @@ from docx import Document
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 from docx.shared import Pt
+from docx.text.paragraph import Paragraph
 
 from office.unpack import unpack
 from office.pack import pack
@@ -209,19 +211,35 @@ def generate_cover_letter_docx(
         if text == "[Unternehmensname]":
             para.text = company
         elif text == "[Straße Nr.]":
-            if addr_lines:
-                para.text = addr_lines[0]
-            else:
+            if not addr_lines:
                 paras_to_remove.append(para)
+            else:
+                # The last line is the city ([PLZ Stadt]); everything before it
+                # is the street block. Any middle lines are inserted as extra
+                # street paragraphs so a 3+ line address is not truncated.
+                street_lines = addr_lines[:-1] if len(addr_lines) > 1 else addr_lines
+                para.text = street_lines[0]
+                anchor = para._p
+                for extra in street_lines[1:]:
+                    new_p = copy.deepcopy(para._p)
+                    anchor.addnext(new_p)
+                    anchor = new_p
+                    Paragraph(new_p, para._parent).text = extra
         elif text == "[PLZ Stadt]":
             if len(addr_lines) > 1:
-                para.text = addr_lines[1]
+                para.text = addr_lines[-1]
             else:
                 paras_to_remove.append(para)
         elif "Bewerbung als" in text or "Application as" in text or "Application for" in text:
             para.text = subject
-        elif re.search(r'\w+,\s+\d{2}\.\d{2}\.\d{4}', text):
-            para.text = re.sub(r'\w+,\s+\d{2}\.\d{2}\.\d{4}', f"München, {date_str}", text)
+        elif re.search(r'[^\d,]+,\s*\d{2}\.\d{2}\.\d{4}', text):
+            # Keep the sender's place from the template, only refresh the date.
+            # Translate München → Munich for English letters.
+            m = re.search(r'([^\d,]+),\s*\d{2}\.\d{2}\.\d{4}', text)
+            place = m.group(1).strip() if m else "München"
+            if language == "en" and place.lower() in ("münchen", "muenchen"):
+                place = "Munich"
+            para.text = re.sub(r'[^\d,]+,\s*\d{2}\.\d{2}\.\d{4}', f"{place}, {date_str}", text)
         elif "Sehr geehrte" in text:
             para.text = greeting
         elif "Mit freundlichen Grüßen" in text and language == "en":
