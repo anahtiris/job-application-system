@@ -208,3 +208,25 @@ async def test_generate_interview_prep_returns_dict_with_ids(tmp_path, monkeypat
     assert prep["common_questions"][0]["id"]
     assert prep["job_specific_questions"][0]["a"] == "- bullet"
     assert prep["salary"] == "s"
+
+
+def test_get_application_converts_legacy_md(client):
+    app_id = _make_app(client)
+    # seed legacy markdown directly via the in-memory engine
+    import db
+    from sqlmodel import Session
+    from db import Application
+    with Session(db.engine) as s:
+        row = s.get(Application, app_id)
+        row.interview_prep_md = SAMPLE_MD
+        s.add(row)
+        s.commit()
+
+    app = client.get(f"/api/tracker/{app_id}").json()
+    assert app["interview_prep_md"] is None
+    prep = json.loads(app["interview_prep_json"])
+    assert [q["q"] for q in prep["common_questions"]] == ["Tell me about yourself", "Why this company"]
+
+    # list endpoint also returns converted json
+    listed = next(a for a in client.get("/api/tracker/").json() if a["id"] == app_id)
+    assert listed["interview_prep_json"] is not None
