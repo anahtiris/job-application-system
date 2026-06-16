@@ -119,6 +119,63 @@ import json
 import pytest
 
 
+def _make_app(client):
+    r = client.post("/api/tracker/", json={
+        "company": "Co", "job_title": "Eng", "language": "en",
+        "job_description": "JD here",
+    })
+    assert r.status_code == 200
+    return r.json()["id"]
+
+
+def test_put_interview_prep_stores_json_and_fills_ids(client):
+    app_id = _make_app(client)
+    body = {
+        "company_analysis": "c", "introduction_script": "i",
+        "common_questions": [{"id": "", "q": "q1", "a": "a1"}],
+        "job_specific_questions": [], "weak_spots": [],
+        "questions_to_ask": [{"id": "", "text": "t"}], "salary": "s",
+    }
+    r = client.put(f"/api/application/{app_id}/interview-prep", json=body)
+    assert r.status_code == 200
+    prep = r.json()["prep"]
+    assert prep["common_questions"][0]["id"]
+    assert prep["questions_to_ask"][0]["id"]
+
+    app = client.get(f"/api/tracker/{app_id}").json()
+    assert app["interview_prep_md"] is None
+    assert json.loads(app["interview_prep_json"])["salary"] == "s"
+
+
+def test_post_interview_prep_persists_generated_dict(client, monkeypatch, tmp_path):
+    import services.interview as interview
+    import routers.application as app_router
+
+    async def fake_gen(**kwargs):
+        return {
+            "company_analysis": "c", "introduction_script": "i",
+            "common_questions": [{"id": "x", "q": "q1", "a": "a1"}],
+            "job_specific_questions": [], "weak_spots": [],
+            "questions_to_ask": [], "salary": "s",
+        }
+
+    master = tmp_path / "m.md"
+    master.write_text("# CV", encoding="utf-8")
+    monkeypatch.setattr(interview, "generate_interview_prep", fake_gen)
+    monkeypatch.setattr(app_router, "_master", lambda lang: master)
+
+    app_id = _make_app(client)
+    r = client.post("/api/application/interview-prep", json={
+        "application_id": app_id, "interview_round": "Technical",
+        "interviewer_type": "Hiring Manager", "focus_skills": "",
+    })
+    assert r.status_code == 200
+    assert r.json()["common_questions"][0]["q"] == "q1"
+
+    stored = json.loads(client.get(f"/api/tracker/{app_id}").json()["interview_prep_json"])
+    assert stored["salary"] == "s"
+
+
 @pytest.mark.asyncio
 async def test_generate_interview_prep_returns_dict_with_ids(tmp_path, monkeypatch):
     import services.interview as interview

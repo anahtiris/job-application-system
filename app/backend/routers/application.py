@@ -13,6 +13,7 @@ from sqlmodel import Session, select
 from config import Paths, load_career_goal, load_skills_inventory, model
 from db import Application, JobLead, get_session, get_setting
 from services import analyzer, generator, interview, researcher, reviewer
+from services.interview_schema import InterviewPrep, ensure_ids
 from services.pdf import build_pdfs
 
 router = APIRouter()
@@ -368,7 +369,7 @@ async def generate_interview_prep(body: InterviewPrepRequest, session: Session =
     if not master.exists():
         raise HTTPException(404, "Master resume not found")
 
-    md = await interview.generate_interview_prep(
+    prep = await interview.generate_interview_prep(
         master_path=master,
         job_description=app.job_description,
         company_name=app.company,
@@ -382,23 +383,22 @@ async def generate_interview_prep(body: InterviewPrepRequest, session: Session =
         cover_letter=app.cover_letter_final_md or app.cover_letter_draft_md or "",
         persona_path=PERSONA,
     )
-    app.interview_prep_md = md
+    app.interview_prep_json = json.dumps(prep, ensure_ascii=False)
+    app.interview_prep_md = None
     session.add(app)
     session.commit()
-    return {"markdown": md}
-
-
-class SaveInterviewPrepRequest(BaseModel):
-    markdown: str
+    return prep
 
 
 @router.put("/{app_id}/interview-prep")
-def save_interview_prep(app_id: str, body: SaveInterviewPrepRequest, session: Session = Depends(get_session)):
+def save_interview_prep(app_id: str, body: InterviewPrep, session: Session = Depends(get_session)):
     """Write-back endpoint for the Claude 'Copy prompt for Claude' interview-prep path."""
     app = session.get(Application, app_id)
     if not app:
         raise HTTPException(404, "Application not found")
-    app.interview_prep_md = body.markdown
+    prep = ensure_ids(body.model_dump())
+    app.interview_prep_json = json.dumps(prep, ensure_ascii=False)
+    app.interview_prep_md = None
     session.add(app)
     session.commit()
-    return {"saved": True}
+    return {"saved": True, "prep": prep}
