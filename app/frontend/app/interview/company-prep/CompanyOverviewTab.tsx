@@ -4,11 +4,10 @@ import ReactMarkdown from "react-markdown";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import {
-  type SaveState, SectionCard, cardBoxCls, sectionLabelCls, iconBtnCls, mutedTextCls,
+  type SaveState, SectionCard, cardBoxCls, sectionLabelCls, iconBtnCls, mutedTextCls, GrowTextarea,
 } from "@/components/ui-kit";
-import { type Interview } from "../types";
-import { parsePrepSection } from "../helpers";
-import { EditablePrepSection } from "../shared";
+import { type Interview, type InterviewPrep } from "../types";
+import { PrepQAList } from "../shared";
 
 // ─── Prep generation constants ─────────────────────────────────────────────────
 
@@ -26,7 +25,9 @@ const pillBtnCls = (primary = false): string => {
 
 export function CompanyOverviewTab({
   app,
-  prepMd,
+  prep,
+  updatePrep,
+  hasPrep,
   generatingPrep,
   showPrepOptions,
   setShowPrepOptions,
@@ -39,11 +40,12 @@ export function CompanyOverviewTab({
   copying,
   copyClaudePrompt,
   generatePrep,
-  editSection,
   prepSaveState,
 }: {
   app: Interview;
-  prepMd: string;
+  prep: InterviewPrep;
+  updatePrep: (patch: Partial<InterviewPrep>) => void;
+  hasPrep: boolean;
   generatingPrep: boolean;
   showPrepOptions: boolean;
   setShowPrepOptions: (v: boolean) => void;
@@ -56,7 +58,6 @@ export function CompanyOverviewTab({
   copying: boolean;
   copyClaudePrompt: () => void;
   generatePrep: () => void;
-  editSection: (section: string, body: string) => void;
   prepSaveState: SaveState;
 }) {
   return (
@@ -70,9 +71,9 @@ export function CompanyOverviewTab({
       {/* Generate / regenerate controls */}
       {!showPrepOptions && !generatingPrep && (
         <div className="flex gap-1.5 justify-end">
-          {prepMd && <button className={pillBtnCls()} onClick={copyClaudePrompt}>{copying ? "Copied" : "Copy prompt"}</button>}
-          <button className={pillBtnCls(!prepMd)} onClick={() => setShowPrepOptions(true)}>
-            {prepMd ? "Regenerate" : "Generate prep"}
+          {hasPrep && <button className={pillBtnCls()} onClick={copyClaudePrompt}>{copying ? "Copied" : "Copy prompt"}</button>}
+          <button className={pillBtnCls(!hasPrep)} onClick={() => setShowPrepOptions(true)}>
+            {hasPrep ? "Regenerate" : "Generate prep"}
           </button>
         </div>
       )}
@@ -116,10 +117,10 @@ export function CompanyOverviewTab({
               <input value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="e.g. Python, system design, Kubernetes" className="w-full text-[12px] py-[5px] px-2 rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-primary font-shell outline-none" />
             </div>
             <div className="flex gap-1.5 items-center flex-wrap">
-              {prepMd && <button className={pillBtnCls()} onClick={() => setShowPrepOptions(false)}>Cancel</button>}
+              {hasPrep && <button className={pillBtnCls()} onClick={() => setShowPrepOptions(false)}>Cancel</button>}
               <button className={pillBtnCls()} onClick={copyClaudePrompt}>{copying ? "Copied" : "Copy prompt for Claude"}</button>
               <button className={`${pillBtnCls(true)} flex-1 justify-center`} onClick={generatePrep}>
-                {prepMd ? "Regenerate with Ollama" : "Generate with Ollama"}
+                {hasPrep ? "Regenerate with Ollama" : "Generate with Ollama"}
               </button>
             </div>
             <span className={mutedTextCls("11px")}>
@@ -135,22 +136,36 @@ export function CompanyOverviewTab({
         </div>
       )}
 
-      {!generatingPrep && prepMd && (
+      {!generatingPrep && hasPrep && (
         <>
-          {/* Editable prep sections — talking points for during the interview */}
-          {(["Introduction Script", "Common Questions", "Job-Specific Questions"] as const).map((section) => (
-            <EditablePrepSection
-              key={section}
-              title={section}
-              value={parsePrepSection(prepMd, section)}
-              onChange={(v) => editSection(section, v)}
-              saveState={prepSaveState}
+          <SectionCard title="Introduction Script">
+            <GrowTextarea
+              value={prep.introduction_script}
+              onChange={(v) => updatePrep({ introduction_script: v })}
+              placeholder="60-90 second intro…"
+              className="leading-[1.75]"
             />
-          ))}
+          </SectionCard>
+
+          <SectionCard title="Common Questions">
+            <PrepQAList
+              items={prep.common_questions}
+              onChange={(items) => updatePrep({ common_questions: items })}
+              aPlaceholder="Sample answer…"
+            />
+          </SectionCard>
+
+          <SectionCard title="Job-Specific Questions">
+            <PrepQAList
+              items={prep.job_specific_questions}
+              onChange={(items) => updatePrep({ job_specific_questions: items })}
+              aPlaceholder="Talking-point bullets…"
+            />
+          </SectionCard>
         </>
       )}
 
-      {!generatingPrep && !prepMd && !showPrepOptions && (
+      {!generatingPrep && !hasPrep && !showPrepOptions && (
         <div className={`text-center py-12 px-5 ${mutedTextCls()}`}>
           No prep yet — generate one above.
         </div>
