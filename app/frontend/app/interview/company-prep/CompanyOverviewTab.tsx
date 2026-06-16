@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import {
-  type SaveState, SectionCard, cardBoxCls, sectionLabelCls, iconBtnCls, mutedTextCls, GrowTextarea,
+  SectionCard, cardBoxCls, sectionLabelCls, iconBtnCls, mutedTextCls, GrowTextarea,
 } from "@/components/ui-kit";
 import { type Interview, type InterviewPrep } from "../types";
 import { PrepQAList } from "../shared";
@@ -40,7 +40,6 @@ export function CompanyOverviewTab({
   copying,
   copyClaudePrompt,
   generatePrep,
-  prepSaveState,
 }: {
   app: Interview;
   prep: InterviewPrep;
@@ -58,7 +57,6 @@ export function CompanyOverviewTab({
   copying: boolean;
   copyClaudePrompt: () => void;
   generatePrep: () => void;
-  prepSaveState: SaveState;
 }) {
   return (
     <div className="flex flex-col gap-3">

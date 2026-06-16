@@ -1,4 +1,4 @@
-import type { InterviewNotes, DateTimeValue, InterviewPrep } from "./types";
+import type { DateTimeValue, InterviewPrep } from "./types";
 import { EMPTY_PREP } from "./types";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────

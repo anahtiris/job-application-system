@@ -211,7 +211,6 @@ export function CompanyPrepPanel({
             copying={copying}
             copyClaudePrompt={copyClaudePrompt}
             generatePrep={generatePrep}
-            prepSaveState={prepSaveState}
           />
         )}
 
