@@ -4,7 +4,8 @@ import { Trash2, GripVertical } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GrowTextarea, iconBtnCls, cardBoxCls, SaveIndicator, type SaveState } from "@/components/ui-kit";
-import type { QAItem } from "./types";
+import type { QAItem, PrepQA } from "./types";
+import { uid } from "./helpers";
 
 // ─── Shared UI helpers ─────────────────────────────────────────────────────────
 
@@ -122,6 +123,72 @@ export function EditablePrepSection({
           className="leading-[1.75]"
         />
       </div>
+    </div>
+  );
+}
+
+// ─── Single-language structured Q&A list (interview prep) ───────────────────────
+
+export function PrepQARow({
+  item,
+  onPatch,
+  onDelete,
+  aPlaceholder = "Answer…",
+}: {
+  item: PrepQA;
+  onPatch: (patch: Partial<PrepQA>) => void;
+  onDelete: () => void;
+  aPlaceholder?: string;
+}) {
+  return (
+    <div className="pb-2.5 border-b-[0.5px] border-border-tertiary mb-2.5 last:border-b-0 last:mb-0 last:pb-0">
+      <div className="flex gap-2 items-start">
+        <GrowTextarea
+          value={item.q}
+          onChange={(v) => onPatch({ q: v })}
+          placeholder="Question…"
+          className="font-medium !text-text-primary flex-1"
+        />
+        <button onClick={onDelete} className={`${iconBtnCls} hover:text-badge-passed-fg`}>
+          <Trash2 size={12} />
+        </button>
+      </div>
+      <GrowTextarea
+        value={item.a}
+        onChange={(v) => onPatch({ a: v })}
+        placeholder={aPlaceholder}
+        className="mt-1"
+      />
+    </div>
+  );
+}
+
+export function PrepQAList({
+  items,
+  onChange,
+  aPlaceholder,
+}: {
+  items: PrepQA[];
+  onChange: (items: PrepQA[]) => void;
+  aPlaceholder?: string;
+}) {
+  return (
+    <div>
+      {items.map((it) => (
+        <PrepQARow
+          key={it.id}
+          item={it}
+          aPlaceholder={aPlaceholder}
+          onPatch={(p) => onChange(items.map((x) => (x.id === it.id ? { ...x, ...p } : x)))}
+          onDelete={() => onChange(items.filter((x) => x.id !== it.id))}
+        />
+      ))}
+      <button
+        onClick={() => onChange([...items, { id: uid(), q: "", a: "" }])}
+        className="text-[11px] font-medium py-1 px-2.5 rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-secondary cursor-pointer font-shell mt-1"
+      >
+        + Add question
+      </button>
     </div>
   );
 }

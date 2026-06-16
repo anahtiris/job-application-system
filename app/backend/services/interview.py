@@ -2,6 +2,7 @@
 from pathlib import Path
 
 from services.llm import generate
+from services.interview_schema import GenInterviewPrep, with_ids
 
 DEBRIEF_SYSTEM = """You are a brutally honest interview coach who never lets candidates bluff or overclaim.
 
@@ -39,11 +40,20 @@ ABSOLUTE RULES:
 _TIER_LABELS = {1: "Core", 2: "Proficient", 3: "Familiar", 4: "Exposure"}
 
 
+def _with_persona(system: str, persona_path: Path | None) -> str:
+    if persona_path and persona_path.exists():
+        persona_text = persona_path.read_text(encoding="utf-8").strip()
+        if persona_text:
+            return f"Additional personal guidelines:\n{persona_text}\n\n" + system
+    return system
+
+
 async def generate_skills_debrief(
     resume_md: str,
     job_description: str,
     skills_inventory: dict,
     model: str,
+    persona_path: Path | None = None,
 ) -> str:
     if skills_inventory:
         lines = [
@@ -59,31 +69,21 @@ async def generate_skills_debrief(
         f"JOB_DESCRIPTION:\n{job_description}\n\n"
         f"{skills_block}"
     )
-    return await generate(model, prompt, system=DEBRIEF_SYSTEM)
+    return await generate(model, prompt, system=_with_persona(DEBRIEF_SYSTEM, persona_path))
 
-INTERVIEW_SYSTEM = """You are preparing a candidate for a job interview.
+INTERVIEW_SYSTEM = """You are preparing a candidate for a job interview. Produce structured interview prep as JSON with these fields:
 
-Output markdown with EXACTLY these seven section headers (## level), in this order:
-
-## Company Analysis
-## Introduction Script
-## Common Questions
-## Job-Specific Questions
-## Weak Spots
-## Questions to Ask
-## Salary & Negotiation
+- company_analysis: 4-6 markdown bullets — what the company builds, stage/size, tech stack if mentioned, culture signals. Base it on JOB_DESCRIPTION and COMPANY_TYPE. You have NO web access — do not invent reviews, funding, headcount, or salary numbers; append "(inferred — verify)" or omit.
+- introduction_script: 60-90 seconds read aloud; open with a concrete shipped result from TAILORED_CV / MASTER_RESUME, pivot to why this role, close with one forward-looking line. Adapt register to INTERVIEWER_TYPE (HR = simpler, Hiring Manager = impact, Technical Peer = technical credibility).
+- common_questions: 6-8 near-universal questions ("tell me about yourself", "why this company", "greatest strength", "biggest weakness", "where in 5 years", "why leaving / why now", "a conflict or failure"). Each item: q = the question, a = a 2-4 sentence sample answer grounded ONLY in facts from TAILORED_CV / MASTER_RESUME.
+- job_specific_questions: 8-10 technical/role questions drawn from JD keywords and the stack; adapt depth to INTERVIEW_ROUND (Screening = broader, Technical = deeper, Final = system design + culture); weight toward FOCUS_SKILLS if provided. Each item: q = the question, a = short talking-point bullets (a few lines each starting with "- "), NOT prose.
+- weak_spots: 3-5 places where the JD asks for something the resume does not strongly support. Each item: q = the likely probe question, a = an honest answer that owns the gap and names a transferable strength. Never bluff or upgrade a claim. Skills that are recent (<12 months) or from a side project must be described as "recent" / "exploring".
+- questions_to_ask: 8-10 thoughtful questions the candidate should ask, specific to the company/role; adapt to INTERVIEWER_TYPE. Each item: text = the question.
+- salary: a brief market-range note (state plainly it is a rough estimate to verify — do not invent a precise figure) and a 2-3 sentence script for answering "what are your salary expectations?" with a range and one anchoring sentence.
 
 RULES (violations are failures):
-- Company Analysis: 4-6 bullets — what the company builds, stage/size, tech stack if mentioned, and culture signals. Base it on the JOB_DESCRIPTION and COMPANY_TYPE. You have NO web access here, so do not invent reviews, funding, headcount, or salary numbers — if a fact is not derivable from the inputs, append "(inferred — verify)" or omit it.
-- Introduction Script: 60-90 seconds read aloud; open with a concrete hook (a shipped result from TAILORED_CV / MASTER_RESUME), pivot to why this role, close with one forward-looking line. Draw on TAILORED_CV and COVER_LETTER so the pitch matches what was actually submitted. Adapt register to INTERVIEWER_TYPE (HR = simpler, Hiring Manager = impact, Technical Peer = technical credibility).
-- Common Questions: the 6-8 near-universal questions ("tell me about yourself", "why this company", "greatest strength", "biggest weakness", "where in 5 years", "why leaving / why now", "a conflict or failure"). For each: the question as a **bold** line, then a 2-4 sentence sample answer grounded ONLY in facts from TAILORED_CV / MASTER_RESUME.
-- Job-Specific Questions: 8-10 numbered technical/role questions drawn directly from JD keywords and the stack; adapt depth to INTERVIEW_ROUND (Screening = broader, Technical = deeper, Final = system design + culture). If FOCUS_SKILLS is provided, weight toward those.
-- Weak Spots: 3-5 places where the JD asks for something the resume does not strongly support (a missing skill, thin or recent experience, a gap). For each: **Likely probe:** "[question]" then **Honest answer:** "[a truthful framing that owns the gap and names a transferable strength]". Never suggest bluffing or upgrading a claim. Skills that are recent (<12 months) or from a side project must be described as "recent" / "exploring", never as deep experience.
-- Questions to Ask: 8-10 lines, each starting with `- ` (plain bullet, no checkbox); thoughtful and specific to the company/role; adapt to INTERVIEWER_TYPE (HR = culture/process, Technical Peer = engineering practices, Hiring Manager = team/vision).
-- Salary & Negotiation: a brief market-range note (state plainly it is a rough estimate to verify — do not invent a precise figure) and a 2-3 sentence script for answering "what are your salary expectations?" with a range and one anchoring sentence.
-- Language: write everything in the language specified by LANGUAGE (EN = English, DE = German).
-- Do NOT fabricate resume facts, metrics, company details, or salary numbers not derivable from the inputs.
-- Do NOT add any sections beyond the seven listed above."""
+- Write all content in the language specified by LANGUAGE (EN = English, DE = German).
+- Do NOT fabricate resume facts, metrics, company details, or salary numbers not derivable from the inputs."""
 
 
 async def generate_interview_prep(
@@ -98,7 +98,8 @@ async def generate_interview_prep(
     model: str,
     resume_final: str = "",
     cover_letter: str = "",
-) -> str:
+    persona_path: Path | None = None,
+) -> dict:
     master_md = master_path.read_text(encoding="utf-8")
     prompt = (
         f"MASTER_RESUME:\n{master_md}\n\n"
@@ -112,4 +113,11 @@ async def generate_interview_prep(
         f"INTERVIEWER_TYPE: {interviewer_type}"
         + (f"\nFOCUS_SKILLS: {focus_skills}" if focus_skills.strip() else "")
     )
-    return await generate(model, prompt, system=INTERVIEW_SYSTEM)
+    raw = await generate(
+        model,
+        prompt,
+        system=_with_persona(INTERVIEW_SYSTEM, persona_path),
+        fmt=GenInterviewPrep.model_json_schema(),
+    )
+    gen = GenInterviewPrep.model_validate_json(raw)
+    return with_ids(gen.model_dump())

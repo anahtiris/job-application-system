@@ -36,8 +36,10 @@ def _split(slug: str) -> tuple[str, str]:
     return provider, name
 
 
-async def generate(model: str, prompt: str, system: str = "") -> str:
+async def generate(model: str, prompt: str, system: str = "", fmt: dict | None = None) -> str:
     provider, name = _split(model)
+    if provider == "ollama":
+        return await _PROVIDERS[provider].generate(name, prompt, system, fmt=fmt)
     return await _PROVIDERS[provider].generate(name, prompt, system)
 
 

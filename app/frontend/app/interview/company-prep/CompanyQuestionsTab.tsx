@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -8,10 +8,10 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import {
-  GrowTextarea, cardBoxCls, cardHeaderBarCls, monoMutedCls, mutedTextCls,
+  GrowTextarea, cardBoxCls, cardHeaderBarCls, monoMutedCls, mutedTextCls, iconBtnCls,
 } from "@/components/ui-kit";
-import { type GeneralPrep, type InterviewNotes, DEFAULT_PREP } from "../types";
-import { parsePrepSection } from "../helpers";
+import { type GeneralPrep, type InterviewNotes, type InterviewPrep, DEFAULT_PREP } from "../types";
+import { uid } from "../helpers";
 import { SortableItem } from "../shared";
 
 // ─── Questions tab ──────────────────────────────────────────────────────────────
@@ -19,11 +19,13 @@ import { SortableItem } from "../shared";
 export function CompanyQuestionsTab({
   notes,
   update,
-  prepMd,
+  prep,
+  updatePrep,
 }: {
   notes: InterviewNotes;
   update: (patch: Partial<InterviewNotes>) => void;
-  prepMd: string;
+  prep: InterviewPrep;
+  updatePrep: (patch: Partial<InterviewPrep>) => void;
 }) {
   const [generalPrep, setGeneralPrep] = useState<GeneralPrep>(DEFAULT_PREP);
   const [catCollapsed, setCatCollapsed] = useState<Record<string, boolean>>({});
@@ -64,13 +66,9 @@ export function CompanyQuestionsTab({
   };
   const askedCount = allQs.filter((q) => (notes.my_q_state ?? {})[q.id]?.asked).length;
 
-  // "Questions to Ask" parsed from prep markdown
-  const prepAskText = prepMd ? parsePrepSection(prepMd, "Questions to Ask") : "";
-  const prepAskItems = prepAskText
-    .split("\n")
-    .map((l) => l.replace(/^\d+\.\s+/, "").replace(/^[-*]\s+/, "").replace(/\*\*/g, "").trim())
-    .filter(Boolean);
-  const prepAskAsked = prepAskItems.filter((_, i) => (notes.my_q_state ?? {})[`prep-ask-${i}`]?.asked).length;
+  // "Questions to Ask" from the structured prep (stable ids for asked-state)
+  const prepAskItems = prep.questions_to_ask;
+  const prepAskAsked = prepAskItems.filter((q) => (notes.my_q_state ?? {})[q.id]?.asked).length;
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -101,7 +99,7 @@ export function CompanyQuestionsTab({
             {!isCollapsed && (
               <div className="py-1 px-3">
                 {prepAskItems.map((q, i) => {
-                  const key = `prep-ask-${i}`;
+                  const key = q.id;
                   const state = (notes.my_q_state ?? {})[key] ?? { asked: false, note: "" };
                   const isLast = i === prepAskItems.length - 1;
                   return (
@@ -118,9 +116,17 @@ export function CompanyQuestionsTab({
                         >
                           {state.asked && <Check size={9} color="#fff" />}
                         </button>
-                        <span className={`flex-1 text-[12px] font-shell ${state.asked ? "text-text-tertiary line-through" : "text-text-secondary"}`}>
-                          {q}
-                        </span>
+                        <input
+                          value={q.text}
+                          onChange={(e) => updatePrep({ questions_to_ask: prepAskItems.map((x) => (x.id === q.id ? { ...x, text: e.target.value } : x)) })}
+                          className={`flex-1 text-[12px] font-shell bg-transparent border-none outline-none ${state.asked ? "text-text-tertiary line-through" : "text-text-secondary"}`}
+                        />
+                        <button
+                          onClick={() => updatePrep({ questions_to_ask: prepAskItems.filter((x) => x.id !== q.id) })}
+                          className={`${iconBtnCls} hover:text-badge-passed-fg`}
+                        >
+                          <Trash2 size={12} />
+                        </button>
                       </div>
                       <GrowTextarea
                         value={state.note}
@@ -129,11 +135,17 @@ export function CompanyQuestionsTab({
                           update({ my_q_state: { ...(notes.my_q_state ?? {}), [key]: { ...cur, note: v } } });
                         }}
                         placeholder="Their answer…"
-                        className="ml-[23px] mt-0.5 !text-[12px]"
+                        className="ml-[23px] mt-2 !text-[12px]"
                       />
                     </div>
                   );
                 })}
+                <button
+                  onClick={() => updatePrep({ questions_to_ask: [...prepAskItems, { id: uid(), text: "" }] })}
+                  className="text-[11px] font-medium py-1 px-2.5 rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-secondary cursor-pointer font-shell mt-1"
+                >
+                  + Add question
+                </button>
               </div>
             )}
           </div>
@@ -189,7 +201,7 @@ export function CompanyQuestionsTab({
                                 value={state.note}
                                 onChange={(v) => setMyQNote(q.id, v)}
                                 placeholder="Their answer…"
-                                className="ml-[23px] mt-0.5 !text-[12px]"
+                                className="ml-[23px] mt-2 !text-[12px]"
                               />
                             </div>
                           );

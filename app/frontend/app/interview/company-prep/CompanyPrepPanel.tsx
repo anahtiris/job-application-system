@@ -7,10 +7,10 @@ import {
   type SaveState, SaveIndicator, useAutoSave, GrowTextarea, SectionCard,
 } from "@/components/ui-kit";
 import {
-  type Interview, type InterviewNotes, type DateTimeValue, DEFAULT_NOTES,
+  type Interview, type InterviewNotes, type InterviewPrep, type DateTimeValue, DEFAULT_NOTES,
 } from "../types";
 import {
-  updatePrepSection, importNotesFromPrep, parseDate, toISO, formatDate,
+  parsePrepJson, parseDate, toISO, formatDate,
 } from "../helpers";
 import { TabBar } from "../shared";
 import { CompanyOverviewTab } from "./CompanyOverviewTab";
@@ -27,10 +27,14 @@ export function CompanyPrepPanel({
   app,
   isDark,
   onDateChange,
+  onPrepChange,
+  onNotesChange,
 }: {
   app: Interview;
   isDark: boolean;
   onDateChange: (id: string, iso: string | null) => void;
+  onPrepChange: (id: string, md: string) => void;
+  onNotesChange: (id: string, json: string) => void;
 }) {
   const [notes, setNotes] = useState<InterviewNotes>(DEFAULT_NOTES);
   const [tab, setTab] = useState<CompanyTab>("Overview");
@@ -38,7 +42,7 @@ export function CompanyPrepPanel({
   const [pendingDate, setPendingDate] = useState<DateTimeValue | undefined>(undefined);
 
   // Prep generation state
-  const [prepMd, setPrepMd] = useState(app.interview_prep_md ?? "");
+  const [prep, setPrep] = useState<InterviewPrep>(parsePrepJson(app.interview_prep_json));
   const [generatingPrep, setGeneratingPrep] = useState(false);
   const [showPrepOptions, setShowPrepOptions] = useState(false);
   const [round, setRound] = useState<string>("Technical");
@@ -56,45 +60,40 @@ export function CompanyPrepPanel({
     if (app.interview_notes_json) {
       try { parsed = JSON.parse(app.interview_notes_json); } catch {}
     }
-    const isEmpty =
-      !parsed.overview &&
-      !parsed.questions?.length &&
-      !parsed.gaps?.length &&
-      !parsed.salary?.notes;
-    const base = isEmpty && app.interview_prep_md
-      ? { ...DEFAULT_NOTES, ...importNotesFromPrep(app.interview_prep_md) }
-      : { ...DEFAULT_NOTES, ...parsed };
-    setNotes(base);
-    setPrepMd(app.interview_prep_md ?? "");
+    setNotes({ ...DEFAULT_NOTES, ...parsed });
+    setPrep(parsePrepJson(app.interview_prep_json));
     setPendingDate(parseDate(app.interview_date));
     setShowDatePicker(false);
   }
 
   const saveFn = useCallback(async (n: InterviewNotes) => {
-    await api.patch(`/api/tracker/${app.id}/interview-notes`, { notes_json: JSON.stringify(n) });
-  }, [app.id]);
+    const json = JSON.stringify(n);
+    await api.patch(`/api/tracker/${app.id}/interview-notes`, { notes_json: json });
+    onNotesChange(app.id, json);
+  }, [app.id, onNotesChange]);
 
   const saveState = useAutoSave(notes, saveFn);
   const update = (patch: Partial<InterviewNotes>) => setNotes((n) => ({ ...n, ...patch }));
 
-  // Debounced prep section save
+  // Debounced prep save
   const prepSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [prepSaveState, setPrepSaveState] = useState<SaveState>("idle");
-  const savePrepMd = useCallback((md: string) => {
+  const savePrep = useCallback((next: InterviewPrep) => {
     if (prepSaveTimer.current) clearTimeout(prepSaveTimer.current);
     setPrepSaveState("saving");
     prepSaveTimer.current = setTimeout(async () => {
-      await api.put(`/api/application/${app.id}/interview-prep`, { markdown: md });
+      await api.put(`/api/application/${app.id}/interview-prep`, next);
+      onPrepChange(app.id, JSON.stringify(next));
       setPrepSaveState("saved");
       setTimeout(() => setPrepSaveState("idle"), 2000);
     }, 1000);
-  }, [app.id]);
+  }, [app.id, onPrepChange]);
 
-  const editSection = (section: string, body: string) => {
-    setPrepMd((prev) => {
-      const updated = updatePrepSection(prev, section, body);
-      savePrepMd(updated);
-      return updated;
+  const updatePrep = (patch: Partial<InterviewPrep>) => {
+    setPrep((prev) => {
+      const next = { ...prev, ...patch };
+      savePrep(next);
+      return next;
     });
   };
 
@@ -122,7 +121,10 @@ export function CompanyPrepPanel({
       interviewer_type: interviewer,
       focus_skills: focus,
     }).catch(() => null);
-    if (result?.markdown) setPrepMd(result.markdown);
+    if (result) {
+      setPrep(result as InterviewPrep);
+      onPrepChange(app.id, JSON.stringify(result));
+    }
     setGeneratingPrep(false);
   };
 
@@ -136,6 +138,15 @@ export function CompanyPrepPanel({
     setCopying(true);
     setTimeout(() => setCopying(false), 1500);
   };
+
+  const hasPrep =
+    !!prep.company_analysis ||
+    !!prep.introduction_script ||
+    prep.common_questions.length > 0 ||
+    prep.job_specific_questions.length > 0 ||
+    prep.weak_spots.length > 0 ||
+    prep.questions_to_ask.length > 0 ||
+    !!prep.salary;
 
   const { label: dateLabel, isToday } = formatDate(app.interview_date);
 
@@ -185,7 +196,9 @@ export function CompanyPrepPanel({
         {tab === "Overview" && (
           <CompanyOverviewTab
             app={app}
-            prepMd={prepMd}
+            prep={prep}
+            updatePrep={updatePrep}
+            hasPrep={hasPrep}
             generatingPrep={generatingPrep}
             showPrepOptions={showPrepOptions}
             setShowPrepOptions={setShowPrepOptions}
@@ -198,13 +211,11 @@ export function CompanyPrepPanel({
             copying={copying}
             copyClaudePrompt={copyClaudePrompt}
             generatePrep={generatePrep}
-            editSection={editSection}
-            prepSaveState={prepSaveState}
           />
         )}
 
         {tab === "Questions" && (
-          <CompanyQuestionsTab notes={notes} update={update} prepMd={prepMd} />
+          <CompanyQuestionsTab notes={notes} update={update} prep={prep} updatePrep={updatePrep} />
         )}
 
         {tab === "Anticipate" && (
@@ -213,9 +224,10 @@ export function CompanyPrepPanel({
 
         {tab === "Background" && (
           <CompanyBackgroundTab
-            prepMd={prepMd}
+            prep={prep}
+            updatePrep={updatePrep}
+            hasPrep={hasPrep}
             generatingPrep={generatingPrep}
-            editSection={editSection}
             prepSaveState={prepSaveState}
           />
         )}

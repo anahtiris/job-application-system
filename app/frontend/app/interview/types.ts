@@ -9,8 +9,31 @@ export interface Interview {
   status: string;
   interview_date: string | null;
   interview_notes_json: string | null;
-  interview_prep_md?: string | null;
+  interview_prep_json?: string | null;
 }
+
+export interface PrepQA { id: string; q: string; a: string }
+export interface PrepQuestion { id: string; text: string }
+
+export interface InterviewPrep {
+  company_analysis: string;
+  introduction_script: string;
+  common_questions: PrepQA[];
+  job_specific_questions: PrepQA[];
+  weak_spots: PrepQA[];
+  questions_to_ask: PrepQuestion[];
+  salary: string;
+}
+
+export const EMPTY_PREP: InterviewPrep = {
+  company_analysis: "",
+  introduction_script: "",
+  common_questions: [],
+  job_specific_questions: [],
+  weak_spots: [],
+  questions_to_ask: [],
+  salary: "",
+};
 
 export interface QAItem {
   id: string;
