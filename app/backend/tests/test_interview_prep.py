@@ -113,3 +113,41 @@ def test_md_to_prep_parses_all_sections():
 def test_md_to_prep_empty_input():
     p = md_to_prep("")
     assert p["common_questions"] == [] and p["company_analysis"] == ""
+
+
+import json
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_generate_interview_prep_returns_dict_with_ids(tmp_path, monkeypatch):
+    import services.interview as interview
+
+    captured = {}
+
+    async def fake_generate(model, prompt, system="", fmt=None):
+        captured["fmt"] = fmt
+        return json.dumps({
+            "company_analysis": "c",
+            "introduction_script": "i",
+            "common_questions": [{"q": "q1", "a": "a1"}],
+            "job_specific_questions": [{"q": "q2", "a": "- bullet"}],
+            "weak_spots": [{"q": "p", "a": "h"}],
+            "questions_to_ask": [{"text": "t1"}],
+            "salary": "s",
+        })
+
+    monkeypatch.setattr(interview, "generate", fake_generate)
+    master = tmp_path / "resume_master.md"
+    master.write_text("# CV", encoding="utf-8")
+
+    prep = await interview.generate_interview_prep(
+        master_path=master, job_description="JD", company_name="Co",
+        company_tone="direct", language="en", interview_round="Technical",
+        interviewer_type="Hiring Manager", focus_skills="", model="ollama/x",
+    )
+
+    assert captured["fmt"]["type"] == "object"
+    assert prep["common_questions"][0]["id"]
+    assert prep["job_specific_questions"][0]["a"] == "- bullet"
+    assert prep["salary"] == "s"
