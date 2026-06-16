@@ -74,8 +74,8 @@ export default function InterviewPage() {
   // Keep the in-memory list in sync with edits so a remount (switching panels /
   // interviews and back) re-initializes from the latest value instead of the
   // page-load snapshot. Mirrors handleDateChange.
-  const handlePrepChange = (id: string, md: string) => {
-    setInterviews((prev) => prev.map((a) => (a.id === id ? { ...a, interview_prep_md: md } : a)));
+  const handlePrepChange = (id: string, json: string) => {
+    setInterviews((prev) => prev.map((a) => (a.id === id ? { ...a, interview_prep_json: json } : a)));
   };
 
   const handleNotesChange = (id: string, json: string) => {
