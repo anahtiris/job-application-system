@@ -36,3 +36,19 @@ def test_ensure_ids_fills_only_blank_ids():
     assert out["common_questions"][0]["id"] == "keep"
     assert out["common_questions"][1]["id"]
     assert out["questions_to_ask"][0]["id"]
+
+
+from services.providers.ollama import _build_payload
+
+
+def test_build_payload_includes_format_when_given():
+    p = _build_payload("m", "prompt", "sys", {"type": "object"})
+    assert p["format"] == {"type": "object"}
+    assert p["model"] == "m" and p["prompt"] == "prompt" and p["system"] == "sys"
+    assert p["stream"] is False
+
+
+def test_build_payload_omits_format_and_empty_system():
+    p = _build_payload("m", "prompt", "", None)
+    assert "format" not in p
+    assert "system" not in p

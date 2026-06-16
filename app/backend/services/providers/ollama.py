@@ -7,10 +7,17 @@ import httpx
 OLLAMA_BASE = "http://localhost:11434"
 
 
-async def generate(model: str, prompt: str, system: str = "") -> str:
-    payload = {"model": model, "prompt": prompt, "stream": False}
+def _build_payload(model: str, prompt: str, system: str, fmt: dict | None, stream: bool = False) -> dict:
+    payload: dict = {"model": model, "prompt": prompt, "stream": stream}
     if system:
         payload["system"] = system
+    if fmt:
+        payload["format"] = fmt
+    return payload
+
+
+async def generate(model: str, prompt: str, system: str = "", fmt: dict | None = None) -> str:
+    payload = _build_payload(model, prompt, system, fmt, stream=False)
     async with httpx.AsyncClient(timeout=300) as client:
         r = await client.post(f"{OLLAMA_BASE}/api/generate", json=payload)
         r.raise_for_status()
@@ -18,9 +25,7 @@ async def generate(model: str, prompt: str, system: str = "") -> str:
 
 
 async def stream(model: str, prompt: str, system: str = "") -> AsyncIterator[str]:
-    payload = {"model": model, "prompt": prompt, "stream": True}
-    if system:
-        payload["system"] = system
+    payload = _build_payload(model, prompt, system, None, stream=True)
     async with httpx.AsyncClient(timeout=300) as client:
         async with client.stream("POST", f"{OLLAMA_BASE}/api/generate", json=payload) as r:
             r.raise_for_status()
