@@ -1,4 +1,5 @@
-import type { InterviewNotes, DateTimeValue } from "./types";
+import type { InterviewNotes, DateTimeValue, InterviewPrep } from "./types";
+import { EMPTY_PREP } from "./types";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -6,44 +7,21 @@ export function uid(): string {
   return crypto.randomUUID();
 }
 
-export function parsePrepSection(md: string, heading: string): string {
-  const esc = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const m = md.match(new RegExp(`## ${esc}[^\\n]*\\n([\\s\\S]*?)(?=\\n## |$)`));
-  return m ? m[1].trim() : "";
-}
-
-export function updatePrepSection(md: string, section: string, newBody: string): string {
-  const esc = section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(`(## ${esc}[^\\n]*)\\n[\\s\\S]*?(?=\\n## |$)`);
-  return regex.test(md)
-    ? md.replace(regex, `$1\n\n${newBody}`)
-    : `${md}\n\n## ${section}\n\n${newBody}`;
-}
-
-export function importNotesFromPrep(prepMd: string): Partial<InterviewNotes> {
-  const overview = parsePrepSection(prepMd, "Company Analysis");
-
-  const qBody = parsePrepSection(prepMd, "Job-Specific Questions");
-  const questions = qBody
-    .split("\n")
-    .flatMap((line) => {
-      const m = line.match(/^\d+\.\s+(.+)/);
-      return m ? [{ id: uid(), q: m[1].replace(/\*\*/g, "").trim(), a: "" }] : [];
-    });
-
-  const gapBody = parsePrepSection(prepMd, "Weak Spots");
-  const gaps = [...gapBody.matchAll(/^- \*\*([^*]+)\*\*/gm)].map((m) => ({
-    id: uid(),
-    skill: m[1].replace(/\.$/, "").trim(),
-    severity: "amber" as const,
-    note: "",
-  }));
-
-  const salaryBody = parsePrepSection(prepMd, "Salary & Negotiation");
-  const askM = salaryBody.match(/€([\d]{2,3}[–\-][\d]{2,3})/);
-  const ask = askM ? `€${askM[1]}` : "";
-
-  return { overview, questions, gaps, salary: { ask, market: "", floor: "", notes: salaryBody } };
+export function parsePrepJson(raw: string | null | undefined): InterviewPrep {
+  if (!raw) return { ...EMPTY_PREP };
+  try {
+    const obj = JSON.parse(raw) as Partial<InterviewPrep>;
+    return {
+      ...EMPTY_PREP,
+      ...obj,
+      common_questions: obj.common_questions ?? [],
+      job_specific_questions: obj.job_specific_questions ?? [],
+      weak_spots: obj.weak_spots ?? [],
+      questions_to_ask: obj.questions_to_ask ?? [],
+    };
+  } catch {
+    return { ...EMPTY_PREP };
+  }
 }
 
 export function parseDate(iso: string | null): DateTimeValue | undefined {
