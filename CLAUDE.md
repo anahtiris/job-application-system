@@ -172,12 +172,12 @@ Each `skills/*/SKILL.md` is a self-contained instruction set consumed during a m
 
 ### Interview preparation (detail page, Interview tab)
 Two independent generation blocks, both only active when `app.status === "Interview"`:
-- **Interview Prep** — 7 sections (`Company Analysis`, `Introduction Script`, `Common Questions`, `Job-Specific Questions`, `Weak Spots`, `Questions to Ask`, `Salary & Negotiation`), parameterised by round/interviewer/focus skills. The Introduction Script is fed the tailored CV + cover letter, not just the master resume. Stored in `interview_prep_md`. Rendered by `InterviewPrepDisplay`, which cards each `## ` section and special-cases the exact header `Questions to Ask`. Two generation paths (below).
+- **Interview Prep** — 7 fields (`company_analysis`, `introduction_script`, `common_questions[]`, `job_specific_questions[]`, `weak_spots[]`, `questions_to_ask[]`, `salary`), parameterised by round/interviewer/focus skills. The Introduction Script is fed the tailored CV + cover letter, not just the master resume. Stored as a structured object in `interview_prep_json` — Q&A items are `{id, q, a}` (job-specific `a` is talking-point bullets; weak-spot `q` is the likely probe, `a` the honest answer), ask items are `{id, text}`, the rest are plain strings. Rendered by the tabbed company-prep panel (`app/frontend/app/interview/company-prep/`) as add/edit/delete-able rows. The legacy `interview_prep_md` column is auto-converted to JSON on first read (`md_to_prep`) then nulled. Two generation paths (below).
 - **Skills Debrief** — tier-aware per-skill coaching: STAR prompts for Tier 1/2, honest answer templates for Tier 3, overclaim flags. No parameters. Stored in `interview_debrief_md`.
 
 **Two ways to generate Interview Prep** (mirrors the captured-jobs pattern):
-- **Generate with Ollama** — `POST /api/application/interview-prep` runs `interview.generate_interview_prep` offline. Company Analysis is inferred from the JD (no web), labelled "(inferred — verify)".
-- **Copy prompt for Claude** — the button copies an instruction referencing the application id, round, interviewer type, and focus skills. When the user pastes it, Claude Code follows `skills/interview-prep/SKILL.md`: gathers context from `/api/tracker/{id}` and disk, **web-researches the company** (never fabricate), drafts all seven `## ` sections in the page's language, and saves via `PUT /api/application/{id}/interview-prep`. This is the **Interview prep — Claude path**.
+- **Generate with Ollama** — `POST /api/application/interview-prep` runs `interview.generate_interview_prep` offline, using Ollama's structured-output `format` schema (`GenInterviewPrep.model_json_schema()`) to return the JSON object directly. Company Analysis is inferred from the JD (no web), labelled "(inferred — verify)".
+- **Copy prompt for Claude** — the button copies an instruction referencing the application id, round, interviewer type, and focus skills. When the user pastes it, Claude Code follows `skills/interview-prep/SKILL.md`: gathers context from `/api/tracker/{id}` and disk, **web-researches the company** (never fabricate), builds all seven fields in the page's language, and saves via `PUT /api/application/{id}/interview-prep` with the JSON object (not markdown). This is the **Interview prep — Claude path**.
 
 ### Templates
 `templates/resume/resume_en.docx` and `templates/resume/resume_de.docx` are the base CV DOCX files. `templates/cover-letter/cover_letter.docx` is the cover letter base. All are gitignored — `.gitkeep` preserves the folders.
@@ -186,7 +186,7 @@ Two independent generation blocks, both only active when `app.status === "Interv
 Every application lives in `applications/[Company]/` and is gitignored. Detail page (`/apply/[id]`) provides PDF and DOCX download links for both documents.
 
 ### Database migrations
-`db.py` runs safe `ALTER TABLE` migrations on startup for new nullable columns (try/except loop). Current extra columns on `Application`: `resume_docx_path`, `cover_letter_docx_path`, `cover_letter_notes`, `interview_prep_md`, `interview_debrief_md`, `deleted_at`. `JobLead` table: `raw_text`, `deleted_at` added via migration. For constraint changes (e.g. making a column nullable), use the SQLite table-recreation pattern: CREATE new → INSERT SELECT → DROP old → RENAME.
+`db.py` runs safe `ALTER TABLE` migrations on startup for new nullable columns (try/except loop). Current extra columns on `Application`: `resume_docx_path`, `cover_letter_docx_path`, `cover_letter_notes`, `interview_prep_md`, `interview_prep_json`, `interview_debrief_md`, `deleted_at`. `JobLead` table: `raw_text`, `deleted_at` added via migration. For constraint changes (e.g. making a column nullable), use the SQLite table-recreation pattern: CREATE new → INSERT SELECT → DROP old → RENAME.
 
 ## Critical constraints
 
