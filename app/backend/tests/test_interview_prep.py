@@ -52,3 +52,64 @@ def test_build_payload_omits_format_and_empty_system():
     p = _build_payload("m", "prompt", "", None)
     assert "format" not in p
     assert "system" not in p
+
+
+from services.interview_parse import md_to_prep
+
+SAMPLE_MD = """## Company Analysis
+- Builds X
+- Stage: Series A
+
+## Introduction Script
+Hi, I shipped Y.
+
+## Common Questions
+**Tell me about yourself**
+I built Y at Z. It shipped to prod.
+**Why this company**
+You build X which I admire.
+
+## Job-Specific Questions
+1. How would you design a queue?
+2. Explain GDPR handling.
+
+## Weak Spots
+**Likely probe:** "Do you know Kubernetes?"
+**Honest answer:** "I've explored it recently in a side project."
+
+## Questions to Ask
+- What does the first 90 days look like?
+- How are decisions made?
+
+## Salary & Negotiation
+Rough estimate €60-70k. I'd say: my range is 60-70k.
+"""
+
+
+def test_md_to_prep_parses_all_sections():
+    p = md_to_prep(SAMPLE_MD)
+    assert "Builds X" in p["company_analysis"]
+    assert p["introduction_script"].startswith("Hi, I shipped Y")
+
+    assert [q["q"] for q in p["common_questions"]] == ["Tell me about yourself", "Why this company"]
+    assert "built Y at Z" in p["common_questions"][0]["a"]
+
+    assert [q["q"] for q in p["job_specific_questions"]] == [
+        "How would you design a queue?", "Explain GDPR handling.",
+    ]
+    assert all(q["a"] == "" for q in p["job_specific_questions"])
+
+    assert p["weak_spots"][0]["q"] == "Do you know Kubernetes?"
+    assert "explored it recently" in p["weak_spots"][0]["a"]
+
+    assert [q["text"] for q in p["questions_to_ask"]] == [
+        "What does the first 90 days look like?", "How are decisions made?",
+    ]
+    assert "Rough estimate" in p["salary"]
+    for key in ("common_questions", "job_specific_questions", "weak_spots", "questions_to_ask"):
+        assert all(item["id"] for item in p[key])
+
+
+def test_md_to_prep_empty_input():
+    p = md_to_prep("")
+    assert p["common_questions"] == [] and p["company_analysis"] == ""
