@@ -79,6 +79,7 @@ class Application(SQLModel, table=True):
     notes: Optional[str] = None
     cover_letter_notes: Optional[str] = None
     interview_prep_md: Optional[str] = None
+    interview_prep_json: Optional[str] = None
     interview_debrief_md: Optional[str] = None
     interview_date: Optional[str] = None
     interview_notes_json: Optional[str] = None
@@ -92,7 +93,7 @@ def create_db():
     SQLModel.metadata.create_all(engine)
     # Safe migration for columns added after initial schema
     with engine.connect() as conn:
-        for col_def in ["resume_docx_path TEXT", "cover_letter_docx_path TEXT", "cover_letter_notes TEXT", "interview_prep_md TEXT", "interview_debrief_md TEXT", "source_url TEXT", "interview_date TEXT", "interview_notes_json TEXT", "fit_analysis_json TEXT", "deleted_at DATETIME"]:
+        for col_def in ["resume_docx_path TEXT", "cover_letter_docx_path TEXT", "cover_letter_notes TEXT", "interview_prep_md TEXT", "interview_prep_json TEXT", "interview_debrief_md TEXT", "source_url TEXT", "interview_date TEXT", "interview_notes_json TEXT", "fit_analysis_json TEXT", "deleted_at DATETIME"]:
             try:
                 conn.execute(text(f"ALTER TABLE application ADD COLUMN {col_def}"))
                 conn.commit()
