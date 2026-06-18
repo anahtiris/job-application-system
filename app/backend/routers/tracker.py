@@ -1,4 +1,3 @@
-import json
 from datetime import date
 from typing import Optional
 
@@ -7,7 +6,6 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from db import Application, get_session, now_utc
-from services.interview_parse import md_to_prep
 
 router = APIRouter()
 
@@ -57,16 +55,6 @@ class UpdateDateRequest(BaseModel):
     date_applied: date
 
 
-def _ensure_prep_json(app, session) -> None:
-    """Lazily migrate a legacy interview_prep_md blob to interview_prep_json once."""
-    if not app.interview_prep_json and app.interview_prep_md:
-        app.interview_prep_json = json.dumps(md_to_prep(app.interview_prep_md), ensure_ascii=False)
-        app.interview_prep_md = None
-        session.add(app)
-        session.commit()
-        session.refresh(app)
-
-
 @router.post("/")
 def create_application(body: CreateApplicationRequest, session: Session = Depends(get_session)):
     app = Application(
@@ -93,8 +81,6 @@ def list_applications(session: Session = Depends(get_session)):
         .where(Application.deleted_at == None)  # noqa: E711
         .order_by(Application.created_at.desc())
     ).all()
-    for app in apps:
-        _ensure_prep_json(app, session)
     return apps
 
 
@@ -103,7 +89,6 @@ def get_application(app_id: str, session: Session = Depends(get_session)):
     app = session.get(Application, app_id)
     if not app:
         raise HTTPException(404, "Application not found")
-    _ensure_prep_json(app, session)
     return app
 
 

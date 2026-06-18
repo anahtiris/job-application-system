@@ -36,11 +36,23 @@ An AI-assisted pipeline that captures job leads from any job board, analyzes fit
 
 ---
 
+## How AI is used
+
+The system has two distinct AI modes that can be mixed freely:
+
+**Backend LLM roles** (automated paths in the web app — lead extraction, gap analysis, document generation, review, interview prep):
+Configured per-role in **Settings** using `provider/model` format. Each role can use a different provider. Requires either [Ollama](https://ollama.ai) (free, local) or an API key for Anthropic / OpenAI / Gemini / Perplexity (`.env`).
+
+**Claude Code paths** ("Copy prompt for Claude" buttons, "process my captured jobs", "process my skills"):
+These run entirely inside [Claude Code](https://claude.ai/code) — the CLI tool included with Claude Pro and Max subscriptions. No API key needed. Claude Code reads the project context, calls the local backend's REST endpoints directly, and handles web research, interviewing you on ambiguous skills, and generating structured output. This is the higher-quality path for lead analysis and interview prep.
+
+You can use either mode independently. A pure-Ollama setup works with no subscription. A Claude subscriber can use Claude Code for the high-touch tasks and skip API keys entirely for those paths.
+
 ## Requirements
 
 - Python 3.11+
 - Node.js 18+
-- At least one LLM provider: [Ollama](https://ollama.ai) (local) or an API key for Anthropic / OpenAI / Gemini / Perplexity
+- At least one LLM provider: [Ollama](https://ollama.ai) (local), an API key for Anthropic / OpenAI / Gemini / Perplexity, or a [Claude Pro/Max subscription](https://claude.ai) with Claude Code installed
 - LibreOffice (for PDF export): `brew install --cask libreoffice`
 - `pdfinfo` (for page count check): `brew install poppler`
 

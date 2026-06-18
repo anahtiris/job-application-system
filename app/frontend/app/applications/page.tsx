@@ -11,6 +11,8 @@ import { isoToDateValue, dateValueToISO, shortDate } from "@/lib/utils";
 import { StatusBadge, useClickOutside, appLabelStyleCls } from "@/components/ui-kit";
 import { STATUS_DISPLAY } from "@/lib/status";
 
+const APPS_CLAUDE_PROMPT = "generate CVs and cover letters for all new applications in a batch";
+
 interface Application {
   id: string;
   company: string;
@@ -139,6 +141,8 @@ export default function ApplicationsPage() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const [copyingApps, setCopyingApps] = useState(false);
+
   // Search
   const [search, setSearch] = useState("");
 
@@ -198,6 +202,13 @@ export default function ApplicationsPage() {
     URL.revokeObjectURL(url);
   };
 
+  const copyAppsPrompt = async () => {
+    setCopyingApps(true);
+    await navigator.clipboard.writeText(appsPrompt);
+    toast.success("Copied");
+    setCopyingApps(false);
+  };
+
   const load = useCallback(() => {
     setLoading(true);
     api
@@ -252,6 +263,9 @@ export default function ApplicationsPage() {
       setDeletingId(null);
     }
   };
+
+  const newApps = apps.filter((a) => a.status === "New");
+  const appsPrompt = `${APPS_CLAUDE_PROMPT}${newApps.length > 4 ? " of 3-4" : ""}`;
 
   const q = search.trim().toLowerCase();
   const visible = apps.filter((a) => {
@@ -351,6 +365,29 @@ export default function ApplicationsPage() {
           <FilterDropdown activeFilters={activeFilters} onToggle={toggleFilter} onClear={clearFilters} />
         </div>
       </div>
+
+      {/* Hint row — shown when New-status apps exist */}
+      {newApps.length > 0 && (
+        <div className="flex items-center gap-2.5 py-2 px-4 border-b-[0.5px] border-border-tertiary bg-background-secondary shrink-0">
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-custom text-white text-[11px] font-mono font-bold shrink-0">
+            {newApps.length}
+          </span>
+          <span className="text-[12px] text-text-tertiary font-shell">
+            new {newApps.length === 1 ? "application" : "applications"} ready
+          </span>
+          <code className="py-1 px-2 rounded-[5px] bg-background-tertiary text-[11px] font-mono text-text-secondary border-[0.5px] border-border-tertiary">
+            {appsPrompt}
+          </code>
+          <button
+            onClick={copyAppsPrompt}
+            disabled={copyingApps}
+            className="text-[11px] font-medium py-[3px] px-[9px] rounded-full border-[0.5px] border-border-tertiary bg-transparent text-text-secondary cursor-pointer font-shell shrink-0"
+          >
+            {copyingApps ? "Copied" : "Copy"}
+          </button>
+          <span className="text-[10px] text-text-tertiary font-shell ml-auto">add /clear after pasting</span>
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-y-auto flex-1">

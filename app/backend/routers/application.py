@@ -384,7 +384,6 @@ async def generate_interview_prep(body: InterviewPrepRequest, session: Session =
         persona_path=PERSONA,
     )
     app.interview_prep_json = json.dumps(prep, ensure_ascii=False)
-    app.interview_prep_md = None
     session.add(app)
     session.commit()
     return prep
@@ -398,7 +397,6 @@ def save_interview_prep(app_id: str, body: InterviewPrep, session: Session = Dep
         raise HTTPException(404, "Application not found")
     prep = ensure_ids(body.model_dump())
     app.interview_prep_json = json.dumps(prep, ensure_ascii=False)
-    app.interview_prep_md = None
     session.add(app)
     session.commit()
     return {"saved": True, "prep": prep}

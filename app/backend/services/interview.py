@@ -4,6 +4,7 @@ from pathlib import Path
 from services.llm import generate
 from services.interview_schema import GenInterviewPrep, with_ids
 
+# Mirrors skills/interview-prep/SKILL.md — keep in sync
 DEBRIEF_SYSTEM = """You are a brutally honest interview coach who never lets candidates bluff or overclaim.
 
 Given a tailored CV, a job description, and a skills inventory with declared tiers, produce a coaching debrief.
@@ -71,6 +72,7 @@ async def generate_skills_debrief(
     )
     return await generate(model, prompt, system=_with_persona(DEBRIEF_SYSTEM, persona_path))
 
+# Mirrors skills/interview-prep/SKILL.md — keep in sync
 INTERVIEW_SYSTEM = """You are preparing a candidate for a job interview. Produce structured interview prep as JSON with these fields:
 
 - company_analysis: 4-6 markdown bullets — what the company builds, stage/size, tech stack if mentioned, culture signals. Base it on JOB_DESCRIPTION and COMPANY_TYPE. You have NO web access — do not invent reviews, funding, headcount, or salary numbers; append "(inferred — verify)" or omit.

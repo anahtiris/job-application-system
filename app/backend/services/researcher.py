@@ -9,6 +9,7 @@ from services.llm import generate
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; JobAppBot/1.0)"}
 
+# Mirrors skills/company-research/SKILL.md — keep in sync
 TONE_SYSTEM = """You are classifying a company based on their website text.
 
 Respond with a JSON object only — no explanation, no markdown:

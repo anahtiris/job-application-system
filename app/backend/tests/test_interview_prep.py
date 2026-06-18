@@ -54,67 +54,6 @@ def test_build_payload_omits_format_and_empty_system():
     assert "system" not in p
 
 
-from services.interview_parse import md_to_prep
-
-SAMPLE_MD = """## Company Analysis
-- Builds X
-- Stage: Series A
-
-## Introduction Script
-Hi, I shipped Y.
-
-## Common Questions
-**Tell me about yourself**
-I built Y at Z. It shipped to prod.
-**Why this company**
-You build X which I admire.
-
-## Job-Specific Questions
-1. How would you design a queue?
-2. Explain GDPR handling.
-
-## Weak Spots
-**Likely probe:** "Do you know Kubernetes?"
-**Honest answer:** "I've explored it recently in a side project."
-
-## Questions to Ask
-- What does the first 90 days look like?
-- How are decisions made?
-
-## Salary & Negotiation
-Rough estimate €60-70k. I'd say: my range is 60-70k.
-"""
-
-
-def test_md_to_prep_parses_all_sections():
-    p = md_to_prep(SAMPLE_MD)
-    assert "Builds X" in p["company_analysis"]
-    assert p["introduction_script"].startswith("Hi, I shipped Y")
-
-    assert [q["q"] for q in p["common_questions"]] == ["Tell me about yourself", "Why this company"]
-    assert "built Y at Z" in p["common_questions"][0]["a"]
-
-    assert [q["q"] for q in p["job_specific_questions"]] == [
-        "How would you design a queue?", "Explain GDPR handling.",
-    ]
-    assert all(q["a"] == "" for q in p["job_specific_questions"])
-
-    assert p["weak_spots"][0]["q"] == "Do you know Kubernetes?"
-    assert "explored it recently" in p["weak_spots"][0]["a"]
-
-    assert [q["text"] for q in p["questions_to_ask"]] == [
-        "What does the first 90 days look like?", "How are decisions made?",
-    ]
-    assert "Rough estimate" in p["salary"]
-    for key in ("common_questions", "job_specific_questions", "weak_spots", "questions_to_ask"):
-        assert all(item["id"] for item in p[key])
-
-
-def test_md_to_prep_empty_input():
-    p = md_to_prep("")
-    assert p["common_questions"] == [] and p["company_analysis"] == ""
-
-
 import json
 import pytest
 
@@ -143,7 +82,6 @@ def test_put_interview_prep_stores_json_and_fills_ids(client):
     assert prep["questions_to_ask"][0]["id"]
 
     app = client.get(f"/api/tracker/{app_id}").json()
-    assert app["interview_prep_md"] is None
     assert json.loads(app["interview_prep_json"])["salary"] == "s"
 
 
@@ -210,23 +148,3 @@ async def test_generate_interview_prep_returns_dict_with_ids(tmp_path, monkeypat
     assert prep["salary"] == "s"
 
 
-def test_get_application_converts_legacy_md(client):
-    app_id = _make_app(client)
-    # seed legacy markdown directly via the in-memory engine
-    import db
-    from sqlmodel import Session
-    from db import Application
-    with Session(db.engine) as s:
-        row = s.get(Application, app_id)
-        row.interview_prep_md = SAMPLE_MD
-        s.add(row)
-        s.commit()
-
-    app = client.get(f"/api/tracker/{app_id}").json()
-    assert app["interview_prep_md"] is None
-    prep = json.loads(app["interview_prep_json"])
-    assert [q["q"] for q in prep["common_questions"]] == ["Tell me about yourself", "Why this company"]
-
-    # list endpoint also returns converted json
-    listed = next(a for a in client.get("/api/tracker/").json() if a["id"] == app_id)
-    assert listed["interview_prep_json"] is not None

@@ -57,6 +57,7 @@ def compute_start_date(period: str, custom_date: str = "") -> str:
 
     return _first_of_next_month(base).strftime("%d.%m.%Y")
 
+# Mirrors skills/resume-tailoring/SKILL.md — keep in sync
 RESUME_SYSTEM = """You are a resume tailoring assistant with strict rules.
 
 INPUT STRUCTURE:
@@ -79,6 +80,7 @@ OUTPUT FORMAT (JSON only, no markdown fences):
   "skills": "..."
 }"""
 
+# Mirrors skills/cover-letter-aida/SKILL.md — keep in sync
 COVER_LETTER_SYSTEM = """You are writing a professional cover letter following the AIDA framework.
 
 RULES (violations are failures):
@@ -96,6 +98,9 @@ RULES (violations are failures):
 - No overclaiming: if a skill appears in the master resume with a recent date (within the last 12 months) or only in a personal/side project, describe it as "recent" / "exploring" / "in a side project" — do NOT label it "extensive", "expert", or "deep" experience
 - SKILLS_INVENTORY: if this field is present, match proficiency language strictly to the declared tier — Core = owned end-to-end across multiple projects; Proficient = 2+ projects, mostly independent; Familiar = limited experience, needs ramp-up; Exposure = tutorials only. Never upgrade a tier based on how impressive it sounds
 - COVER_LETTER_NOTES: if this field is present in the input, incorporate those points naturally into the letter. They take priority over generic content choices but must not contradict the master resume or any rule above
+- Never write sentences that read like bullet points extracted from a resume — no listing technologies, roles, or skills without connecting them to an outcome or problem solved
+- Every sentence must connect a fact to its relevance — never state raw facts (e.g. language levels, tool names, role titles) in isolation
+- Voice: vary sentence length and structure deliberately — mix short direct statements with longer explanations; never repeat the same sentence pattern twice in a row
 
 STRUCTURE:
 1. Opening (1-2 sentences): connect your specific experience to their specific need. Adapt strategy:

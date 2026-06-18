@@ -9,6 +9,7 @@ from services.llm import generate
 
 logger = logging.getLogger(__name__)
 
+# Mirrors skills/skill-assessment/SKILL.md — keep in sync
 EXTRACT_SYSTEM = """You build a candidate's skills inventory from their résumé.
 
 Read the WHOLE résumé — including experience bullets, not just a skills list. For

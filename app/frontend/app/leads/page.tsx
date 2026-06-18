@@ -214,9 +214,12 @@ export default function LeadsPage() {
 
               {/* Claude Code path */}
               <div className="flex flex-col gap-[5px]">
-                <span className="text-[10px] font-medium tracking-[0.06em] uppercase text-text-tertiary font-shell">
-                  Use Claude Code
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-medium tracking-[0.06em] uppercase text-text-tertiary font-shell">
+                    Use Claude Code
+                  </span>
+                  <span className="text-[10px] text-text-tertiary font-shell">add /clear after pasting</span>
+                </div>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 py-1.5 px-2.5 rounded-[6px] bg-background-tertiary text-[12px] font-mono text-text-secondary border-[0.5px] border-border-tertiary">
                     {CLAUDE_PROMPT}

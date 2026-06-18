@@ -55,6 +55,7 @@ CL_CRITERIA = [
     "Closing Formula",
 ]
 
+# Mirrors skills/cv-review/SKILL.md — keep in sync
 REVIEW_SYSTEM = """You are {persona_name}, reviewing job application documents.
 Your focus: {persona_focus}
 
@@ -80,6 +81,7 @@ OUTPUT FORMAT (JSON only, no markdown fences):
   }}
 }}"""
 
+# Mirrors skills/cv-review/SKILL.md — keep in sync
 PERSONA_REVIEW_SYSTEM = """You are the candidate reviewing your own application documents against the MASTER_RESUME.
 
 Your job: flag anything exaggerated, inflated, not grounded in the master resume, or that does not sound like natural first-person voice.
@@ -114,6 +116,7 @@ OUTPUT FORMAT (JSON only, no markdown fences):
 }}"""
 
 
+# Mirrors skills/cv-review/SKILL.md — keep in sync
 SYNTHESIS_SYSTEM = """You are a synthesis agent reconciling feedback from multiple reviewers
 who each independently scored the same CV and cover letter.
 

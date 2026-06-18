@@ -3,6 +3,7 @@ import re
 
 from services.llm import generate
 
+# Mirrors skills/job-analysis/SKILL.md — keep in sync
 ANALYSIS_SYSTEM = """You are analyzing a job description against a candidate's skills inventory.
 
 Output JSON only — no markdown fences, no explanation:
