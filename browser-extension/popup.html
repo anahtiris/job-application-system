@@ -57,6 +57,55 @@
     .message.info    { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; display: block; }
     .message.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; display: block; }
     .message.error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; display: block; }
+
+    .queue {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      padding-top: 4px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .queue.visible { display: flex; }
+
+    .queue-label {
+      font-size: 11px;
+      color: #6b7280;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .queue-badge {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #374151;
+    }
+    .queue-badge.hot { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+
+    .copy-btn {
+      width: 100%;
+      padding: 7px 10px;
+      background: #f9fafb;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.12s;
+    }
+    .copy-btn:hover { background: #f3f4f6; }
+    .copy-btn.batch {
+      background: #111;
+      color: #fff;
+      border-color: #111;
+    }
+    .copy-btn.batch:hover { background: #333; border-color: #333; }
+    .copy-btn.copied { opacity: 0.6; cursor: default; }
   </style>
 </head>
 <body>
@@ -68,6 +117,19 @@
   <div class="body">
     <div class="message" id="message"></div>
     <button class="capture-btn" id="captureBtn">Capture Job</button>
+
+    <div class="queue" id="queue">
+      <div class="queue-label">
+        <span id="queueBadge" class="queue-badge"></span>
+        <span>jobs waiting to be processed</span>
+      </div>
+      <button class="copy-btn" id="copyProcessBtn" style="display:none">
+        Copy prompt — process captured jobs
+      </button>
+      <button class="copy-btn batch" id="copyBatchBtn" style="display:none">
+        Copy prompt — process as batch
+      </button>
+    </div>
   </div>
 
   <script src="popup.js"></script>

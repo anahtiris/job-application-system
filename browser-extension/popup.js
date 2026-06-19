@@ -1,5 +1,7 @@
 const API = "http://localhost:8000";
-const APP = "http://localhost:3000";
+
+const PROMPT_PROCESS = "Process my captured jobs";
+const PROMPT_BATCH   = "Process my captured jobs in batch";
 
 async function checkBackend() {
   const dot = document.getElementById("statusDot");
@@ -17,6 +19,64 @@ function showMessage(text, type) {
   el.className = `message ${type}`;
 }
 
+async function refreshQueue() {
+  try {
+    const r = await fetch(`${API}/api/leads/pending-count`, { signal: AbortSignal.timeout(2000) });
+    if (!r.ok) return;
+    const { count } = await r.json();
+
+    const queue       = document.getElementById("queue");
+    const badge       = document.getElementById("queueBadge");
+    const processBtn  = document.getElementById("copyProcessBtn");
+    const batchBtn    = document.getElementById("copyBatchBtn");
+
+    if (count === 0) {
+      queue.classList.remove("visible");
+      return;
+    }
+
+    badge.textContent = count;
+    badge.className   = `queue-badge${count > 4 ? " hot" : ""}`;
+    queue.classList.add("visible");
+
+    processBtn.style.display = count > 1 ? "block" : "none";
+    batchBtn.style.display   = count > 4 ? "block" : "none";
+  } catch {
+    // backend unreachable — queue section stays hidden
+  }
+}
+
+function notifyCapture(label) {
+  chrome.notifications.create({
+    type:    "basic",
+    iconUrl: "icon-48.png",
+    title:   "Job Capture",
+    message: label,
+  });
+}
+
+function copyPrompt(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const original = btn.textContent;
+    btn.textContent = "Copied!";
+    btn.classList.add("copied");
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.classList.remove("copied");
+      btn.disabled = false;
+    }, 1500);
+  });
+}
+
+document.getElementById("copyProcessBtn").addEventListener("click", function () {
+  copyPrompt(this, PROMPT_PROCESS);
+});
+
+document.getElementById("copyBatchBtn").addEventListener("click", function () {
+  copyPrompt(this, PROMPT_BATCH);
+});
+
 document.getElementById("captureBtn").addEventListener("click", async () => {
   const btn = document.getElementById("captureBtn");
   btn.disabled = true;
@@ -28,7 +88,7 @@ document.getElementById("captureBtn").addEventListener("click", async () => {
     elapsed = 0;
     timer = setInterval(() => {
       elapsed++;
-      showMessage(`AI extracting job details… ${elapsed}s`, "info");
+      showMessage(`Saving… ${elapsed}s`, "info");
     }, 1000);
   }
 
@@ -48,7 +108,7 @@ document.getElementById("captureBtn").addEventListener("click", async () => {
 
     const { text, url } = results[0].result;
 
-    btn.textContent = "Extracting…";
+    btn.textContent = "Saving…";
     startTimer();
 
     const r = await fetch(`${API}/api/leads/from-text`, {
@@ -65,10 +125,14 @@ document.getElementById("captureBtn").addEventListener("click", async () => {
     }
 
     const data = await r.json();
-    const label = data.duplicate ? "Already captured — opening…" : "Done! Opening app…";
+    const label = data.duplicate ? "Already captured" : "Job captured!";
+
     showMessage(label, "success");
-    chrome.tabs.create({ url: `${APP}/leads/${data.id}` });
-    setTimeout(() => window.close(), 600);
+    notifyCapture(label);
+    btn.textContent = "Capture Job";
+    btn.disabled = false;
+
+    await refreshQueue();
 
   } catch (err) {
     stopTimer();
@@ -84,3 +148,4 @@ document.getElementById("captureBtn").addEventListener("click", async () => {
 });
 
 checkBackend();
+refreshQueue();

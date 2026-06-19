@@ -41,6 +41,16 @@ class UpdateLeadRequest(BaseModel):
     language: Optional[str] = None
 
 
+@router.get("/pending-count")
+def pending_count(session: Session = Depends(get_session)):
+    count = len(session.exec(
+        select(JobLead)
+        .where(JobLead.status.in_(["captured", "new"]))
+        .where(JobLead.deleted_at == None)
+    ).all())
+    return {"count": count}
+
+
 @router.get("/")
 def list_leads(session: Session = Depends(get_session)):
     return session.exec(
