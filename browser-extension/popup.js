@@ -47,6 +47,7 @@ async function refreshQueue() {
 }
 
 function notifyCapture(label) {
+  if (!chrome.notifications) return;
   chrome.notifications.create({
     type:    "basic",
     iconUrl: "icon-48.png",
