@@ -13,6 +13,15 @@ Initial setup: Parse a raw resume into `resume_master.md` / `resume_master_de.md
 
 The full step-by-step orchestration is in `workflows/end-to-end.md`.
 
+## Workflow permission protocol
+
+Before starting any multi-step workflow (process captured jobs, generate CV/cover letter, interview prep), list every command you plan to run — reads AND writes — grouped by type, and ask once before doing anything. Example format:
+
+**Read (auto-approved):** GET /api/leads/, resume_master.md, data/skills.json  
+**Write (will prompt):** PUT /api/leads/{id}/processed ×3, WebSearch ×3
+
+After the user says proceed, run everything. Write-operation prompts will still appear from the permission system — the user can click "Allow for this session" on the first occurrence of each pattern to avoid repeated prompts.
+
 ## Key commands
 
 ```bash
@@ -90,6 +99,8 @@ When the user says **"process my captured jobs"**, Claude Code does extraction *
      }
    }
    ```
+
+**Batch mode — "process my captured jobs in batches of N" (default N=4).** The extension's batch button copies this phrase when more than 4 leads are pending. Process only the **next N** captured/`new` leads (oldest first), exactly as above, then **STOP** — do not continue past N in the same pass. The point is to bound context/token usage per run. After the batch, report which leads were processed and how many remain, then tell the user to `/clear` and paste the prompt again to continue the next batch. (Plain "process my captured jobs" still processes all pending leads in one pass — fine for small counts.)
 
 The `/leads` page shows color-coded status badges and fit verdict chips. The `/leads/[id]` detail page shows must-haves/nice-to-haves/ATS keywords from `fit_analysis_json`; all three arrays default to `[]` if missing (LLM sometimes uses non-standard field names).
 

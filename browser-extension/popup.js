@@ -1,7 +1,7 @@
 const API = "http://localhost:8000";
 
 const PROMPT_PROCESS = "Process my captured jobs";
-const PROMPT_BATCH   = "Process my captured jobs in batch";
+const PROMPT_BATCH   = "Process my captured jobs in batches of 4 — stop after each batch so I can /clear before the next";
 
 async function checkBackend() {
   const dot = document.getElementById("statusDot");
