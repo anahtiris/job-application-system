@@ -97,6 +97,7 @@ export default function LeadsPage() {
   const [approvingAll, setApprovingAll] = useState(false);
   const [search, setSearch] = useState("");
   const [fitFilters, setFitFilters] = useState<string[]>([]);
+  const [capturedCollapsed, setCapturedCollapsed] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -253,34 +254,45 @@ export default function LeadsPage() {
 
             {/* Right — captured list */}
             <div className="py-3.5 px-4 flex flex-col gap-2">
-              <span className="text-[10px] font-medium tracking-[0.06em] uppercase text-text-tertiary font-shell">
-                {captured.length > 0 ? `Captured (${captured.length})` : "No raw captures"}
-              </span>
-              {captured.length > 0 && (
+              <button
+                onClick={() => setCapturedCollapsed((c) => !c)}
+                className="flex items-center gap-1.5 text-left bg-transparent border-none p-0 cursor-pointer group"
+              >
+                <span className="text-[10px] font-medium tracking-[0.06em] uppercase text-text-tertiary font-shell">
+                  {captured.length > 0 ? `Captured (${captured.length})` : "No raw captures"}
+                </span>
+                {captured.length > 0 && (
+                  <ChevronDown
+                    size={11}
+                    className={`text-text-tertiary transition-transform ${capturedCollapsed ? "-rotate-90" : ""}`}
+                  />
+                )}
+              </button>
+              {!capturedCollapsed && captured.length > 0 && (
                 <div className="border-[0.5px] border-border-tertiary rounded-[6px] overflow-hidden">
-                    {captured.map((lead, i) => (
-                      <div
-                        key={lead.id}
-                        onClick={() => router.push(`/leads/${lead.id}`)}
-                        className={`flex items-center justify-between gap-3 py-[7px] px-2.5 bg-background-primary cursor-pointer transition-colors hover:bg-background-secondary ${
-                          i > 0 ? "border-t-[0.5px] border-border-tertiary" : ""
-                        }`}
+                  {captured.map((lead, i) => (
+                    <div
+                      key={lead.id}
+                      onClick={() => router.push(`/leads/${lead.id}`)}
+                      className={`flex items-center justify-between gap-3 py-[7px] px-2.5 bg-background-primary cursor-pointer transition-colors hover:bg-background-secondary ${
+                        i > 0 ? "border-t-[0.5px] border-border-tertiary" : ""
+                      }`}
+                    >
+                      <span className="text-text-tertiary font-mono text-[11px] overflow-hidden text-ellipsis whitespace-nowrap">
+                        {hostname(lead.source_url)}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(lead.id);
+                        }}
+                        className="text-[11px] font-medium shrink-0 bg-transparent border-none cursor-pointer font-shell text-text-tertiary hover:text-badge-passed-fg"
                       >
-                        <span className="text-text-tertiary font-mono text-[11px] overflow-hidden text-ellipsis whitespace-nowrap">
-                          {hostname(lead.source_url)}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(lead.id);
-                          }}
-                          className="text-[11px] font-medium shrink-0 bg-transparent border-none cursor-pointer font-shell text-text-tertiary hover:text-badge-passed-fg"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
