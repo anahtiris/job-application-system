@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from db import Application, get_session, now_utc
+from db import Application, JobLead, get_session, now_utc
 
 router = APIRouter()
 
@@ -120,6 +120,11 @@ def update_status(app_id: str, body: UpdateStatusRequest, session: Session = Dep
         raise HTTPException(400, f"Cannot transition from {app.status!r} to {body.status!r}")
     app.status = body.status
     session.add(app)
+    if body.status == "Rejected":
+        lead = session.exec(select(JobLead).where(JobLead.application_id == app_id)).first()
+        if lead and lead.deleted_at is None:
+            lead.deleted_at = now_utc()
+            session.add(lead)
     session.commit()
     return {"status": app.status}
 
