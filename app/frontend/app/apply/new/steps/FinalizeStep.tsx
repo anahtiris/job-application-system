@@ -33,7 +33,10 @@ export function FinalizeStep({ w }: { w: WizardState }) {
         </div>
       </SectionCard>
       <div className="grid grid-cols-2 gap-3">
-        <MarkdownEditor label="Final Resume" value={w.resumeMd} onChange={w.setResumeMd} copyText={w.resumeMd} />
+        <div className="flex flex-col gap-1.5">
+          <MarkdownEditor label="Final Resume" value={w.resumeMd} onChange={w.setResumeMd} copyText={w.resumeMd} />
+          <InfoText>Only the Profile summary and Skills sections are written into the PDF. Experience, education and other sections come from the resume template and cannot be changed here.</InfoText>
+        </div>
         <div className="flex flex-col gap-1.5">
           <MarkdownEditor label="Final Cover Letter" value={w.clMd} onChange={w.setClMd} copyText={w.clMd} />
           <ClWordCount text={w.clMd} />

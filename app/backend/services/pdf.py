@@ -1,13 +1,13 @@
 """Generate DOCX and PDF from final markdown content.
 
-Resume: unpack template → edit XML → repack → 1-page check → LibreOffice PDF
+Resume: python-docx — inject tailored summary + skills into the template by
+        anchoring on section headings → 1-page check → LibreOffice PDF
 Cover letter: python-docx body replacement → LibreOffice PDF
 """
 import copy
 import re
 import shutil
 import subprocess
-import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -16,9 +16,6 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 from docx.shared import Pt
 from docx.text.paragraph import Paragraph
-
-from office.unpack import unpack
-from office.pack import pack
 
 
 def _apply_calibri(doc: Document) -> None:
@@ -122,60 +119,141 @@ def _strip_letter_boilerplate(text: str) -> str:
     return "\n".join(body_lines)
 
 
-def _md_to_xml_map(resume_md: str) -> dict[str, str]:
-    """Extract the new summary and skills text from tailored markdown."""
-    summary_match = re.search(r"# Profile\n(.*?)(?=\n#)", resume_md, re.DOTALL)
-    skills_match = re.search(r"# Skills\n(.*?)(?=\n#)", resume_md, re.DOTALL)
+# Section headings used to anchor summary/skills replacement in the resume
+# template DOCX. The templates carry no paraId/style markers (every paragraph
+# uses the same "Body A" style), so we locate sections by their visible heading
+# text. Keep these in sync with the template DOCX headings per language.
+RESUME_HEADINGS = {
+    "en": {"summary": "PROFESSIONAL SUMMARY", "skills": "TECHNICAL SKILLS", "after_skills": "PROFESSIONAL EXPERIENCE"},
+    "de": {"summary": "PROFIL", "skills": "TECHNISCHE KENNTNISSE", "after_skills": "BERUFSERFAHRUNG"},
+}
+
+def _extract_sections(resume_md: str) -> dict[str, str]:
+    """Pull the tailored profile summary and raw skills markdown from the resume."""
+    # Terminate each section at the next TOP-LEVEL heading ("# "), not at the
+    # "## Group" sub-headings inside the skills section.
+    summary_match = re.search(r"# Profile\n(.*?)(?=\n#(?!#)|\Z)", resume_md, re.DOTALL)
+    skills_match = re.search(r"# Skills\n(.*?)(?=\n#(?!#)|\Z)", resume_md, re.DOTALL)
     return {
         "summary": (summary_match.group(1).strip() if summary_match else ""),
-        "skills": (skills_match.group(1).strip() if skills_match else ""),
+        "skills_md": (skills_match.group(1).strip() if skills_match else ""),
     }
+
+
+def _parse_skills_groups(skills_md: str) -> list[tuple[str, str]]:
+    """Parse the markdown skills section into (label, items) pairs.
+
+    Handles the master '## Group\\nitems' format and degrades gracefully to
+    freeform 'Label: items' lines (or label-less lines) when the LLM deviates.
+    """
+    text = skills_md.strip()
+    if not text:
+        return []
+    groups: list[tuple[str, str]] = []
+    for block in re.split(r"\n(?=##\s)", text):
+        m = re.match(r"##\s+(.+?)\n(.+)", block.strip(), re.DOTALL)
+        if m:
+            label = m.group(1).strip()
+            items = " ".join(ln.strip() for ln in m.group(2).splitlines() if ln.strip())
+            groups.append((label, items))
+    if groups:
+        return groups
+    # Fallback: no '##' headers — treat each non-empty line as its own entry
+    for line in text.splitlines():
+        line = line.strip().lstrip("-*").strip()
+        if not line:
+            continue
+        if ":" in line:
+            label, _, items = line.partition(":")
+            groups.append((label.strip(), items.strip()))
+        else:
+            groups.append(("", line))
+    return groups
+
+
+def _set_paragraph_text(para: Paragraph, text: str) -> None:
+    """Put `text` into the paragraph's first run and blank the rest, preserving
+    the run's formatting (font/colour/size)."""
+    if not para.runs:
+        para.add_run(text)
+        return
+    para.runs[0].text = text
+    for run in para.runs[1:]:
+        run.text = ""
+
+
+def _set_skill_runs(p_element, label: str, items: str) -> None:
+    """On a cloned skill paragraph element, set the bold-label run and the list
+    run. The template skill paragraph has two <w:t> runs (label + items)."""
+    t_elems = p_element.findall(".//" + qn("w:t"))
+    values = [f"{label}: " if label else "", items]
+    for i, t in enumerate(t_elems):
+        t.text = values[i] if i < len(values) else ""
+        t.set(qn("xml:space"), "preserve")
+
+
+def _recolour_docx(path: Path, old: str, new: str) -> None:
+    """Wholesale-replace an accent colour token in word/document.xml in place."""
+    import zipfile
+
+    tmp = path.with_suffix(".recolour.docx")
+    with zipfile.ZipFile(path) as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename == "word/document.xml":
+                data = data.replace(old.encode(), new.encode())
+            zout.writestr(item, data)
+    tmp.replace(path)
 
 
 def generate_resume_docx(
     resume_md: str,
     template_path: Path,
     output_path: Path,
+    language: str = "en",
     accent_colour: str | None = None,
 ) -> Path:
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_dir = Path(tmp)
-        unpacked = tmp_dir / "unpacked"
-        unpack(template_path, unpacked)
+    sections = _extract_sections(resume_md)
+    headings = RESUME_HEADINGS.get(language, RESUME_HEADINGS["en"])
+    groups = _parse_skills_groups(sections["skills_md"])
 
-        doc_xml = unpacked / "word" / "document.xml"
-        xml = doc_xml.read_text(encoding="utf-8")
+    doc = Document(str(template_path))
+    paras = doc.paragraphs
 
-        content = _md_to_xml_map(resume_md)
+    def _find(heading: str) -> int | None:
+        target = heading.strip().lower()
+        for i, p in enumerate(paras):
+            if p.text.strip().lower() == target:
+                return i
+        return None
 
-        # Replace profile summary paragraph (paraId 00000006, any namespace prefix)
-        # Preserve run properties (font/color/size) from the original first run.
-        if content["summary"]:
-            def _replace_summary(m: re.Match) -> str:
-                inner = m.group(2)
-                rpr_match = re.search(r"<w:rPr>.*?</w:rPr>", inner, re.DOTALL)
-                rpr = rpr_match.group(0) if rpr_match else ""
-                return (
-                    m.group(1)
-                    + f'<w:r>{rpr}<w:t xml:space="preserve">{content["summary"]}</w:t></w:r>'
-                    + m.group(3)
-                )
-            xml = re.sub(
-                r'(<w:p\b[^>]*paraId="00000006"[^>]*>)(.*?)(</w:p>)',
-                _replace_summary,
-                xml, flags=re.DOTALL,
-            )
+    # ── Summary: the single paragraph after the summary heading ───────────────
+    sum_i = _find(headings["summary"])
+    if sum_i is not None and sum_i + 1 < len(paras) and sections["summary"]:
+        _set_paragraph_text(paras[sum_i + 1], sections["summary"])
 
-        if accent_colour:
-            xml = xml.replace("1a56a4", accent_colour)
+    # ── Skills: rebuild the paragraphs between skills and the next heading ─────
+    skills_i = _find(headings["skills"])
+    exp_i = _find(headings["after_skills"])
+    if skills_i is not None and exp_i is not None and exp_i > skills_i + 1 and groups:
+        skill_paras = paras[skills_i + 1:exp_i]
+        # Clone the first existing skill paragraph per group to keep run styling
+        # (bold label run + regular list run), inserting after the last original.
+        tmpl_p = skill_paras[0]._p
+        prev = skill_paras[-1]._p
+        for label, items in groups:
+            new_p = copy.deepcopy(tmpl_p)
+            _set_skill_runs(new_p, label, items)
+            prev.addnext(new_p)
+            prev = new_p
+        for p in skill_paras:
+            p._p.getparent().remove(p._p)
 
-        doc_xml.write_text(xml, encoding="utf-8")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    doc.save(str(output_path))
 
-        temp_docx = tmp_dir / "cv_check.docx"
-        pack(unpacked, temp_docx, template_path)
-
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(temp_docx, output_path)
+    if accent_colour:
+        _recolour_docx(output_path, "1a56a4", accent_colour)
 
     return output_path
 
@@ -330,7 +408,7 @@ def build_pdfs(
     cv_docx = output_dir / f"{cv_name}.docx"
     cl_docx = output_dir / f"{cl_name}.docx"
 
-    generate_resume_docx(resume_md, template_resume, cv_docx)
+    generate_resume_docx(resume_md, template_resume, cv_docx, language)
     generate_cover_letter_docx(cover_letter_md, template_cover, cl_docx, job_title, company, company_address, language)
 
     cv_pdf = _libreoffice_to_pdf(cv_docx, output_dir)

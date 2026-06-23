@@ -124,7 +124,7 @@ type check on every push and pull request.
 1. Go to **Settings** → configure which model handles each role (parser / writer / reviewer / research) using `provider/model` format (e.g. `anthropic/claude-sonnet-4-6`, `ollama/qwen3.6:latest`).
 2. Go to **Settings** → paste your persona description (your personal review guardrails).
 3. Go to **Skills** → add your skills with tier ratings (1=Core, 2=Proficient, 3=Familiar, 4=Exposure) and evidence snippets. Or, once a master resume is uploaded (step 5), generate the inventory automatically: **Copy prompt for Claude** (Claude reads your resume and interviews you on anything ambiguous) or **Extract with Ollama** (one offline pass that flags low-confidence guesses for review) — both on the Setup and Skills pages. Re-running never overwrites edits you've made.
-4. Drop your CV and cover letter DOCX templates into `templates/resume/` and `templates/cover-letter/`.
+4. Drop your CV and cover letter DOCX templates into `templates/resume/` and `templates/cover-letter/`. The CV template holds your full resume layout; on export, only the **Profile summary** and **Skills** sections are replaced with the tailored content (located by their section heading text — `PROFESSIONAL SUMMARY` / `TECHNICAL SKILLS` in EN, `PROFIL` / `TECHNISCHE KENNTNISSE` in DE). Experience and other sections render straight from the template.
 5. Go to **Setup** → upload your master resume (EN and/or DE). Your name is auto-extracted for PDF file naming.
 6. Go to **Settings** → set your notice period (Immediately, 2 weeks, 1–6 months, or a custom date) — used to compute the availability date in generated cover letters.
 
@@ -148,7 +148,7 @@ Before committing to a full application, triage jobs in **Leads**:
 2. **Job Analysis** — auto-runs gap analysis (STRONG / HONEST / GAP) per JD skill against your skills inventory, ATS keywords, match score.
 3. **Generate** — streams tailored resume + cover letter via SSE. Company tone is auto-detected and can be overridden.
 4. **Review** — persona + 2 random expert reviewers score and rewrite both documents. Side-by-side panel: accept, edit, or skip each suggestion. Can be skipped entirely.
-5. **Finalize** — edit final markdown, check cover letter word count, export DOCX + PDF.
+5. **Finalize** — edit final markdown, check cover letter word count, export DOCX + PDF. Note: only the resume's Profile summary and Skills sections round-trip into the exported CV; experience and other sections come from the template (see step 4 of First-run setup).
 
 Output lands in `applications/[Company]/`.
 
