@@ -88,9 +88,11 @@ export default function LeadDetailPage() {
   const [approving, setApproving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
     api.get(`/api/leads/${id}`).then((data) => { setLead(data); setLoading(false); });
-  }, [id]);
+  };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time data fetch
+  useEffect(() => { load(); }, [id]);
 
   const approve = async () => {
     setApproving(true);
@@ -231,7 +233,7 @@ export default function LeadDetailPage() {
           <button onClick={handleDelete} className={pillBtnCls(false, confirmDelete)}>
             {confirmDelete ? "Confirm delete?" : "Delete"}
           </button>
-          {lead.status === "approved" && lead.application_id ? (
+          {(lead.status === "approved" || lead.status === "applied") && lead.application_id ? (
             <button onClick={() => router.push(`/apply/${lead.application_id!}`)} className={pillBtnCls()}>
               View Application →
             </button>

@@ -127,11 +127,11 @@ async def analyze_lead(lead_id: str, session: Session = Depends(get_session)):
 
     recent = session.exec(
         select(JobLead)
-        .where(JobLead.status.in_(["approved", "rejected"]))
+        .where(JobLead.status.in_(["approved", "applied", "rejected"]))
         .order_by(JobLead.updated_at.desc())
         .limit(10)
     ).all()
-    approved_titles = [l.job_title for l in recent if l.status == "approved" and l.job_title]
+    approved_titles = [l.job_title for l in recent if l.status in ("approved", "applied") and l.job_title]
     rejected_titles = [l.job_title for l in recent if l.status == "rejected" and l.job_title]
     past_decisions = ""
     parts = []

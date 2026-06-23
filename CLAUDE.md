@@ -63,7 +63,7 @@ DOCX files are ZIP archives. The workflow unpacks them (`unzip`-equivalent via `
 
 ### Leads pipeline (`/api/leads/`)
 
-Two-table funnel: `JobLead` → `Application`. Statuses: `captured → new → analyzing → analyzed → approved → rejected`.
+Two-table funnel: `JobLead` → `Application`. Statuses: `captured → new → analyzing → analyzed → approved → applied → rejected`.
 
 - **`POST /from-text`** — browser extension posts `{text: body.innerText, url}`. Saved instantly with `status="captured"`, no LLM blocking. Deduplicates by `source_url`.
 - **`POST /extract-captured`** — batch LLM extraction for all `captured` leads. Parses company/job_title/language/job_description from raw text; sets `status="new"`.
@@ -79,6 +79,7 @@ When the user says **"process my captured jobs"**, Claude Code does extraction *
 1. `GET /api/leads/` and select leads whose `status` is `captured` or `new`.
 2. Read `resume_master.md` (or `resume_master_de.md` for German), `data/skills.json`, and `data/career_goal.md` from disk.
 3. For each lead: extract `company`/`job_title`/`language`/`job_description` from `raw_text`; analyze fit against the resume + skills inventory + career goal; research the company on the web for tone + sentiment. Say "no reliable data found" when a company is thin — **never fabricate** reviews, salary, or facts.
+   - **`job_description` must be the verbatim role content, not a summary.** Copy the actual posting sections (intro/Einleitung, responsibilities/Aufgaben, requirements/Profil, benefits/Wir bieten, and any salary figure) word-for-word from `raw_text`. Only strip job-board chrome — site nav, "related jobs" lists, SEO link spam, footers, and the board's own auto-match widgets (e.g. Stepstone's "Passt hervorragend / Du erfüllst alle Anforderungen", which is scored against the user's uploaded CV, not employer text). Keep the original wording and language of each section (postings are often bilingual). Do not paraphrase or compress — downstream steps (Job Analysis, generation, **interview prep**) depend on full-fidelity JD text, and `raw_text` is not copied onto the `Application`, so a lossy `job_description` is unrecoverable after approve. Flag board-estimated salaries as such (e.g. "von Stepstone geschätzt, nicht vom Arbeitgeber angegeben"), never as the employer's stated number.
 4. `PUT /api/leads/{id}/processed` with this body (the `fit_analysis` shape must match exactly — it is what `/leads/[id]` renders):
    ```json
    {
@@ -134,7 +135,7 @@ Manifest V3. Click → `chrome.scripting.executeScript` grabs `{text: body.inner
 - **New**: application created from an approved lead, no documents yet.
 - **Draft**: markdown drafts generated, not yet exported. Set via the wizard Generate step's `PUT /api/application/drafts` (auto-promotes `New → Draft`) or `PUT /api/application/finals`.
 - **Finalized**: PDFs/DOCX exported via `POST /api/application/pdf` (the Finalize step), auto-promotes `New|Draft → Finalized`. If drafts are regenerated afterwards, `PUT /api/application/drafts` demotes `Finalized → Draft` since the exported files are now stale.
-- Further transitions (`Draft|Finalized → Applied`, etc.) are manual via `PATCH /api/tracker/{id}/status`.
+- Further transitions (`Draft|Finalized → Applied`, etc.) are manual via `PATCH /api/tracker/{id}/status`. Two side-effects on that endpoint keep the source `JobLead` in step: `→ Applied` sets a still-`approved` linked lead to `status="applied"`; `→ Rejected` soft-deletes the linked lead.
 
 ### Trash / soft delete (`/api/trash/`)
 

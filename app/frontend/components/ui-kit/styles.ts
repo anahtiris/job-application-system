@@ -63,6 +63,7 @@ export function goalAlignStyleCls(alignment: string): string {
 export function statusChipStyleCls(status: string): string {
   switch (status) {
     case "approved":  return "bg-badge-interview-bg text-badge-interview-fg";
+    case "applied":   return "bg-badge-offer-bg text-badge-offer-fg";
     case "rejected":  return "bg-badge-passed-bg text-badge-passed-fg";
     case "analyzed":  return "bg-badge-analyzed-bg text-badge-analyzed-fg";
     case "analyzing": return "bg-custom-l text-custom-d";

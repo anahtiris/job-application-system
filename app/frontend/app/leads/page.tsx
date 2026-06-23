@@ -18,7 +18,7 @@ type Lead = {
   created_at: string;
 };
 
-const STATUS_TABS = ["new", "analyzing", "analyzed", "approved", "rejected"] as const;
+const STATUS_TABS = ["new", "analyzing", "analyzed", "approved", "applied", "rejected"] as const;
 const CLAUDE_PROMPT = "process my captured jobs";
 
 const COL_GRID_CLS = "grid-cols-[2fr_2fr_64px_100px_90px_70px_66px]";
@@ -84,11 +84,60 @@ function FitFilterDropdown({ selected, onChange }: { selected: string[]; onChang
   );
 }
 
+function StatusFilterDropdown({
+  selected,
+  onChange,
+  counts,
+}: {
+  selected: string[];
+  onChange: (v: string[]) => void;
+  counts: Record<string, number>;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useClickOutside(ref, open, () => setOpen(false));
+
+  const options = STATUS_TABS.filter((s) => counts[s] > 0);
+  const toggle = (v: string) =>
+    onChange(selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v]);
+
+  const label =
+    selected.length === 0 || selected.length === options.length
+      ? "All statuses"
+      : selected.map((v) => v.charAt(0).toUpperCase() + v.slice(1)).join(", ");
+
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen((o) => !o)} className={`${selectCls} inline-flex items-center gap-1`}>
+        {label}
+        <ChevronDown size={11} />
+      </button>
+      {open && (
+        <div className="absolute top-[calc(100%+4px)] right-0 z-30 bg-background-primary border-[0.5px] border-border-tertiary rounded-card p-1 min-w-[150px] shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
+          {options.length === 0 ? (
+            <div className="text-[12px] text-text-tertiary py-1.5 px-2 font-shell">No statuses</div>
+          ) : (
+            options.map((s) => (
+              <label
+                key={s}
+                className="flex items-center gap-2 text-[12px] font-medium py-1.5 px-2 rounded-[5px] text-text-secondary font-shell capitalize cursor-pointer hover:bg-background-secondary"
+              >
+                <input type="checkbox" checked={selected.includes(s)} onChange={() => toggle(s)} />
+                {s} ({counts[s]})
+              </label>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LeadsPage() {
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<string | null>(null);
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [copying, setCopying] = useState(false);
   const [bulkAnalyzing, setBulkAnalyzing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<string | null>(null);
@@ -154,8 +203,8 @@ export default function LeadsPage() {
   }, {});
 
   const q = search.trim().toLowerCase();
-  const visible = (tab
-    ? leads.filter((l) => l.status === tab)
+  const visible = (statusFilters.length > 0
+    ? leads.filter((l) => statusFilters.includes(l.status))
     : leads.filter((l) => l.status !== "captured")
   )
     .filter((l) => (fitFilters.length === 0 ? true : !!l.fit_verdict && fitFilters.includes(l.fit_verdict)))
@@ -339,18 +388,7 @@ export default function LeadsPage() {
         {/* Filters */}
         <div className="flex gap-[5px] ml-auto">
           <FitFilterDropdown selected={fitFilters} onChange={setFitFilters} />
-          <select
-            value={tab ?? ""}
-            onChange={(e) => setTab(e.target.value || null)}
-            className={selectCls}
-          >
-            <option value="">All statuses</option>
-            {STATUS_TABS.filter((s) => counts[s] > 0).map((s) => (
-              <option key={s} value={s}>
-                {s.charAt(0).toUpperCase() + s.slice(1)} ({counts[s]})
-              </option>
-            ))}
-          </select>
+          <StatusFilterDropdown selected={statusFilters} onChange={setStatusFilters} counts={counts} />
         </div>
       </div>
 

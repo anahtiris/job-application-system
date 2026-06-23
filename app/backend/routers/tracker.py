@@ -125,6 +125,13 @@ def update_status(app_id: str, body: UpdateStatusRequest, session: Session = Dep
         if lead and lead.deleted_at is None:
             lead.deleted_at = now_utc()
             session.add(lead)
+    elif body.status == "Applied":
+        # Keep the source lead in step with its application.
+        lead = session.exec(select(JobLead).where(JobLead.application_id == app_id)).first()
+        if lead and lead.deleted_at is None and lead.status == "approved":
+            lead.status = "applied"
+            lead.updated_at = now_utc()
+            session.add(lead)
     session.commit()
     return {"status": app.status}
 
