@@ -125,7 +125,7 @@ type check on every push and pull request.
 2. Go to **Settings** → paste your persona description (your personal review guardrails).
 3. Go to **Skills** → add your skills with tier ratings (1=Core, 2=Proficient, 3=Familiar, 4=Exposure) and evidence snippets. Or, once a master resume is uploaded (step 5), generate the inventory automatically: **Copy prompt for Claude** (Claude reads your resume and interviews you on anything ambiguous) or **Extract with Ollama** (one offline pass that flags low-confidence guesses for review) — both on the Setup and Skills pages. Re-running never overwrites edits you've made.
 4. Drop your CV and cover letter DOCX templates into `templates/resume/` and `templates/cover-letter/`. The CV template holds your full resume layout; on export, only the **Profile summary** and **Skills** sections are replaced with the tailored content (located by their section heading text — `PROFESSIONAL SUMMARY` / `TECHNICAL SKILLS` in EN, `PROFIL` / `TECHNISCHE KENNTNISSE` in DE). Experience and other sections render straight from the template.
-5. Go to **Setup** → upload your master resume (EN and/or DE). Your name is auto-extracted for PDF file naming.
+5. Go to **Setup** → upload your master resume (EN and/or DE). Your name is auto-extracted for PDF file naming. The resume is structured automatically on upload if an LLM parser model is configured. If none is available, the raw text is saved and the page offers a **Copy prompt for Claude** button to structure it via Claude Code instead.
 6. Go to **Settings** → set your notice period (Immediately, 2 weeks, 1–6 months, or a custom date) — used to compute the availability date in generated cover letters.
 
 ## Browser extension

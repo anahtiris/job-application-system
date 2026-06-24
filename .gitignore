@@ -39,6 +39,8 @@ data/persona.md
 data/skills.json
 data/career_goal.md
 data/general_prep.json
+data/resume_raw_en.txt
+data/resume_raw_de.txt
 app/backend/app.db
 app/backend/*.db
 /app.db

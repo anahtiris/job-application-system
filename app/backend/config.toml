@@ -7,6 +7,8 @@ research = "ollama/gemma4:latest"    # 8 GB
 [paths]
 resume_master_en      = "resume_master.md"
 resume_master_de      = "resume_master_de.md"
+resume_raw_en         = "data/resume_raw_en.txt"
+resume_raw_de         = "data/resume_raw_de.txt"
 persona               = "data/persona.md"
 career_goal           = "data/career_goal.md"
 skills                = "data/skills.json"

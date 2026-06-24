@@ -8,8 +8,7 @@ from pydantic import BaseModel
 
 from config import CONFIG, Paths, model
 from db import get_setting, set_setting
-from services.parser import parse_resume
-from services import skill_extractor
+from services import parser, skill_extractor
 
 router = APIRouter()
 
@@ -21,6 +20,10 @@ SKILLS = Paths.SKILLS
 
 def _master_path(language: str) -> Path:
     return MASTER_DE if language == "de" else MASTER_EN
+
+
+def _raw_path(language: str) -> Path:
+    return Paths.RESUME_RAW_DE if language == "de" else Paths.RESUME_RAW_EN
 
 
 class UpdateResumeRequest(BaseModel):
@@ -37,7 +40,34 @@ async def parse(file: UploadFile, language: str = "en"):
         raise HTTPException(400, "Only PDF and DOCX files are supported")
 
     content = await file.read()
-    markdown = await parse_resume(content, file.filename, get_setting("model.parser", CONFIG["models"].get("parser", "")))
+    try:
+        raw_text = parser.extract_text_from_upload(content, file.filename)
+    except Exception:
+        raise HTTPException(
+            400,
+            "Could not read text from this file. It may be corrupt, encrypted, or empty. "
+            "Please upload a different PDF or DOCX.",
+        )
+
+    raw_path = _raw_path(language)
+    raw_path.parent.mkdir(parents=True, exist_ok=True)
+    raw_path.write_text(raw_text, encoding="utf-8")
+
+    parser_model = get_setting("model.parser", CONFIG["models"].get("parser", ""))
+    try:
+        markdown = await parser.structure_resume(raw_text, parser_model)
+    except Exception as exc:  # provider error, missing key, server down, etc.
+        return {
+            "markdown": "",
+            "saved_to": None,
+            "raw_saved_to": str(raw_path),
+            "parse_error": (
+                f"Couldn't structure the résumé automatically ({str(exc).strip()}). "
+                "Your résumé text was saved, so you can either set an API key / pick "
+                "a working model in Settings, or use 'Copy prompt for Claude' to parse "
+                "it with Claude."
+            ),
+        }
 
     path = _master_path(language)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -51,7 +81,12 @@ async def parse(file: UploadFile, language: str = "en"):
             if raw_name and "@" not in raw_name and "+" not in raw_name:
                 set_setting("person.name", raw_name.replace(" ", "_"))
 
-    return {"markdown": markdown, "saved_to": str(path)}
+    return {
+        "markdown": markdown,
+        "saved_to": str(path),
+        "raw_saved_to": str(raw_path),
+        "parse_error": None,
+    }
 
 
 @router.get("/master")
