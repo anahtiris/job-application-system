@@ -36,7 +36,13 @@ export function CompanyPrepPanel({
   onPrepChange: (id: string, md: string) => void;
   onNotesChange: (id: string, json: string) => void;
 }) {
-  const [notes, setNotes] = useState<InterviewNotes>(DEFAULT_NOTES);
+  const [notes, setNotes] = useState<InterviewNotes>(() => {
+    let parsed: Partial<InterviewNotes> = {};
+    if (app.interview_notes_json) {
+      try { parsed = JSON.parse(app.interview_notes_json); } catch {}
+    }
+    return { ...DEFAULT_NOTES, ...parsed };
+  });
   const [tab, setTab] = useState<CompanyTab>("Overview");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pendingDate, setPendingDate] = useState<DateTimeValue | undefined>(undefined);
