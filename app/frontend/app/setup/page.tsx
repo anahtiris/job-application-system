@@ -54,8 +54,14 @@ export default function SetupPage() {
     setMarkdown(res?.markdown ?? "");
   };
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetches resume markdown on language change; setState is the point
-  useEffect(() => { load(language); }, [language]);
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- language change resets parse state; setState is the point */
+    setParseError("");
+    setRawSaved(false);
+    setProfileCopied(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    load(language);
+  }, [language]);
 
   const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
