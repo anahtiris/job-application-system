@@ -9,6 +9,7 @@ import random
 from pathlib import Path
 
 from services.llm import generate
+from services.reviewer_schema import ReviewResult, SynthesisResult
 
 PERSONAS = {
     "faang": {
@@ -180,7 +181,7 @@ async def _run_review(
         f"CV DRAFT:\n{resume_md}\n\n"
         f"COVER LETTER DRAFT:\n{cover_letter_md}"
     )
-    raw = await generate(model, prompt, system=system)
+    raw = await generate(model, prompt, system=system, fmt=ReviewResult.model_json_schema())
     try:
         return {"persona": persona_name, **_extract_json(raw)}
     except Exception:
@@ -248,7 +249,7 @@ async def _synthesize(reviews: list[dict], cv_consolidated: dict, cl_consolidate
     }
     prompt = json.dumps(payload, indent=2)
     try:
-        raw = await generate(model, prompt, system=SYNTHESIS_SYSTEM)
+        raw = await generate(model, prompt, system=SYNTHESIS_SYSTEM, fmt=SynthesisResult.model_json_schema())
         return _extract_json(raw)
     except Exception:
         return {}

@@ -15,22 +15,27 @@ def _key() -> str:
     return key
 
 
-def _payload(prompt: str, system: str) -> dict:
+def _payload(prompt: str, system: str, fmt: dict | None = None) -> dict:
     body: dict = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {"maxOutputTokens": 8192},
     }
     if system:
         body["systemInstruction"] = {"parts": [{"text": system}]}
+    # Structured output: JSON-mode floor only. We force valid JSON via
+    # responseMimeType but do NOT pass responseSchema — Gemini's schema dialect
+    # is an OpenAPI subset that rejects the $defs/additionalProperties our
+    # Pydantic-derived schemas use. JSON mode still kills the fence/preamble
+    # class of bug; callers keep their sanitizer for shape drift.
+    if fmt:
+        body["generationConfig"]["responseMimeType"] = "application/json"
     return body
 
 
 async def generate(model: str, prompt: str, system: str = "", fmt: dict | None = None) -> str:
-    # fmt (structured output) is accepted for interface parity but not yet
-    # wired into Gemini's responseSchema; ignored for now.
     url = f"{_BASE}/models/{model}:generateContent?key={_key()}"
     async with httpx.AsyncClient(timeout=300) as client:
-        r = await client.post(url, json=_payload(prompt, system))
+        r = await client.post(url, json=_payload(prompt, system, fmt))
         r.raise_for_status()
         data = r.json()
         return data["candidates"][0]["content"]["parts"][0]["text"]

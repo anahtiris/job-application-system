@@ -35,7 +35,7 @@ def test_merge_does_not_mutate_existing():
 
 
 async def test_extract_parses_fenced_json(monkeypatch):
-    async def fake_generate(model, prompt, system=""):
+    async def fake_generate(model, prompt, system="", fmt=None):
         return '```json\n{"TypeScript": {"tier": 1, "evidence": "5y prod", "needs_review": false}}\n```'
     monkeypatch.setattr(se, "generate", fake_generate)
     out = await se.extract_skills("# résumé", {}, "ollama/x")
@@ -45,7 +45,7 @@ async def test_extract_parses_fenced_json(monkeypatch):
 
 
 async def test_extract_coerces_and_clamps_tier(monkeypatch):
-    async def fake_generate(model, prompt, system=""):
+    async def fake_generate(model, prompt, system="", fmt=None):
         return '{"A": {"tier": "2", "evidence": "e"}, "B": {"tier": 9}, "C": {"evidence": "e"}}'
     monkeypatch.setattr(se, "generate", fake_generate)
     out = await se.extract_skills("r", {}, "m")
@@ -55,7 +55,7 @@ async def test_extract_coerces_and_clamps_tier(monkeypatch):
 
 
 async def test_extract_defaults_needs_review_false(monkeypatch):
-    async def fake_generate(model, prompt, system=""):
+    async def fake_generate(model, prompt, system="", fmt=None):
         return '{"A": {"tier": 2, "evidence": "e"}}'
     monkeypatch.setattr(se, "generate", fake_generate)
     out = await se.extract_skills("r", {}, "m")
@@ -63,14 +63,14 @@ async def test_extract_defaults_needs_review_false(monkeypatch):
 
 
 async def test_extract_unparseable_returns_empty(monkeypatch):
-    async def fake_generate(model, prompt, system=""):
+    async def fake_generate(model, prompt, system="", fmt=None):
         return "I could not produce JSON."
     monkeypatch.setattr(se, "generate", fake_generate)
     assert await se.extract_skills("r", {}, "m") == {}
 
 
 async def test_extract_handles_quoted_boolean_needs_review(monkeypatch):
-    async def fake_generate(model, prompt, system=""):
+    async def fake_generate(model, prompt, system="", fmt=None):
         return '{"A": {"tier": 2, "evidence": "e", "needs_review": "false"}, "B": {"tier": 3, "needs_review": "true"}}'
     monkeypatch.setattr(se, "generate", fake_generate)
     out = await se.extract_skills("r", {}, "m")

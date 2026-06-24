@@ -6,6 +6,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from services.llm import generate
+from services.researcher_schema import ToneClassification
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; JobAppBot/1.0)"}
 
@@ -90,7 +91,7 @@ async def _classify_tone(company_name: str, base_url: str | None, model: str) ->
             continue
 
     prompt = f"Company: {company_name}\n\nWebsite text:\n{page_text or '(no page found)'}"
-    raw = await generate(model, prompt, system=TONE_SYSTEM)
+    raw = await generate(model, prompt, system=TONE_SYSTEM, fmt=ToneClassification.model_json_schema())
     try:
         return json.loads(raw.strip())
     except Exception:
