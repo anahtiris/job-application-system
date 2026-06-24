@@ -6,6 +6,7 @@ import logging
 import re
 
 from services.llm import generate
+from services.skill_extractor_schema import SkillInventory
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ async def extract_skills(master_md: str, existing: dict, model: str) -> dict:
         f"EXISTING_INVENTORY:\n{json.dumps(list(existing.keys()))}\n\n"
         f"RÉSUMÉ:\n{master_md}"
     )
-    raw = await generate(model, prompt, system=EXTRACT_SYSTEM)
+    raw = await generate(model, prompt, system=EXTRACT_SYSTEM, fmt=SkillInventory.model_json_schema())
     parsed = _sanitise(raw)
     return {
         name: _normalise(entry)

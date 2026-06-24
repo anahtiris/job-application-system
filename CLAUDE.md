@@ -22,6 +22,18 @@ Before starting any multi-step workflow (process captured jobs, generate CV/cove
 
 After the user says proceed, run everything. Write-operation prompts will still appear from the permission system — the user can click "Allow for this session" on the first occurrence of each pattern to avoid repeated prompts.
 
+## Session-bounding convention
+
+Long repetitive workflows degrade as the context window fills — the agent drifts from the rules it read at the top of the session. Bound them. For **any** workflow that processes many similar items (captured-job triage, skills extraction, multi-application generation), do this:
+
+1. Process at most **N items per pass** (default N=4; the count is per-workflow and may be tuned).
+2. After the batch, **STOP** — do not continue past N in the same pass. Report which items were processed and how many remain.
+3. Tell the user to `/clear` and re-paste the prompt to continue the next batch, so each batch runs in a fresh context that re-reads these rules.
+
+The point is to bound context/token usage per run and keep the last item's output as faithful as the first. For genuinely small counts a single all-at-once pass is fine (e.g. plain "process my captured jobs" with only a few pending) — the bound matters when the item count is large. Script-driven workflows (`scripts/batch_generate.py`) express the same bound as a `--limit` flag plus a printed resume cursor rather than a `/clear` instruction.
+
+This convention generalizes the captured-jobs batch mode (see "Batch mode" under the leads pipeline below) to every repetitive workflow.
+
 ## Key commands
 
 ```bash
@@ -48,7 +60,7 @@ pdfinfo <file.pdf> | grep Pages
 A local Next.js + FastAPI app that replaces the manual Claude Code workflow with a structured UI. It enforces all guardrails in code so the LLM cannot exaggerate.
 
 - **Backend**: `app/backend/` — FastAPI + SQLite. Routers: `/api/resume`, `/api/application`, `/api/tracker`, `/api/settings`, `/api/leads`, `/api/trash`. Services: `generator.py` (locked tailoring + streaming), `reviewer.py` (persona + 2 random reviewers), `researcher.py` (company scraper + tone classifier), `analyzer.py` (JD gap analysis), `interview.py` (prep + skills debrief), `pdf.py` (LibreOffice + 1-page check).
-- **LLM layer** (`services/llm.py` + `services/providers/`): `generate(model, prompt, system, fmt)` dispatches on a `provider/model` slug. `fmt` is an optional JSON schema for structured output, translated per provider: Ollama → `format`; Anthropic → forced tool call (`input_schema=fmt`, guaranteed schema-valid); OpenAI → `response_format` json_schema. Gemini/Perplexity accept `fmt` but ignore it (no reliable support), so callers using `fmt` must still keep a JSON-sanitizing fallback. Output schemas live next to their service (`analyzer_schema.py`, `interview_schema.py`).
+- **LLM layer** (`services/llm.py` + `services/providers/`): `generate(model, prompt, system, fmt)` dispatches on a `provider/model` slug. `fmt` is an optional JSON schema for structured output, translated per provider: Ollama → `format` (full schema); Anthropic → forced tool call (`input_schema=fmt`, guaranteed schema-valid); OpenAI → `response_format` json_schema; Gemini → `responseMimeType: application/json` (valid-JSON floor only — Gemini's responseSchema dialect rejects the `$defs`/`additionalProperties` the Pydantic schemas use). Perplexity accepts `fmt` but ignores it (json_schema is gated/beta). Because not every provider enforces the schema, callers using `fmt` must still keep their JSON-sanitizing / graceful-fallback path. Output schemas live next to their service (`analyzer_schema.py`, `researcher_schema.py`, `reviewer_schema.py`, `skill_extractor_schema.py`, `interview_schema.py`). Streaming (`stream()`) does not support `fmt`.
 - **Frontend**: `app/frontend/` — Next.js 16. Pages: dashboard (`/`), setup (`/setup`), skills inventory (`/skills`), trash (`/trash`), leads list (`/leads`), lead detail (`/leads/[id]`), 5-step wizard (`/apply/new`), detail (`/apply/[id]`), settings (`/settings`).
 - **Ollama models** (configured in `app/backend/config.toml`): all four roles (parser, writer, reviewer, research) are set there. Restart the backend after editing `config.toml` — it is read once at startup.
 - **Persona**: `data/persona.md` (gitignored) — the obligated personal reviewer. Edit via `/settings`.
