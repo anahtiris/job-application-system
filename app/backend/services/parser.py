@@ -59,13 +59,16 @@ Rules:
 - Keep bullet points concise and factual."""
 
 
-async def parse_resume(file_bytes: bytes, filename: str, model: str) -> str:
+def extract_text_from_upload(file_bytes: bytes, filename: str) -> str:
     suffix = Path(filename).suffix.lower()
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(file_bytes)
         tmp_path = Path(tmp.name)
+    try:
+        return extract_text(tmp_path)
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
-    raw_text = extract_text(tmp_path)
-    tmp_path.unlink(missing_ok=True)
 
+async def structure_resume(raw_text: str, model: str) -> str:
     return await generate(model, raw_text, system=PARSE_SYSTEM)

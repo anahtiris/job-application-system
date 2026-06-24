@@ -15,6 +15,8 @@ with open(Path(__file__).parent / "config.toml", "rb") as f:
 class Paths:
     MASTER_EN = BASE_DIR / CONFIG["paths"]["resume_master_en"]
     MASTER_DE = BASE_DIR / CONFIG["paths"]["resume_master_de"]
+    RESUME_RAW_EN = BASE_DIR / CONFIG["paths"]["resume_raw_en"]
+    RESUME_RAW_DE = BASE_DIR / CONFIG["paths"]["resume_raw_de"]
     PERSONA = BASE_DIR / CONFIG["paths"]["persona"]
     CAREER_GOAL = BASE_DIR / CONFIG["paths"]["career_goal"]
     SKILLS = BASE_DIR / CONFIG["paths"]["skills"]
