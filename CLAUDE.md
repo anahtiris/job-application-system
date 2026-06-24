@@ -137,7 +137,7 @@ offline fallback, which runs the configured parser model automatically on upload
 
 The offline fallback is the upload's automatic LLM structuring path: `POST
 /api/resume/parse` extracts the text (always, keyless) and tries the configured
-parser model. If no key/model is available it returns the raw text plus a clear
+parser model. If no key/model is available it saves the raw text to disk and returns a clear
 `parse_error` instead of failing, steering the user to this Claude path.
 
 ### Building the skills inventory — "process my skills"

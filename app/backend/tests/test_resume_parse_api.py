@@ -62,3 +62,18 @@ def test_parse_llm_failure_returns_200_with_error_and_saves_raw(client, tmp_path
 def test_parse_rejects_unsupported_extension(client):
     r = _upload(client, b"x", name="resume.txt")
     assert r.status_code == 400
+
+
+def test_parse_extraction_failure_returns_400_and_no_raw_file(client, tmp_path, monkeypatch):
+    raw_path = tmp_path / "raw_en.txt"
+    monkeypatch.setattr(resume, "MASTER_EN", tmp_path / "master_en.md")
+    monkeypatch.setattr(resume.Paths, "RESUME_RAW_EN", raw_path)
+
+    def boom(content: bytes, filename: str) -> str:
+        raise ValueError("corrupt or encrypted file")
+
+    monkeypatch.setattr(parser, "extract_text_from_upload", boom)
+
+    r = _upload(client, b"not a real docx", name="bad.docx")
+    assert r.status_code == 400
+    assert not raw_path.exists()

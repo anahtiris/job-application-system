@@ -16,8 +16,6 @@ MASTER_EN = Paths.MASTER_EN
 MASTER_DE = Paths.MASTER_DE
 PERSONA = Paths.PERSONA
 SKILLS = Paths.SKILLS
-RAW_EN = Paths.RESUME_RAW_EN
-RAW_DE = Paths.RESUME_RAW_DE
 
 
 def _master_path(language: str) -> Path:
@@ -42,15 +40,22 @@ async def parse(file: UploadFile, language: str = "en"):
         raise HTTPException(400, "Only PDF and DOCX files are supported")
 
     content = await file.read()
-    raw_text = parser.extract_text_from_upload(content, file.filename)
+    try:
+        raw_text = parser.extract_text_from_upload(content, file.filename)
+    except Exception:
+        raise HTTPException(
+            400,
+            "Could not read text from this file. It may be corrupt, encrypted, or empty. "
+            "Please upload a different PDF or DOCX.",
+        )
 
     raw_path = _raw_path(language)
     raw_path.parent.mkdir(parents=True, exist_ok=True)
     raw_path.write_text(raw_text, encoding="utf-8")
 
-    model = get_setting("model.parser", CONFIG["models"].get("parser", ""))
+    parser_model = get_setting("model.parser", CONFIG["models"].get("parser", ""))
     try:
-        markdown = await parser.structure_resume(raw_text, model)
+        markdown = await parser.structure_resume(raw_text, parser_model)
     except Exception as exc:  # provider error, missing key, server down, etc.
         return {
             "markdown": "",
