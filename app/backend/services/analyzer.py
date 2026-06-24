@@ -1,6 +1,7 @@
 import json
 import re
 
+from services.analyzer_schema import JDAnalysis
 from services.llm import generate
 
 # Mirrors skills/job-analysis/SKILL.md — keep in sync
@@ -72,18 +73,23 @@ async def analyze_jd(
         prompt += f"\n\nCAREER_GOAL:\n{career_goal}"
     if past_decisions:
         prompt += f"\n\nRECENT_DECISIONS:\n{past_decisions}"
-    raw = await generate(model, prompt, system=ANALYSIS_SYSTEM)
+    raw = await generate(model, prompt, system=ANALYSIS_SYSTEM, fmt=JDAnalysis.model_json_schema())
     text = raw.strip()
-    # Strip markdown fences
+    # Fallback sanitizing for providers that don't enforce the schema (e.g.
+    # perplexity, gemini): strip markdown fences, isolate the JSON object, and
+    # drop trailing commas. Structured-output providers (ollama, anthropic,
+    # openai) already return clean JSON, so these are no-ops there.
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
-    # Extract the first {...} block in case the model added preamble text
     m = re.search(r"\{.*\}", text, re.DOTALL)
     if m:
         text = m.group(0)
-    # Remove trailing commas before } or ] (common LLM JSON mistake)
     text = re.sub(r",\s*([}\]])", r"\1", text)
     result = json.loads(text)
+
+    # Validate the shape loudly: schema drift (wrong types, malformed items)
+    # raises here rather than being silently coerced to empty arrays downstream.
+    JDAnalysis.model_validate(result)
 
     # Safety net: recompute relevant_skills rather than trusting the LLM's cap/ordering.
     classification = result.get("must_haves", []) + result.get("nice_to_haves", [])

@@ -20,7 +20,11 @@ def _headers() -> dict:
     }
 
 
-def _payload(model: str, prompt: str, system: str, stream: bool) -> dict:
+# Name of the synthetic tool used to force structured (schema-valid) output.
+_SCHEMA_TOOL = "emit_result"
+
+
+def _payload(model: str, prompt: str, system: str, stream: bool, fmt: dict | None = None) -> dict:
     body: dict = {
         "model": model,
         "max_tokens": 8192,
@@ -29,18 +33,34 @@ def _payload(model: str, prompt: str, system: str, stream: bool) -> dict:
     }
     if system:
         body["system"] = system
+    # Structured output: force a single tool call whose input_schema is the
+    # caller's JSON schema. The model cannot return free text, so the result
+    # is guaranteed schema-valid JSON. Tool use is incompatible with streaming.
+    if fmt and not stream:
+        body["tools"] = [
+            {
+                "name": _SCHEMA_TOOL,
+                "description": "Return the result as structured JSON.",
+                "input_schema": fmt,
+            }
+        ]
+        body["tool_choice"] = {"type": "tool", "name": _SCHEMA_TOOL}
     return body
 
 
-async def generate(model: str, prompt: str, system: str = "") -> str:
+async def generate(model: str, prompt: str, system: str = "", fmt: dict | None = None) -> str:
     async with httpx.AsyncClient(timeout=300) as client:
         r = await client.post(
             f"{_BASE}/messages",
             headers=_headers(),
-            json=_payload(model, prompt, system, stream=False),
+            json=_payload(model, prompt, system, stream=False, fmt=fmt),
         )
         r.raise_for_status()
         data = r.json()
+        if fmt:
+            for block in data["content"]:
+                if block.get("type") == "tool_use":
+                    return json.dumps(block["input"])
         return data["content"][0]["text"]
 
 

@@ -25,7 +25,9 @@ def _payload(prompt: str, system: str) -> dict:
     return body
 
 
-async def generate(model: str, prompt: str, system: str = "") -> str:
+async def generate(model: str, prompt: str, system: str = "", fmt: dict | None = None) -> str:
+    # fmt (structured output) is accepted for interface parity but not yet
+    # wired into Gemini's responseSchema; ignored for now.
     url = f"{_BASE}/models/{model}:generateContent?key={_key()}"
     async with httpx.AsyncClient(timeout=300) as client:
         r = await client.post(url, json=_payload(prompt, system))
