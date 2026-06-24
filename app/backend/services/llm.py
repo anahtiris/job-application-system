@@ -38,9 +38,9 @@ def _split(slug: str) -> tuple[str, str]:
 
 async def generate(model: str, prompt: str, system: str = "", fmt: dict | None = None) -> str:
     provider, name = _split(model)
-    if provider == "ollama":
-        return await _PROVIDERS[provider].generate(name, prompt, system, fmt=fmt)
-    return await _PROVIDERS[provider].generate(name, prompt, system)
+    # Every provider's generate() accepts fmt; those without structured-output
+    # support (gemini, perplexity) accept it and ignore it.
+    return await _PROVIDERS[provider].generate(name, prompt, system, fmt=fmt)
 
 
 async def stream(model: str, prompt: str, system: str = "") -> AsyncIterator[str]:

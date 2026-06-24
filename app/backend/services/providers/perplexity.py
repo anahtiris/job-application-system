@@ -4,7 +4,9 @@ from typing import AsyncIterator
 from services.providers.openai import _generate, _stream
 
 
-async def generate(model: str, prompt: str, system: str = "") -> str:
+async def generate(model: str, prompt: str, system: str = "", fmt: dict | None = None) -> str:
+    # Perplexity's json_schema support is gated/beta; fmt is accepted for
+    # interface parity but not forwarded. Callers fall back to JSON sanitizing.
     return await _generate("perplexity", model, prompt, system)
 
 
