@@ -118,6 +118,28 @@ When the user says **"process my captured jobs"**, Claude Code does extraction *
 
 The `/leads` page shows color-coded status badges and fit verdict chips. The `/leads/[id]` detail page shows must-haves/nice-to-haves/ATS keywords from `fit_analysis_json`; all three arrays default to `[]` if missing (LLM sometimes uses non-standard field names).
 
+### Processing an uploaded profile — "process my profile"
+
+When the user says **"process my profile"** (or clicks the parse-stage "Copy
+prompt for Claude" button on the Setup page), Claude Code structures the uploaded
+résumé itself — do NOT call the Ollama `/api/resume/parse` LLM path (that is the
+offline fallback, which runs the configured parser model automatically on upload):
+
+1. The upload already saved the raw extracted text to `data/resume_raw_en.txt`
+   (English) or `data/resume_raw_de.txt` (German) — no LLM/key needed for that
+   step. Read the file for the active language.
+2. Structure it into clean markdown using the same sections as the parser
+   (`# Profile`, `# Contact`, `# Skills`, `# Experience`, `# Projects`,
+   `# Education`). **Never fabricate** — extract only what is in the raw text,
+   dates exact. Save via `PUT /api/resume/master` with `{language, content}`.
+3. Then build the skills inventory with the existing "process my skills" steps
+   and `PUT /api/resume/skills/merge`.
+
+The offline fallback is the upload's automatic LLM structuring path: `POST
+/api/resume/parse` extracts the text (always, keyless) and tries the configured
+parser model. If no key/model is available it returns the raw text plus a clear
+`parse_error` instead of failing, steering the user to this Claude path.
+
 ### Building the skills inventory — "process my skills"
 
 When the user says **"process my skills"** (or clicks "Copy prompt for Claude" on the
