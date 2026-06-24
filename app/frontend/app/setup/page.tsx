@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { MarkdownEditor } from "@/components/MarkdownEditor";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { SKILLS_PROMPT } from "@/lib/prompts";
+import { SKILLS_PROMPT, profilePrompt } from "@/lib/prompts";
 
 function btnCls(primary = true, disabled = false): string {
   const border = primary ? "border-none" : "border-[0.5px] border-border-tertiary";
@@ -22,6 +22,9 @@ export default function SetupPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [extracting, setExtracting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [parseError, setParseError] = useState("");
+  const [rawSaved, setRawSaved] = useState(false);
+  const [profileCopied, setProfileCopied] = useState(false);
 
   const extractOllama = async () => {
     setExtracting(true);
@@ -38,6 +41,12 @@ export default function SetupPage() {
     await navigator.clipboard.writeText(SKILLS_PROMPT);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const copyProfilePrompt = async () => {
+    await navigator.clipboard.writeText(profilePrompt(language));
+    setProfileCopied(true);
+    setTimeout(() => setProfileCopied(false), 1500);
   };
 
   const load = async (lang: "en" | "de") => {
@@ -61,7 +70,15 @@ export default function SetupPage() {
     });
     setUploading(false);
     setParseStatus("");
-    if (res?.markdown) {
+    if (!res) return; // network/HTTP error already toasted by api client
+    setRawSaved(Boolean(res.raw_saved_to));
+    if (res.parse_error) {
+      setParseError(res.parse_error);
+      toast.error(res.parse_error);
+      return;
+    }
+    setParseError("");
+    if (res.markdown) {
       setMarkdown(res.markdown);
       toast.success("Parsed. Review and save below.");
     }
@@ -131,12 +148,25 @@ export default function SetupPage() {
             </>
           ) : (
             <div className="flex flex-col items-center justify-center py-[60px] px-5 gap-3 border-[0.5px] border-border-tertiary rounded-card bg-background-secondary">
-              <span className="text-[13px] text-text-tertiary font-shell">
-                No {language.toUpperCase()} resume yet.
-              </span>
-              <button onClick={() => fileRef.current?.click()} className={btnCls(true)}>
-                Upload PDF / DOCX to parse
-              </button>
+              {parseError ? (
+                <span className="text-[12px] text-text-secondary font-shell max-w-[420px] text-center">
+                  {parseError}
+                </span>
+              ) : (
+                <span className="text-[13px] text-text-tertiary font-shell">
+                  No {language.toUpperCase()} resume yet.
+                </span>
+              )}
+              <div className="flex items-center gap-2">
+                <button onClick={() => fileRef.current?.click()} className={btnCls(!rawSaved)}>
+                  Upload PDF / DOCX to parse
+                </button>
+                {rawSaved && (
+                  <button onClick={copyProfilePrompt} className={btnCls(true)}>
+                    {profileCopied ? "Copied" : "Copy prompt for Claude"}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
