@@ -2,7 +2,7 @@
 import "@anahtiris/flipclock/dist/flipclock.css";
 import React, { useCallback, useRef, useState } from "react";
 import { FlipClock } from "@anahtiris/flipclock";
-import { api } from "@/lib/api";
+import { api, BASE } from "@/lib/api";
 import {
   type SaveState, SaveIndicator, useAutoSave, GrowTextarea, SectionCard,
 } from "@/components/ui-kit";
@@ -36,7 +36,13 @@ export function CompanyPrepPanel({
   onPrepChange: (id: string, md: string) => void;
   onNotesChange: (id: string, json: string) => void;
 }) {
-  const [notes, setNotes] = useState<InterviewNotes>(DEFAULT_NOTES);
+  const [notes, setNotes] = useState<InterviewNotes>(() => {
+    let parsed: Partial<InterviewNotes> = {};
+    if (app.interview_notes_json) {
+      try { parsed = JSON.parse(app.interview_notes_json); } catch {}
+    }
+    return { ...DEFAULT_NOTES, ...parsed };
+  });
   const [tab, setTab] = useState<CompanyTab>("Overview");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pendingDate, setPendingDate] = useState<DateTimeValue | undefined>(undefined);
@@ -49,10 +55,25 @@ export function CompanyPrepPanel({
   const [interviewer, setInterviewer] = useState<string>("Hiring Manager");
   const [focus, setFocus] = useState("");
   const [copying, setCopying] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const saveFn = useCallback(async (n: InterviewNotes) => {
+    const json = JSON.stringify(n);
+    await api.patch(`/api/tracker/${app.id}/interview-notes`, { notes_json: json });
+    onNotesChange(app.id, json);
+  }, [app.id, onNotesChange]);
+
+  const { saveState, markDirty, markClean } = useAutoSave(notes, saveFn);
+  const update = (patch: Partial<InterviewNotes>) => {
+    markDirty();
+    setNotes((n) => ({ ...n, ...patch }));
+  };
 
   // Reset all local editing state when a different application is selected.
   // Derived from the `app` prop during render (keyed on app.id) instead of in
   // an effect — React's recommended pattern for resetting state on prop change.
+  // markClean re-baselines autosave so the freshly-loaded notes for the newly
+  // selected interview are not written straight back to the server.
   const [lastAppId, setLastAppId] = useState(app.id);
   if (app.id !== lastAppId) {
     setLastAppId(app.id);
@@ -64,16 +85,8 @@ export function CompanyPrepPanel({
     setPrep(parsePrepJson(app.interview_prep_json));
     setPendingDate(parseDate(app.interview_date));
     setShowDatePicker(false);
+    markClean();
   }
-
-  const saveFn = useCallback(async (n: InterviewNotes) => {
-    const json = JSON.stringify(n);
-    await api.patch(`/api/tracker/${app.id}/interview-notes`, { notes_json: json });
-    onNotesChange(app.id, json);
-  }, [app.id, onNotesChange]);
-
-  const saveState = useAutoSave(notes, saveFn);
-  const update = (patch: Partial<InterviewNotes>) => setNotes((n) => ({ ...n, ...patch }));
 
   // Debounced prep save
   const prepSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -139,6 +152,27 @@ export function CompanyPrepPanel({
     setTimeout(() => setCopying(false), 1500);
   };
 
+  const exportPdf = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch(`${BASE}/api/application/${app.id}/interview-export.pdf`);
+      if (!res.ok) throw new Error(`Export failed (HTTP ${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${app.company.replace(/[^\w]+/g, "_")}_Interview_Prep.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const hasPrep =
     !!prep.company_analysis ||
     !!prep.introduction_script ||
@@ -168,6 +202,13 @@ export function CompanyPrepPanel({
 
         <TabBar tabs={[...COMPANY_TABS]} active={tab} onChange={(t) => setTab(t as CompanyTab)} />
         <SaveIndicator state={saveState} />
+        <button
+          onClick={exportPdf}
+          disabled={exporting}
+          className="ml-auto text-[11px] font-medium py-[5px] px-2.5 rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-secondary cursor-pointer font-shell disabled:opacity-50"
+        >
+          {exporting ? "Exporting…" : "Export PDF"}
+        </button>
 
         {showDatePicker && (
           <div className="absolute top-[calc(100%+6px)] left-4 z-40 bg-background-primary border-[0.5px] border-border-tertiary rounded-[12px] p-3 shadow-[0_8px_32px_rgba(0,0,0,0.15)] flex flex-col gap-2">

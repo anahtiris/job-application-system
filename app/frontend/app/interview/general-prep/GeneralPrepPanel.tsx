@@ -21,24 +21,25 @@ export function GeneralPrepPanel() {
   const [prep, setPrep] = useState<GeneralPrep>(DEFAULT_PREP);
   const [tab, setTab] = useState<GeneralTab>("Introduction");
   const [lang, setLang] = useState<"en" | "de">("en");
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     api.get("/api/settings/general-prep").then((data) => {
       if (data && typeof data === "object" && Object.keys(data).length > 0) {
         setPrep({ ...DEFAULT_PREP, ...(data as Partial<GeneralPrep>) });
       }
-      setLoaded(true);
-    }).catch(() => setLoaded(true));
+    }).catch(() => {});
   }, []);
 
   const saveFn = useCallback(async (p: GeneralPrep) => {
     await api.put("/api/settings/general-prep", p);
   }, []);
 
-  const saveState = useAutoSave(loaded ? prep : DEFAULT_PREP, saveFn);
+  const { saveState, markDirty } = useAutoSave(prep, saveFn);
 
-  const update = (patch: Partial<GeneralPrep>) => setPrep((p) => ({ ...p, ...patch }));
+  const update = (patch: Partial<GeneralPrep>) => {
+    markDirty();
+    setPrep((p) => ({ ...p, ...patch }));
+  };
 
   const updateQA = (field: "common_qa" | "behavioral_qa", items: QAItem[]) =>
     update({ [field]: items });
