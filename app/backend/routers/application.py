@@ -1,18 +1,20 @@
 import json
 import logging
 import re
+import tempfile
 from pathlib import Path
 from typing import AsyncIterator
 
 from docx import Document
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from config import Paths, load_career_goal, load_skills_inventory, model
 from db import Application, JobLead, get_session, get_setting
 from services import analyzer, generator, interview, researcher, reviewer
+from services.interview_export import render_interview_pdf
 from services.interview_schema import InterviewPrep, ensure_ids
 from services.pdf import build_pdfs
 
@@ -400,3 +402,24 @@ def save_interview_prep(app_id: str, body: InterviewPrep, session: Session = Dep
     session.add(app)
     session.commit()
     return {"saved": True, "prep": prep}
+
+
+@router.get("/{app_id}/interview-export.pdf")
+def export_interview_pdf(app_id: str, session: Session = Depends(get_session)):
+    """Render this scheduled interview's prep (prep + notes + JD) to a PDF and
+    stream it as a download. Derived artifact — regenerated each request, not
+    persisted under applications/."""
+    app = session.get(Application, app_id)
+    if not app:
+        raise HTTPException(404, "Application not found")
+
+    tmp_dir = Path(tempfile.mkdtemp())
+    pdf_path = render_interview_pdf(app, tmp_dir)
+
+    person = get_setting("person.name", "") or "Candidate"
+    safe = lambda s: re.sub(r"[^\w]+", "_", s).strip("_") or "x"
+    filename = f"{safe(person)}_Interview_Prep_{safe(app.company)}.pdf"
+
+    return FileResponse(
+        str(pdf_path), media_type="application/pdf", filename=filename,
+    )
