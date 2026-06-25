@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ─── Save state ────────────────────────────────────────────────────────────────
 
@@ -14,13 +14,21 @@ export function SaveIndicator({ state }: { state: SaveState }) {
   );
 }
 
+// Saves `value` after `delay`, but only once the consumer has signalled a real
+// user edit via `markDirty`. Value changes that come from initial state, an
+// async server load, or switching the tracked record (use `markClean` to
+// re-baseline) do not trigger a save — that prevents the "saving on open"
+// flicker and redundant idempotent writes.
 export function useAutoSave<T>(value: T, saveFn: (v: T) => Promise<void>, delay = 800) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
-  const mounted = useRef(false);
+  const dirty = useRef(false);
+
+  const markDirty = useCallback(() => { dirty.current = true; }, []);
+  const markClean = useCallback(() => { dirty.current = false; }, []);
 
   useEffect(() => {
-    if (!mounted.current) { mounted.current = true; return; }
+    if (!dirty.current) return;
     if (timer.current) clearTimeout(timer.current);
     setSaveState("saving");
     timer.current = setTimeout(async () => {
@@ -32,7 +40,7 @@ export function useAutoSave<T>(value: T, saveFn: (v: T) => Promise<void>, delay 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  return saveState;
+  return { saveState, markDirty, markClean };
 }
 
 // ─── Error banner ──────────────────────────────────────────────────────────────

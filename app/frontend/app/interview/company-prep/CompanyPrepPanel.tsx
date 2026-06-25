@@ -57,9 +57,23 @@ export function CompanyPrepPanel({
   const [copying, setCopying] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  const saveFn = useCallback(async (n: InterviewNotes) => {
+    const json = JSON.stringify(n);
+    await api.patch(`/api/tracker/${app.id}/interview-notes`, { notes_json: json });
+    onNotesChange(app.id, json);
+  }, [app.id, onNotesChange]);
+
+  const { saveState, markDirty, markClean } = useAutoSave(notes, saveFn);
+  const update = (patch: Partial<InterviewNotes>) => {
+    markDirty();
+    setNotes((n) => ({ ...n, ...patch }));
+  };
+
   // Reset all local editing state when a different application is selected.
   // Derived from the `app` prop during render (keyed on app.id) instead of in
   // an effect — React's recommended pattern for resetting state on prop change.
+  // markClean re-baselines autosave so the freshly-loaded notes for the newly
+  // selected interview are not written straight back to the server.
   const [lastAppId, setLastAppId] = useState(app.id);
   if (app.id !== lastAppId) {
     setLastAppId(app.id);
@@ -71,16 +85,8 @@ export function CompanyPrepPanel({
     setPrep(parsePrepJson(app.interview_prep_json));
     setPendingDate(parseDate(app.interview_date));
     setShowDatePicker(false);
+    markClean();
   }
-
-  const saveFn = useCallback(async (n: InterviewNotes) => {
-    const json = JSON.stringify(n);
-    await api.patch(`/api/tracker/${app.id}/interview-notes`, { notes_json: json });
-    onNotesChange(app.id, json);
-  }, [app.id, onNotesChange]);
-
-  const saveState = useAutoSave(notes, saveFn);
-  const update = (patch: Partial<InterviewNotes>) => setNotes((n) => ({ ...n, ...patch }));
 
   // Debounced prep save
   const prepSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
