@@ -2,7 +2,7 @@
 import "@anahtiris/flipclock/dist/flipclock.css";
 import React, { useCallback, useRef, useState } from "react";
 import { FlipClock } from "@anahtiris/flipclock";
-import { api } from "@/lib/api";
+import { api, BASE } from "@/lib/api";
 import {
   type SaveState, SaveIndicator, useAutoSave, GrowTextarea, SectionCard,
 } from "@/components/ui-kit";
@@ -55,6 +55,7 @@ export function CompanyPrepPanel({
   const [interviewer, setInterviewer] = useState<string>("Hiring Manager");
   const [focus, setFocus] = useState("");
   const [copying, setCopying] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Reset all local editing state when a different application is selected.
   // Derived from the `app` prop during render (keyed on app.id) instead of in
@@ -145,6 +146,27 @@ export function CompanyPrepPanel({
     setTimeout(() => setCopying(false), 1500);
   };
 
+  const exportPdf = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch(`${BASE}/api/application/${app.id}/interview-export.pdf`);
+      if (!res.ok) throw new Error(`Export failed (HTTP ${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${app.company.replace(/[^\w]+/g, "_")}_Interview_Prep.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const hasPrep =
     !!prep.company_analysis ||
     !!prep.introduction_script ||
@@ -174,6 +196,13 @@ export function CompanyPrepPanel({
 
         <TabBar tabs={[...COMPANY_TABS]} active={tab} onChange={(t) => setTab(t as CompanyTab)} />
         <SaveIndicator state={saveState} />
+        <button
+          onClick={exportPdf}
+          disabled={exporting}
+          className="ml-auto text-[11px] font-medium py-[5px] px-2.5 rounded-[6px] border-[0.5px] border-border-tertiary bg-transparent text-text-secondary cursor-pointer font-shell disabled:opacity-50"
+        >
+          {exporting ? "Exporting…" : "Export PDF"}
+        </button>
 
         {showDatePicker && (
           <div className="absolute top-[calc(100%+6px)] left-4 z-40 bg-background-primary border-[0.5px] border-border-tertiary rounded-[12px] p-3 shadow-[0_8px_32px_rgba(0,0,0,0.15)] flex flex-col gap-2">
