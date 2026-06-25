@@ -26,6 +26,8 @@ An AI-assisted pipeline that captures job leads from any job board, analyzes fit
 
 ![Interview Prep](docs/screenshots/interview.png)
 
+From the **Interview** workspace, a scheduled interview's packet (interview prep, your working notes, and the extracted job description) can be exported to PDF with the **Export PDF** button. Headings follow the application's language. The PDF is generated on demand and streamed as a download (nothing is stored on disk). Requires LibreOffice.
+
 **Skills Inventory — tiered skills with evidence for honest, tier-appropriate language**
 
 ![Skills Inventory](docs/screenshots/skills.png)
