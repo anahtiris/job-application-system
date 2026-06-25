@@ -3,10 +3,13 @@
 Pure functions over an Application's stored fields — no DB or LibreOffice here.
 The HTML is converted to PDF by `render_interview_pdf` (added in a later task)."""
 import json
+import subprocess
 from html import escape
+from pathlib import Path
 from typing import Any
 
 from db import Application
+from services.pdf import _find_soffice
 
 LABELS = {
     "en": {
@@ -160,3 +163,26 @@ def build_interview_html(app: Application) -> str:
         f"<title>{_esc(L['title'])}</title><style>{_STYLE}</style></head>"
         f"<body>{head}{prep_html}{notes_html}{jd_html}</body></html>"
     )
+
+
+def render_interview_pdf(app: Application, out_dir: Path) -> Path:
+    """Write the assembled HTML to a temp file and convert it to PDF via
+    LibreOffice. Returns the path to the generated PDF inside `out_dir`."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    html = build_interview_html(app)
+
+    html_path = out_dir / "interview_prep.html"
+    html_path.write_text(html, encoding="utf-8")
+
+    soffice = _find_soffice()
+    result = subprocess.run(
+        [soffice, "--headless", "--convert-to", "pdf", str(html_path), "--outdir", str(out_dir)],
+        capture_output=True, text=True, timeout=120,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"LibreOffice failed: {result.stderr}")
+    pdf_path = out_dir / (html_path.stem + ".pdf")
+    if not pdf_path.exists():
+        raise RuntimeError(f"PDF not found at {pdf_path}")
+    return pdf_path

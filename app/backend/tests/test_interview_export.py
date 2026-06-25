@@ -67,3 +67,35 @@ def test_html_handles_empty_prep_and_notes():
     assert html.lstrip().startswith("<")
     assert "Interview Prep" in html  # structure still present
     assert "—" in html  # placeholder for empty sections
+
+
+from pathlib import Path
+
+from services import interview_export
+
+
+def test_render_invokes_libreoffice_on_html(monkeypatch, tmp_path):
+    calls = {}
+
+    def fake_run(cmd, *a, **k):
+        # cmd: [soffice, --headless, --convert-to, pdf, <html>, --outdir, <dir>]
+        calls["cmd"] = cmd
+        html_in = Path(cmd[4])
+        calls["html"] = html_in.read_text(encoding="utf-8")
+        out_dir = Path(cmd[6])
+        (out_dir / (html_in.stem + ".pdf")).write_bytes(b"%PDF-1.4 fake")
+
+        class R:
+            returncode = 0
+            stderr = ""
+
+        return R()
+
+    monkeypatch.setattr(interview_export, "_find_soffice", lambda: "soffice")
+    monkeypatch.setattr(interview_export.subprocess, "run", fake_run)
+
+    pdf_path = interview_export.render_interview_pdf(_app(), tmp_path)
+    assert pdf_path.exists()
+    assert pdf_path.suffix == ".pdf"
+    assert "--convert-to" in calls["cmd"] and "pdf" in calls["cmd"]
+    assert "Interview Prep" in calls["html"]
