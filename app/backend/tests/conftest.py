@@ -41,3 +41,15 @@ def client(monkeypatch):
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
+
+
+@pytest.fixture
+def session(client):
+    """A SQLModel Session sharing the same in-memory DB as the client fixture.
+
+    Must be requested alongside client so client runs first and patches db.engine.
+    Yields a single session for direct DB manipulation in tests."""
+    import db
+
+    with Session(db.engine) as s:
+        yield s

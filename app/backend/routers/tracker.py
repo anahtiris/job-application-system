@@ -9,16 +9,23 @@ from db import Application, JobLead, get_session, now_utc
 
 router = APIRouter()
 
-VALID_STATUSES = {"Draft", "Finalized", "Applied", "Interview", "Offer", "Rejected", "Ghosted"}
+VALID_STATUSES = {
+    "Draft", "Finalized", "Applied", "Interview", "Offer",
+    "Rejected", "Ghosted",
+    "Rejected after interview", "Ghosted after interview",
+}
 
-NEXT_STATUSES: dict[str, set[str]] = {
-    "Draft":     {"Applied"},
-    "Finalized": {"Applied"},
-    "Applied":   {"Interview", "Offer", "Rejected", "Ghosted"},
-    "Interview": {"Applied", "Offer", "Rejected", "Ghosted"},
-    "Offer":     {"Rejected"},
-    "Rejected":  {"Applied", "Interview"},
-    "Ghosted":   {"Applied", "Interview", "Rejected"},
+NEXT_STATUSES: dict[str, list[str]] = {
+    "New":                      ["Draft"],
+    "Draft":                    ["Finalized", "Applied"],
+    "Finalized":                ["Applied"],
+    "Applied":                  ["Interview", "Offer", "Rejected", "Ghosted"],
+    "Interview":                ["Offer", "Rejected after interview", "Ghosted after interview"],
+    "Offer":                    [],
+    "Rejected":                 ["Rejected after interview"],
+    "Ghosted":                  [],
+    "Rejected after interview": ["Rejected", "Ghosted after interview"],
+    "Ghosted after interview":  ["Rejected", "Rejected after interview"],
 }
 
 
@@ -120,7 +127,7 @@ def update_status(app_id: str, body: UpdateStatusRequest, session: Session = Dep
         raise HTTPException(400, f"Cannot transition from {app.status!r} to {body.status!r}")
     app.status = body.status
     session.add(app)
-    if body.status == "Rejected":
+    if body.status in {"Rejected", "Rejected after interview", "Ghosted after interview"}:
         lead = session.exec(select(JobLead).where(JobLead.application_id == app_id)).first()
         if lead and lead.deleted_at is None:
             lead.deleted_at = now_utc()
