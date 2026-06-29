@@ -1,3 +1,5 @@
+import json as json_lib
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
@@ -145,3 +147,65 @@ def test_aggregate_score_distribution():
     assert result["score_distribution"]["low"] == 1
     assert result["score_distribution"]["mid"] == 1
     assert result["score_distribution"]["high"] == 1
+
+
+def _make_closed_app_with_lead(session, status: str, fit_analysis: dict, tone: str = "startup"):
+    app = Application(
+        company="TestCo",
+        job_title="SWE",
+        language="en",
+        job_description="jd",
+        status=status,
+        company_tone=tone,
+    )
+    session.add(app)
+    session.commit()
+    session.refresh(app)
+
+    lead = JobLead(
+        company="TestCo",
+        job_title="SWE",
+        language="en",
+        status="approved",
+        application_id=app.id,
+        fit_analysis_json=json_lib.dumps(fit_analysis),
+        fit_score=fit_analysis.get("match_score"),
+    )
+    session.add(lead)
+    session.commit()
+    return app
+
+
+SAMPLE_FIT = {
+    "must_haves": [{"skill": "Kubernetes", "status": "GAP"}],
+    "match_score": 55,
+    "goal_alignment": "neutral",
+    "goal_alignment_note": "no strong signal",
+}
+
+
+def test_analysis_insufficient_data(client):
+    resp = client.get("/api/tracker/analysis/rejected")
+    assert resp.status_code == 200
+    assert resp.json().get("insufficient_data") is True
+
+
+def test_analysis_returns_shape(client, session, monkeypatch):
+    async def mock_generate(*args, **kwargs):
+        return "Test narrative paragraph."
+
+    monkeypatch.setattr("services.rejection_analysis.generate", mock_generate)
+
+    for status in ("Rejected", "Rejected after interview", "Ghosted after interview"):
+        _make_closed_app_with_lead(session, status, SAMPLE_FIT)
+
+    resp = client.get("/api/tracker/analysis/rejected")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 3
+    assert data["narrative"] == "Test narrative paragraph."
+    assert isinstance(data["skill_gaps"], list)
+    assert isinstance(data["outcome_stage"], dict)
+    assert data["outcome_stage"]["before_interview"] == 1
+    assert data["outcome_stage"]["after_interview"] == 1
+    assert data["outcome_stage"]["ghosted"] == 1

@@ -1,3 +1,4 @@
+import json as json_module
 from datetime import date
 from typing import Optional
 
@@ -6,6 +7,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from db import Application, JobLead, get_session, now_utc
+from services.rejection_analysis import build_rejection_analysis
 
 router = APIRouter()
 
@@ -89,6 +91,45 @@ def list_applications(session: Session = Depends(get_session)):
         .order_by(Application.created_at.desc())
     ).all()
     return apps
+
+
+CLOSED_STATUSES = {"Rejected", "Rejected after interview", "Ghosted after interview"}
+
+
+@router.get("/analysis/rejected")
+async def rejected_analysis(session: Session = Depends(get_session)):
+    apps = session.exec(
+        select(Application).where(
+            Application.status.in_(list(CLOSED_STATUSES)),
+            Application.deleted_at == None,  # noqa: E711
+        )
+    ).all()
+
+    if len(apps) < 3:
+        return {"insufficient_data": True}
+
+    apps_with_leads: list[dict] = []
+    for app in apps:
+        lead = session.exec(
+            select(JobLead).where(JobLead.application_id == app.id)
+        ).first()
+        fit: dict = {}
+        if lead and lead.fit_analysis_json:
+            try:
+                fit = json_module.loads(lead.fit_analysis_json)
+            except (json_module.JSONDecodeError, TypeError):
+                fit = {}
+        apps_with_leads.append({
+            "app": {
+                "company": app.company,
+                "job_title": app.job_title,
+                "status": app.status,
+                "company_tone": app.company_tone,
+            },
+            "fit": fit,
+        })
+
+    return await build_rejection_analysis(apps_with_leads)
 
 
 @router.get("/{app_id}")
