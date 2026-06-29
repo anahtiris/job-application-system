@@ -85,3 +85,63 @@ def test_rejected_cannot_transition_to_ghosted(client, session):
     app = _make_app(session, "Rejected")
     resp = client.patch(f"/api/tracker/{app.id}/status", json={"status": "Ghosted after interview"})
     assert resp.status_code == 400
+
+
+from services.rejection_analysis import _aggregate
+
+
+def test_aggregate_skill_gap_frequency():
+    data = [
+        {
+            "app": {"company": "A", "job_title": "SWE", "status": "Rejected", "company_tone": "startup"},
+            "fit": {
+                "must_haves": [{"skill": "Kubernetes", "status": "GAP"}, {"skill": "Python", "status": "STRONG"}],
+                "match_score": 60,
+                "goal_alignment": "aligns",
+                "goal_alignment_note": "matches AI focus",
+            },
+        },
+        {
+            "app": {"company": "B", "job_title": "BE", "status": "Rejected after interview", "company_tone": "direct"},
+            "fit": {
+                "must_haves": [{"skill": "Kubernetes", "status": "GAP"}, {"skill": "Java", "status": "GAP"}],
+                "match_score": 45,
+                "goal_alignment": "detours",
+                "goal_alignment_note": "no AI work",
+            },
+        },
+    ]
+    result = _aggregate(data)
+    assert result["total"] == 2
+    assert result["skill_gaps"][0]["skill"] == "Kubernetes"
+    assert result["skill_gaps"][0]["gap_count"] == 2
+    assert result["skill_gaps"][0]["out_of"] == 2
+
+
+def test_aggregate_stage_counts():
+    data = [
+        {"app": {"company": "A", "job_title": "x", "status": "Rejected", "company_tone": "startup"},
+         "fit": {"must_haves": [], "match_score": 50, "goal_alignment": "neutral", "goal_alignment_note": ""}},
+        {"app": {"company": "B", "job_title": "x", "status": "Rejected after interview", "company_tone": "direct"},
+         "fit": {"must_haves": [], "match_score": 70, "goal_alignment": "aligns", "goal_alignment_note": ""}},
+        {"app": {"company": "C", "job_title": "x", "status": "Ghosted after interview", "company_tone": "startup"},
+         "fit": {"must_haves": [], "match_score": 65, "goal_alignment": "neutral", "goal_alignment_note": ""}},
+    ]
+    result = _aggregate(data)
+    assert result["outcome_stage"] == {"before_interview": 1, "after_interview": 1, "ghosted": 1}
+
+
+def test_aggregate_score_distribution():
+    data = [
+        {"app": {"company": "A", "job_title": "x", "status": "Rejected", "company_tone": "startup"},
+         "fit": {"must_haves": [], "match_score": 40, "goal_alignment": "neutral", "goal_alignment_note": ""}},
+        {"app": {"company": "B", "job_title": "x", "status": "Rejected", "company_tone": "direct"},
+         "fit": {"must_haves": [], "match_score": 60, "goal_alignment": "neutral", "goal_alignment_note": ""}},
+        {"app": {"company": "C", "job_title": "x", "status": "Rejected", "company_tone": "direct"},
+         "fit": {"must_haves": [], "match_score": 80, "goal_alignment": "neutral", "goal_alignment_note": ""}},
+    ]
+    result = _aggregate(data)
+    assert result["score_distribution"]["avg"] == 60
+    assert result["score_distribution"]["low"] == 1
+    assert result["score_distribution"]["mid"] == 1
+    assert result["score_distribution"]["high"] == 1
