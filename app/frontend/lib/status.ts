@@ -4,6 +4,8 @@ export const STATUS_ORDER = ["New", "Draft", "Finalized", "Applied", "Interview"
 export const STATUS_DISPLAY: Record<string, string> = {
   New: "Analyzed", Draft: "Draft", Finalized: "Finalized", Applied: "Applied",
   Interview: "Interview", Offer: "Offer", Rejected: "Rejected", Ghosted: "Ghosted",
+  "Rejected after interview": "Rejected",
+  "Ghosted after interview": "Ghosted",
 };
 
 // Allowed status transitions (backend values).
@@ -11,10 +13,12 @@ export const NEXT_STATUSES: Record<string, string[]> = {
   Draft: ["Applied"],
   Finalized: ["Applied"],
   Applied: ["Interview", "Offer", "Rejected", "Ghosted"],
-  Interview: ["Applied", "Offer", "Rejected", "Ghosted"],
+  Interview: ["Offer", "Rejected after interview", "Ghosted after interview", "Applied"],
   Offer: ["Rejected"],
-  Rejected: ["Applied", "Interview"],
+  Rejected: ["Rejected after interview", "Applied", "Interview"],
   Ghosted: ["Applied", "Interview", "Rejected"],
+  "Rejected after interview": ["Rejected", "Ghosted after interview"],
+  "Ghosted after interview": ["Rejected", "Rejected after interview"],
 };
 
 export const STATUS_CLASSES: Record<string, string> = {
@@ -25,6 +29,8 @@ export const STATUS_CLASSES: Record<string, string> = {
   Interview: "bg-amber-100 text-amber-700 border border-amber-200",
   Offer:     "bg-green-100 text-green-700 border border-green-200",
   Rejected:  "bg-red-100 text-red-600 border border-red-200",
+  "Rejected after interview": "bg-red-100 text-red-600 border border-red-200",
+  "Ghosted after interview": "bg-gray-100 text-gray-600 border border-gray-200",
 };
 
 export function formatDate(d: string | null | undefined): string {

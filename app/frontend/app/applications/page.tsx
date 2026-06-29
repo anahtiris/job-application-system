@@ -31,8 +31,8 @@ const FILTER_MAP: Record<string, string[]> = {
   Applied: ["Applied"],
   Interview: ["Interview"],
   Offer: ["Offer"],
-  Rejected: ["Rejected"],
-  Ghosted: ["Ghosted"],
+  Rejected: ["Rejected", "Rejected after interview"],
+  Ghosted: ["Ghosted", "Ghosted after interview"],
 };
 
 const FILTER_LABELS = ["Analyzed", "Draft", "Finalized", "Applied", "Interview", "Offer", "Rejected", "Ghosted"] as const;
