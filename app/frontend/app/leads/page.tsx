@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2, Search, Check, CheckCheck, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
@@ -386,7 +387,13 @@ export default function LeadsPage() {
         )}
 
         {/* Filters */}
-        <div className="flex gap-[5px] ml-auto">
+        <div className="flex gap-[5px] ml-auto items-center">
+          <Link
+            href="/leads/analysis"
+            className="text-[12px] font-medium py-1 px-2.5 rounded-full border-[0.5px] border-border-tertiary text-text-secondary hover:bg-background-secondary font-shell"
+          >
+            Analysis
+          </Link>
           <FitFilterDropdown selected={fitFilters} onChange={setFitFilters} />
           <StatusFilterDropdown selected={statusFilters} onChange={setStatusFilters} counts={counts} />
         </div>
