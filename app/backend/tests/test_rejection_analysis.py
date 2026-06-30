@@ -3,7 +3,7 @@ import json as json_lib
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
-from db import Application, JobLead
+from db import Application, JobLead, now_utc
 
 
 def _make_app(session: Session, status: str, **kwargs) -> Application:
@@ -87,6 +87,19 @@ def test_rejected_cannot_transition_to_ghosted(client, session):
     app = _make_app(session, "Rejected")
     resp = client.patch(f"/api/tracker/{app.id}/status", json={"status": "Ghosted after interview"})
     assert resp.status_code == 400
+
+
+def test_unreject_to_applied_restores_soft_deleted_lead(client, session):
+    app = _make_app(session, "Rejected")
+    lead = _make_lead(session, app.id)
+    lead.deleted_at = now_utc()
+    session.add(lead)
+    session.commit()
+
+    resp = client.patch(f"/api/tracker/{app.id}/status", json={"status": "Applied"})
+    assert resp.status_code == 200
+    session.refresh(lead)
+    assert lead.deleted_at is None
 
 
 from services.rejection_analysis import _aggregate

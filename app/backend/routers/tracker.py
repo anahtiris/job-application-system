@@ -166,6 +166,7 @@ def update_status(app_id: str, body: UpdateStatusRequest, session: Session = Dep
     allowed = NEXT_STATUSES.get(app.status, set())
     if body.status not in allowed:
         raise HTTPException(400, f"Cannot transition from {app.status!r} to {body.status!r}")
+    previous_status = app.status
     app.status = body.status
     session.add(app)
     if body.status in {"Rejected", "Rejected after interview", "Ghosted after interview"}:
@@ -173,13 +174,20 @@ def update_status(app_id: str, body: UpdateStatusRequest, session: Session = Dep
         if lead and lead.deleted_at is None:
             lead.deleted_at = now_utc()
             session.add(lead)
-    elif body.status == "Applied":
-        # Keep the source lead in step with its application.
-        lead = session.exec(select(JobLead).where(JobLead.application_id == app_id)).first()
-        if lead and lead.deleted_at is None and lead.status == "approved":
-            lead.status = "applied"
-            lead.updated_at = now_utc()
-            session.add(lead)
+    elif body.status in {"Applied", "Interview"}:
+        if previous_status in {"Rejected", "Rejected after interview", "Ghosted after interview"}:
+            # Un-rejecting: restore the lead from trash so it's not orphaned there.
+            lead = session.exec(select(JobLead).where(JobLead.application_id == app_id)).first()
+            if lead and lead.deleted_at is not None:
+                lead.deleted_at = None
+                session.add(lead)
+        if body.status == "Applied":
+            # Keep the source lead in step with its application.
+            lead = session.exec(select(JobLead).where(JobLead.application_id == app_id)).first()
+            if lead and lead.deleted_at is None and lead.status == "approved":
+                lead.status = "applied"
+                lead.updated_at = now_utc()
+                session.add(lead)
     session.commit()
     return {"status": app.status}
 

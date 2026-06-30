@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { api } from "@/lib/api";
 
 interface SkillGap {
   skill: string;
@@ -35,9 +36,7 @@ export default function RejectionAnalysisPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("http://localhost:8000/api/tracker/analysis/rejected");
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
-      const data = await res.json();
+      const data = await api.get("/api/tracker/analysis/rejected");
       if (data.insufficient_data) {
         setInsufficientData(true);
         setResult(null);
