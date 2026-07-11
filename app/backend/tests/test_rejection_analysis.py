@@ -203,12 +203,7 @@ def test_analysis_insufficient_data(client):
     assert resp.json().get("insufficient_data") is True
 
 
-def test_analysis_returns_shape(client, session, monkeypatch):
-    async def mock_generate(*args, **kwargs):
-        return "Test narrative paragraph."
-
-    monkeypatch.setattr("services.rejection_analysis.generate", mock_generate)
-
+def test_analysis_returns_shape_without_narrative(client, session):
     for status in ("Rejected", "Rejected after interview", "Ghosted after interview"):
         _make_closed_app_with_lead(session, status, SAMPLE_FIT)
 
@@ -216,9 +211,40 @@ def test_analysis_returns_shape(client, session, monkeypatch):
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 3
-    assert data["narrative"] == "Test narrative paragraph."
+    assert data["narrative"] is None
     assert isinstance(data["skill_gaps"], list)
     assert isinstance(data["outcome_stage"], dict)
     assert data["outcome_stage"]["before_interview"] == 1
     assert data["outcome_stage"]["after_interview"] == 1
     assert data["outcome_stage"]["ghosted"] == 1
+
+
+def test_generate_analysis_persists_narrative(client, session, monkeypatch):
+    async def mock_generate_narrative(agg):
+        return "Test narrative paragraph."
+
+    monkeypatch.setattr("routers.tracker.generate_narrative", mock_generate_narrative)
+
+    for status in ("Rejected", "Rejected after interview", "Ghosted after interview"):
+        _make_closed_app_with_lead(session, status, SAMPLE_FIT)
+
+    resp = client.post("/api/tracker/analysis/rejected/generate")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["narrative"] == "Test narrative paragraph."
+
+    # Persisted — a plain GET now returns the same narrative.
+    resp2 = client.get("/api/tracker/analysis/rejected")
+    assert resp2.json()["narrative"] == "Test narrative paragraph."
+
+
+def test_save_analysis_claude_path_persists_narrative(client, session):
+    for status in ("Rejected", "Rejected after interview", "Ghosted after interview"):
+        _make_closed_app_with_lead(session, status, SAMPLE_FIT)
+
+    resp = client.put("/api/tracker/analysis/rejected", json={"narrative": "Claude-written narrative."})
+    assert resp.status_code == 200
+    assert resp.json()["narrative"] == "Claude-written narrative."
+
+    resp2 = client.get("/api/tracker/analysis/rejected")
+    assert resp2.json()["narrative"] == "Claude-written narrative."

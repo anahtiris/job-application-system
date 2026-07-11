@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2, Search, Download, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
@@ -361,7 +362,13 @@ export default function ApplicationsPage() {
         </button>
 
         {/* Status filter — multiselect dropdown */}
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-[5px] items-center">
+          <Link
+            href="/applications/analysis"
+            className="text-[12px] font-medium py-1 px-2.5 rounded-full border-[0.5px] border-border-tertiary text-text-secondary hover:bg-background-secondary font-shell"
+          >
+            Analysis
+          </Link>
           <FilterDropdown activeFilters={activeFilters} onToggle={toggleFilter} onClear={clearFilters} />
         </div>
       </div>

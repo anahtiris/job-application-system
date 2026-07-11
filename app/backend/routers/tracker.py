@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from db import Application, JobLead, get_session, now_utc
-from services.rejection_analysis import build_rejection_analysis
+from db import Application, JobLead, get_session, get_setting, now_utc, set_setting
+from services.rejection_analysis import _aggregate, generate_narrative
 
 router = APIRouter()
 
@@ -95,18 +95,16 @@ def list_applications(session: Session = Depends(get_session)):
 
 CLOSED_STATUSES = {"Rejected", "Rejected after interview", "Ghosted after interview"}
 
+REJECTION_ANALYSIS_SETTING_KEY = "rejection_analysis_json"
 
-@router.get("/analysis/rejected")
-async def rejected_analysis(session: Session = Depends(get_session)):
+
+def _closed_apps_with_leads(session: Session) -> list[dict]:
     apps = session.exec(
         select(Application).where(
             Application.status.in_(list(CLOSED_STATUSES)),
             Application.deleted_at == None,  # noqa: E711
         )
     ).all()
-
-    if len(apps) < 3:
-        return {"insufficient_data": True}
 
     apps_with_leads: list[dict] = []
     for app in apps:
@@ -128,8 +126,62 @@ async def rejected_analysis(session: Session = Depends(get_session)):
             },
             "fit": fit,
         })
+    return apps_with_leads
 
-    return await build_rejection_analysis(apps_with_leads)
+
+def _stored_narrative() -> dict:
+    raw = get_setting(REJECTION_ANALYSIS_SETTING_KEY)
+    if not raw:
+        return {"narrative": None, "generated_at": None}
+    try:
+        return json_module.loads(raw)
+    except (json_module.JSONDecodeError, TypeError):
+        return {"narrative": None, "generated_at": None}
+
+
+class RejectionNarrativeIn(BaseModel):
+    narrative: str
+
+
+@router.get("/analysis/rejected")
+def rejected_analysis(session: Session = Depends(get_session)):
+    apps_with_leads = _closed_apps_with_leads(session)
+    if len(apps_with_leads) < 3:
+        return {"insufficient_data": True}
+
+    agg = _aggregate(apps_with_leads)
+    stored = _stored_narrative()
+    return {**agg, **stored}
+
+
+@router.post("/analysis/rejected/generate")
+async def generate_rejected_analysis(session: Session = Depends(get_session)):
+    """Ollama path: aggregate + LLM narrative, offline."""
+    apps_with_leads = _closed_apps_with_leads(session)
+    if len(apps_with_leads) < 3:
+        return {"insufficient_data": True}
+
+    agg = _aggregate(apps_with_leads)
+    narrative = await generate_narrative(agg)
+    generated_at = now_utc().isoformat()
+    set_setting(
+        REJECTION_ANALYSIS_SETTING_KEY,
+        json_module.dumps({"narrative": narrative, "generated_at": generated_at}),
+    )
+    return {**agg, "narrative": narrative, "generated_at": generated_at}
+
+
+@router.put("/analysis/rejected")
+def save_rejected_analysis(body: RejectionNarrativeIn, session: Session = Depends(get_session)):
+    """Write-back endpoint for the Claude 'Copy prompt for Claude' rejection-analysis path."""
+    apps_with_leads = _closed_apps_with_leads(session)
+    agg = _aggregate(apps_with_leads)
+    generated_at = now_utc().isoformat()
+    set_setting(
+        REJECTION_ANALYSIS_SETTING_KEY,
+        json_module.dumps({"narrative": body.narrative, "generated_at": generated_at}),
+    )
+    return {**agg, "narrative": body.narrative, "generated_at": generated_at}
 
 
 @router.get("/{app_id}")

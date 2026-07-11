@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 import config
 from services.llm import generate
 
@@ -86,17 +84,14 @@ def _aggregate(apps_with_leads: list[dict]) -> dict:
     }
 
 
-async def build_rejection_analysis(apps_with_leads: list[dict]) -> dict:
-    agg = _aggregate(apps_with_leads)
+def build_narrative_prompt(agg: dict) -> str:
     career_goal = config.load_career_goal()
-    model = config.model("research")
-
     entries_text = "\n".join(
         f"- {e['company']} | {e['job_title']} | score {e['match_score']} | "
         f"{e['stage']} | {e['goal_alignment_note']}"
         for e in agg["entries"]
     )
-    prompt = (
+    return (
         f"Career goal:\n{career_goal}\n\n"
         f"Closed applications ({agg['total']} total):\n{entries_text}\n\n"
         f"Skill gaps (GAP frequency): {agg['skill_gaps']}\n"
@@ -107,15 +102,9 @@ async def build_rejection_analysis(apps_with_leads: list[dict]) -> dict:
         "Write the analysis."
     )
 
-    narrative = await generate(model, prompt, system=SYNTHESIS_SYSTEM)
 
-    return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "total": agg["total"],
-        "narrative": narrative.strip(),
-        "skill_gaps": agg["skill_gaps"],
-        "by_company_type": agg["by_company_type"],
-        "score_distribution": agg["score_distribution"],
-        "goal_alignment": agg["goal_alignment"],
-        "outcome_stage": agg["outcome_stage"],
-    }
+async def generate_narrative(agg: dict) -> str:
+    model = config.model("research")
+    prompt = build_narrative_prompt(agg)
+    narrative = await generate(model, prompt, system=SYNTHESIS_SYSTEM)
+    return narrative.strip()

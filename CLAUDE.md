@@ -228,6 +228,13 @@ Two independent generation blocks, both only active when `app.status === "Interv
 
 **Export to PDF** — the `/interview` workspace's `CompanyPrepPanel` topbar has an "Export PDF" button that hits `GET /api/application/{id}/interview-export.pdf`. The endpoint assembles a standalone HTML packet in `services/interview_export.py` (`build_interview_html`: the seven Interview Prep fields + the `interview_notes_json` working notes + the verbatim `job_description`, with headings per `app.language`), converts it via the LibreOffice pipeline (`render_interview_pdf`, reusing `pdf._find_soffice`), and streams it as a download. The Skills Debrief is excluded and nothing is persisted under `applications/`.
 
+### Rejection analysis (`/applications/analysis`)
+Surfaces patterns across all closed applications (`status IN ("Rejected", "Rejected after interview", "Ghosted after interview")`, not soft-deleted) — skill gaps, company-type breakdown, match-score distribution, goal alignment, and outcome stage — plus an LLM-written narrative. Requires at least 3 closed applications; otherwise `GET /api/tracker/analysis/rejected` returns `{"insufficient_data": true}`. Aggregation logic lives in `services/rejection_analysis.py` (`_aggregate`); the narrative (whichever path wrote it last) is persisted as JSON under the `rejection_analysis_json` key in the `Setting` table, so `GET /api/tracker/analysis/rejected` always returns fresh aggregates merged with the last-saved narrative.
+
+**Two ways to generate the narrative** (mirrors the Interview Prep pattern):
+- **Generate with Ollama** — `POST /api/tracker/analysis/rejected/generate` runs `rejection_analysis.generate_narrative` offline against the `research` model, using the pre-computed aggregates + `data/career_goal.md`, and persists the result.
+- **Copy prompt for Claude** — the button copies an instruction to fetch stats from `GET /api/tracker/analysis/rejected`, read `data/career_goal.md`, write a 2-3 paragraph narrative (specific, honest, actionable, no corporate language — same bar as `SYNTHESIS_SYSTEM`), and save via `PUT /api/tracker/analysis/rejected` with `{"narrative": "..."}`. This is the **Rejection analysis — Claude path**.
+
 ### Templates
 `templates/resume/resume_en.docx` and `templates/resume/resume_de.docx` are the base CV DOCX files. `templates/cover-letter/cover_letter.docx` is the cover letter base. All are gitignored — `.gitkeep` preserves the folders.
 
