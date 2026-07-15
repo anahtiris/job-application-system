@@ -190,7 +190,13 @@ export default function Dashboard() {
                   <button
                     key={app.id}
                     className={`kanban-card ${isPastInterview ? "opacity-60" : ""}`}
-                    onClick={() => router.push(`/apply/${app.id}`)}
+                    onClick={() =>
+                      router.push(
+                        app.status === "Interview"
+                          ? `/interview/${app.id}`
+                          : `/apply/${app.id}`
+                      )
+                    }
                   >
                     {app.status === "Interview" && (
                       <span
