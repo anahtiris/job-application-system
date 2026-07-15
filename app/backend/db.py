@@ -83,6 +83,8 @@ class Application(SQLModel, table=True):
     interview_date: Optional[str] = None
     interview_notes_json: Optional[str] = None
     fit_analysis_json: Optional[str] = None
+    fit_score: Optional[int] = None  # frozen from the source lead at approval time
+    fit_verdict: Optional[str] = None  # strong | maybe | skip — frozen from the source lead at approval time
     created_at: datetime = Field(default_factory=now_utc)
     updated_at: datetime = Field(default_factory=now_utc)
     deleted_at: Optional[datetime] = None
@@ -92,7 +94,7 @@ def create_db():
     SQLModel.metadata.create_all(engine)
     # Safe migration for columns added after initial schema
     with engine.connect() as conn:
-        for col_def in ["resume_docx_path TEXT", "cover_letter_docx_path TEXT", "cover_letter_notes TEXT", "interview_prep_json TEXT", "interview_debrief_md TEXT", "source_url TEXT", "interview_date TEXT", "interview_notes_json TEXT", "fit_analysis_json TEXT", "deleted_at DATETIME"]:
+        for col_def in ["resume_docx_path TEXT", "cover_letter_docx_path TEXT", "cover_letter_notes TEXT", "interview_prep_json TEXT", "interview_debrief_md TEXT", "source_url TEXT", "interview_date TEXT", "interview_notes_json TEXT", "fit_analysis_json TEXT", "deleted_at DATETIME", "fit_score INTEGER", "fit_verdict TEXT"]:
             try:
                 conn.execute(text(f"ALTER TABLE application ADD COLUMN {col_def}"))
                 conn.commit()
@@ -109,6 +111,20 @@ def create_db():
             conn.execute(text(
                 "UPDATE application SET status = 'Finalized' "
                 "WHERE status = 'Draft' AND resume_pdf_path IS NOT NULL"
+            ))
+            conn.commit()
+        except Exception:
+            pass
+        # Backfill: applications created before fit_score/fit_verdict existed —
+        # carry the originating lead's frozen score forward.
+        try:
+            conn.execute(text(
+                "UPDATE application SET "
+                "fit_score = (SELECT fit_score FROM joblead WHERE joblead.application_id = application.id), "
+                "fit_verdict = (SELECT fit_verdict FROM joblead WHERE joblead.application_id = application.id) "
+                "WHERE fit_score IS NULL AND EXISTS ("
+                "SELECT 1 FROM joblead WHERE joblead.application_id = application.id AND joblead.fit_score IS NOT NULL"
+                ")"
             ))
             conn.commit()
         except Exception:
