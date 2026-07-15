@@ -314,7 +314,7 @@ async def generate_pdf(body: PdfRequest, session: Session = Depends(get_session)
             output_dir=out_dir,
             person_name=get_setting("person.name", ""),
         )
-    except (ValueError, RuntimeError) as e:
+    except RuntimeError as e:
         raise HTTPException(422, str(e))
 
     app.resume_pdf_path = paths["resume_pdf"]

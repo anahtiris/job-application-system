@@ -413,9 +413,9 @@ def build_pdfs(
 
     cv_pdf = _libreoffice_to_pdf(cv_docx, output_dir)
     pages = _page_count(cv_pdf)
+    cv_page_warning = None
     if pages != 1:
-        cv_pdf.unlink(missing_ok=True)
-        raise ValueError(
+        cv_page_warning = (
             f"CV is {pages} pages — must be exactly 1. "
             "Shorten the profile summary (< 200 chars) or trim skills/bullets."
         )
@@ -427,4 +427,5 @@ def build_pdfs(
         "resume_pdf": str(cv_pdf),
         "cover_letter_docx": str(cl_docx),
         "cover_letter_pdf": str(cl_pdf),
+        "cv_page_warning": cv_page_warning,
     }
