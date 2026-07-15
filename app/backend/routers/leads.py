@@ -186,6 +186,8 @@ def approve_lead(lead_id: str, session: Session = Depends(get_session)):
         company_tone=lead.company_tone,
         source_url=lead.source_url,
         fit_analysis_json=lead.fit_analysis_json,
+        fit_score=lead.fit_score,
+        fit_verdict=lead.fit_verdict,
         status="New",
     )
     session.add(app)

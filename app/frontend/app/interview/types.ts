@@ -72,8 +72,6 @@ export interface GeneralPrep {
 export interface InterviewNotes {
   overview: string;
   red_flags: string[];
-  questions: { id: string; q: string; a: string }[];
-  gaps: { id: string; skill: string; severity: "red" | "amber" | "green"; note: string }[];
   salary: { ask: string; market: string; floor: string; notes: string };
   notes: string;
   my_q_state: Record<string, { asked: boolean; note: string }>;
@@ -155,8 +153,6 @@ export const DEFAULT_PREP: GeneralPrep = {
 export const DEFAULT_NOTES: InterviewNotes = {
   overview: "",
   red_flags: [],
-  questions: [],
-  gaps: [],
   salary: { ask: "", market: "", floor: "", notes: "" },
   notes: "",
   my_q_state: {},

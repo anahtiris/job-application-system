@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 import type { ReviewResult } from "@/components/ReviewPanel";
 
@@ -256,6 +257,7 @@ export function useApplicationWizard() {
     await api.put("/api/application/finals", { application_id: appId, resume_md: resumeMd, cover_letter_md: clMd, company_address: companyAddress });
     const res = await api.post("/api/application/pdf", { application_id: appId }).catch((e: unknown) => ({ error: (e as Error).message }));
     if (res?.detail || res?.error) { setPdfError(res.detail ?? res.error); setGeneratingPdf(false); return; }
+    if (res?.cv_page_warning) toast.warning(res.cv_page_warning);
     router.push(`/apply/${appId}`);
   };
 

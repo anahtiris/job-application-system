@@ -15,12 +15,11 @@ import {
 import { TabBar } from "../shared";
 import { CompanyOverviewTab } from "./CompanyOverviewTab";
 import { CompanyQuestionsTab } from "./CompanyQuestionsTab";
-import { CompanyAnticipateTab } from "./CompanyAnticipateTab";
 import { CompanyBackgroundTab } from "./CompanyBackgroundTab";
 
 // ─── Company Prep Panel ─────────────────────────────────────────────────────────
 
-const COMPANY_TABS = ["Overview", "Questions", "Anticipate", "Background", "Salary", "Notes"] as const;
+const COMPANY_TABS = ["Overview", "Questions", "Background", "Salary", "Notes"] as const;
 type CompanyTab = (typeof COMPANY_TABS)[number];
 
 export function CompanyPrepPanel({
@@ -257,10 +256,6 @@ export function CompanyPrepPanel({
 
         {tab === "Questions" && (
           <CompanyQuestionsTab notes={notes} update={update} prep={prep} updatePrep={updatePrep} />
-        )}
-
-        {tab === "Anticipate" && (
-          <CompanyAnticipateTab notes={notes} update={update} />
         )}
 
         {tab === "Background" && (

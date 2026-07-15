@@ -155,6 +155,24 @@ export default function LeadsPage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time data fetch; the loading flag inside load() is intentional
   useEffect(() => { load(); }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate persisted filters on mount
+  useEffect(() => {
+    try {
+      const storedStatus = localStorage.getItem("leads.statusFilters");
+      if (storedStatus) setStatusFilters(JSON.parse(storedStatus));
+      const storedFit = localStorage.getItem("leads.fitFilters");
+      if (storedFit) setFitFilters(JSON.parse(storedFit));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("leads.statusFilters", JSON.stringify(statusFilters));
+  }, [statusFilters]);
+
+  useEffect(() => {
+    localStorage.setItem("leads.fitFilters", JSON.stringify(fitFilters));
+  }, [fitFilters]);
+
   const handleApprove = async (leadId: string) => {
     setApprovingId(leadId);
     try {
