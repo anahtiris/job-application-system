@@ -83,6 +83,33 @@ def create_application(body: CreateApplicationRequest, session: Session = Depend
     return app
 
 
+def _fit_score_verdict(fit_analysis_json: Optional[str]) -> tuple[Optional[int], Optional[str]]:
+    """Derive a display fit score/verdict from an Application's stored JD analysis."""
+    if not fit_analysis_json:
+        return None, None
+    try:
+        fit = json_module.loads(fit_analysis_json)
+    except (json_module.JSONDecodeError, TypeError):
+        return None, None
+    score = fit.get("match_score")
+    if score is None:
+        return None, None
+    # Normalize 0-1 float to 0-100 int if the model ignored the scale instruction
+    if isinstance(score, float) and score <= 1.0:
+        score = int(score * 100)
+    score = int(score)
+    is_poor = bool(fit.get("is_poor_match", False))
+    if is_poor:
+        verdict = "skip"
+    elif score >= 70:
+        verdict = "strong"
+    elif score >= 50:
+        verdict = "maybe"
+    else:
+        verdict = "skip"
+    return score, verdict
+
+
 @router.get("/")
 def list_applications(session: Session = Depends(get_session)):
     apps = session.exec(
@@ -90,7 +117,12 @@ def list_applications(session: Session = Depends(get_session)):
         .where(Application.deleted_at == None)  # noqa: E711
         .order_by(Application.created_at.desc())
     ).all()
-    return apps
+    result = []
+    for app in apps:
+        data = app.model_dump()
+        data["fit_score"], data["fit_verdict"] = _fit_score_verdict(app.fit_analysis_json)
+        result.append(data)
+    return result
 
 
 CLOSED_STATUSES = {"Rejected", "Rejected after interview", "Ghosted after interview"}

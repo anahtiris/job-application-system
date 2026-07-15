@@ -9,7 +9,7 @@ import "@anahtiris/flipclock/dist/flipclock.css";
 import { api } from "@/lib/api";
 import { useIsDark } from "@/hooks/useIsDark";
 import { isoToDateValue, dateValueToISO, shortDate } from "@/lib/utils";
-import { StatusBadge, useClickOutside, appLabelStyleCls } from "@/components/ui-kit";
+import { StatusBadge, useClickOutside, appLabelStyleCls, verdictStyleCls } from "@/components/ui-kit";
 import { STATUS_DISPLAY } from "@/lib/status";
 
 const APPS_CLAUDE_PROMPT = "generate CVs and cover letters for all new applications in a batch";
@@ -22,6 +22,8 @@ interface Application {
   date_applied: string | null;
   created_at: string;
   language: string;
+  fit_score: number | null;
+  fit_verdict: string | null;
 }
 
 // Which backend statuses each filter option covers
@@ -42,7 +44,7 @@ const FILTER_LABELS = ["Analyzed", "Draft", "Finalized", "Applied", "Interview",
 const ACTIVE_STATUSES = new Set(["Applied", "Interview", "Offer"]);
 
 // Shared column grid for both header and rows
-const COL_GRID_CLS = "grid-cols-[2fr_2fr_130px_90px_66px]";
+const COL_GRID_CLS = "grid-cols-[2fr_2fr_90px_130px_90px_66px]";
 
 type FilterLabel = (typeof FILTER_LABELS)[number];
 
@@ -58,6 +60,10 @@ const STATUS_RANK: Record<string, number> = {
   Rejected: 6,
   Ghosted: 7,
 };
+
+function verdictCls(verdict: string): string {
+  return `text-[11px] font-semibold py-0.5 px-[7px] rounded-full font-shell capitalize ${verdictStyleCls(verdict)}`;
+}
 
 function companyChip(name: string): string {
   const clean = name.replace(/[^a-zA-Z0-9\s]/g, "").trim();
@@ -183,10 +189,12 @@ export default function ApplicationsPage() {
   const clearFilters = () => setActiveFilters(new Set());
 
   const exportCsv = () => {
-    const headers = ["Company", "Job Title", "Status", "Date Applied", "Language"];
+    const headers = ["Company", "Job Title", "Fit Score", "Fit Verdict", "Status", "Date Applied", "Language"];
     const rows = apps.map((a) => [
       a.company,
       a.job_title,
+      a.fit_score ?? "",
+      a.fit_verdict ?? "",
       STATUS_DISPLAY[a.status] ?? a.status,
       a.date_applied ?? "",
       a.language,
@@ -402,6 +410,7 @@ export default function ApplicationsPage() {
         <div className={`grid ${COL_GRID_CLS} px-4 border-b-[0.5px] border-border-tertiary bg-background-secondary sticky top-0 z-[2]`}>
           {colHeader("Company")}
           {colHeader("Role")}
+          {colHeader("Fit")}
           {colHeader("Status")}
           {colHeader("Date")}
           <div />
@@ -439,6 +448,18 @@ export default function ApplicationsPage() {
                 {/* Role */}
                 <div className="text-[13px] text-text-secondary min-w-0 line-clamp-2 break-words">
                   {app.job_title}
+                </div>
+
+                {/* Fit */}
+                <div className="flex items-center gap-1.5">
+                  {app.fit_score !== null ? (
+                    <>
+                      <span className="text-[13px] font-medium font-mono">{app.fit_score}</span>
+                      {app.fit_verdict && <span className={verdictCls(app.fit_verdict)}>{app.fit_verdict}</span>}
+                    </>
+                  ) : (
+                    <span className="text-[12px] text-text-tertiary">—</span>
+                  )}
                 </div>
 
                 {/* Status badge */}
