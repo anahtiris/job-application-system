@@ -10,8 +10,6 @@ export interface InterviewListContextValue {
   loaded: boolean;
   isDark: boolean;
   onDateChange: (id: string, iso: string | null) => void;
-  onPrepChange: (id: string, json: string) => void;
-  onNotesChange: (id: string, json: string) => void;
 }
 
 const InterviewListContext = createContext<InterviewListContextValue | null>(null);

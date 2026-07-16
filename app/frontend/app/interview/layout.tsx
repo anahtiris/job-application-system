@@ -64,8 +64,6 @@ export default function InterviewLayout({ children }: { children: React.ReactNod
     upcoming: upcomingInterviews,
     past: pastInterviews,
     onDateChange,
-    onPrepChange,
-    onNotesChange,
   } = useInterviews();
 
   const leftPanelContent = panelCollapsed ? (
@@ -173,7 +171,7 @@ export default function InterviewLayout({ children }: { children: React.ReactNod
 
   return (
     <InterviewListProvider
-      value={{ interviews, loaded, isDark, onDateChange, onPrepChange, onNotesChange }}
+      value={{ interviews, loaded, isDark, onDateChange }}
     >
       <div className="flex h-full overflow-hidden">
         {/* ── Left panel ── */}

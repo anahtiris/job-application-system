@@ -9,14 +9,11 @@ export interface UseInterviewsResult {
   upcoming: Interview[];
   past: Interview[];
   onDateChange: (id: string, iso: string | null) => void;
-  onPrepChange: (id: string, json: string) => void;
-  onNotesChange: (id: string, json: string) => void;
 }
 
 // Owns the Interview-status tracker list for the /interview segment: the fetch,
-// the split into upcoming/past, and the handlers that keep the in-memory list in
-// sync with edits so navigating back to an interview re-initializes its panel
-// from the latest value rather than the page-load snapshot.
+// the split into upcoming/past, and the handler that keeps the in-memory list in
+// sync with round date edits so the sidebar re-sorts without a full refetch.
 export function useInterviews(): UseInterviewsResult {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -33,23 +30,10 @@ export function useInterviews(): UseInterviewsResult {
 
   useEffect(() => { load(); }, [load]);
 
-  const patch = useCallback(
-    (id: string, fields: Partial<Interview>) =>
-      setInterviews((prev) => prev.map((a) => (a.id === id ? { ...a, ...fields } : a))),
-    [],
-  );
-
   const onDateChange = useCallback(
-    (id: string, iso: string | null) => patch(id, { interview_date: iso }),
-    [patch],
-  );
-  const onPrepChange = useCallback(
-    (id: string, json: string) => patch(id, { interview_prep_json: json }),
-    [patch],
-  );
-  const onNotesChange = useCallback(
-    (id: string, json: string) => patch(id, { interview_notes_json: json }),
-    [patch],
+    (id: string, iso: string | null) =>
+      setInterviews((prev) => prev.map((a) => (a.id === id ? { ...a, interview_date: iso } : a))),
+    [],
   );
 
   const { upcoming, past } = useMemo(() => {
@@ -67,5 +51,5 @@ export function useInterviews(): UseInterviewsResult {
     return { upcoming, past };
   }, [interviews]);
 
-  return { interviews, loaded, upcoming, past, onDateChange, onPrepChange, onNotesChange };
+  return { interviews, loaded, upcoming, past, onDateChange };
 }
