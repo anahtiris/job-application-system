@@ -106,13 +106,25 @@ export function CompanyPrepPanel({
     setRounds((prev) => prev.map((r) => (r.id === selectedRoundId ? { ...r, notes: { ...r.notes, ...patch } } : r)));
   };
 
-  // Debounced prep save
-  const prepSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Reset the auto-save dirty flag whenever the selected round changes —
+  // `notes` is re-derived from `selectedRound?.notes` on every round switch,
+  // so its object reference changes even with no edit; without this the
+  // useAutoSave effect re-fires on switch and issues a spurious re-save.
+  const [lastRoundId, setLastRoundId] = useState(selectedRoundId);
+  if (selectedRoundId !== lastRoundId) {
+    setLastRoundId(selectedRoundId);
+    markClean();
+  }
+
+  // Debounced prep save — keyed per round so switching rounds mid-edit
+  // doesn't cancel another round's still-pending save.
+  const prepSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const savePrep = useCallback((roundId: string, next: InterviewPrep) => {
-    if (prepSaveTimer.current) clearTimeout(prepSaveTimer.current);
+    if (prepSaveTimers.current[roundId]) clearTimeout(prepSaveTimers.current[roundId]);
     setPrepSaveState("saving");
-    prepSaveTimer.current = setTimeout(async () => {
+    prepSaveTimers.current[roundId] = setTimeout(async () => {
       await api.put(`/api/application/${app.id}/interview-prep`, { round_id: roundId, prep: next });
+      delete prepSaveTimers.current[roundId];
       setPrepSaveState("saved");
       setTimeout(() => setPrepSaveState("idle"), 2000);
     }, 1000);
