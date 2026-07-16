@@ -11,7 +11,7 @@ def _make_app(client):
 
 
 def test_export_streams_pdf(client, monkeypatch, tmp_path):
-    def fake_render(app, out_dir):
+    def fake_render(app, out_dir, round=None):
         p = tmp_path / "interview_prep.pdf"
         p.write_bytes(b"%PDF-1.4 fake body")
         return p

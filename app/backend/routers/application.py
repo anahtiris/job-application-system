@@ -3,7 +3,7 @@ import logging
 import re
 import tempfile
 from pathlib import Path
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
 from docx import Document
 from fastapi import APIRouter, Depends, HTTPException
@@ -429,16 +429,19 @@ def save_interview_prep(app_id: str, body: SaveInterviewPrepRequest, session: Se
 
 
 @router.get("/{app_id}/interview-export.pdf")
-def export_interview_pdf(app_id: str, session: Session = Depends(get_session)):
-    """Render this scheduled interview's prep (prep + notes + JD) to a PDF and
+def export_interview_pdf(app_id: str, round_id: Optional[str] = None, session: Session = Depends(get_session)):
+    """Render one interview round's prep (prep + notes + JD) to a PDF and
     stream it as a download. Derived artifact — regenerated each request, not
-    persisted under applications/."""
+    persisted under applications/. Defaults to the most recently created round."""
     app = session.get(Application, app_id)
     if not app:
         raise HTTPException(404, "Application not found")
 
+    rounds = load_rounds(app)
+    round_ = find_round(rounds, round_id) if round_id else (rounds[-1] if rounds else None)
+
     tmp_dir = Path(tempfile.mkdtemp())
-    pdf_path = render_interview_pdf(app, tmp_dir)
+    pdf_path = render_interview_pdf(app, tmp_dir, round_)
 
     person = get_setting("person.name", "") or "Candidate"
     safe = lambda s: re.sub(r"[^\w]+", "_", s).strip("_") or "x"

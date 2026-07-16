@@ -108,18 +108,19 @@ def _list_block(items: list[str], lab: str) -> str:
     return f"<h3>{lab}</h3><ul>{lis}</ul>"
 
 
-def build_interview_html(app: Application) -> str:
+def build_interview_html(app: Application, round: dict | None) -> str:
     lang = app.language if app.language in LABELS else "en"
     L = LABELS[lang]
-    prep = _load(app.interview_prep_json)
-    notes = _load(app.interview_notes_json)
+    prep = (round or {}).get("prep", {}) or {}
+    notes = (round or {}).get("notes", {}) or {}
+    date = (round or {}).get("date")
 
     head = (
         f"<h1>{_esc(app.company)}</h1>"
         f"<div class='meta'>{_esc(app.job_title)}</div>"
     )
-    if app.interview_date:
-        head += f"<div class='meta'>{L['date']}: {_esc(app.interview_date)}</div>"
+    if date:
+        head += f"<div class='meta'>{L['date']}: {_esc(date)}</div>"
 
     # Interview Prep section
     prep_html = (
@@ -165,12 +166,12 @@ def build_interview_html(app: Application) -> str:
     )
 
 
-def render_interview_pdf(app: Application, out_dir: Path) -> Path:
+def render_interview_pdf(app: Application, out_dir: Path, round: dict | None = None) -> Path:
     """Write the assembled HTML to a temp file and convert it to PDF via
     LibreOffice. Returns the path to the generated PDF inside `out_dir`."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    html = build_interview_html(app)
+    html = build_interview_html(app, round)
 
     html_path = out_dir / "interview_prep.html"
     html_path.write_text(html, encoding="utf-8")
