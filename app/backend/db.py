@@ -82,6 +82,7 @@ class Application(SQLModel, table=True):
     interview_debrief_md: Optional[str] = None
     interview_date: Optional[str] = None
     interview_notes_json: Optional[str] = None
+    interview_rounds_json: Optional[str] = None
     fit_analysis_json: Optional[str] = None
     fit_score: Optional[int] = None  # frozen from the source lead at approval time
     fit_verdict: Optional[str] = None  # strong | maybe | skip — frozen from the source lead at approval time
@@ -94,7 +95,7 @@ def create_db():
     SQLModel.metadata.create_all(engine)
     # Safe migration for columns added after initial schema
     with engine.connect() as conn:
-        for col_def in ["resume_docx_path TEXT", "cover_letter_docx_path TEXT", "cover_letter_notes TEXT", "interview_prep_json TEXT", "interview_debrief_md TEXT", "source_url TEXT", "interview_date TEXT", "interview_notes_json TEXT", "fit_analysis_json TEXT", "deleted_at DATETIME", "fit_score INTEGER", "fit_verdict TEXT"]:
+        for col_def in ["resume_docx_path TEXT", "cover_letter_docx_path TEXT", "cover_letter_notes TEXT", "interview_prep_json TEXT", "interview_debrief_md TEXT", "source_url TEXT", "interview_date TEXT", "interview_notes_json TEXT", "interview_rounds_json TEXT", "fit_analysis_json TEXT", "deleted_at DATETIME", "fit_score INTEGER", "fit_verdict TEXT"]:
             try:
                 conn.execute(text(f"ALTER TABLE application ADD COLUMN {col_def}"))
                 conn.commit()

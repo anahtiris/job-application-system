@@ -3,7 +3,7 @@ import logging
 import re
 import tempfile
 from pathlib import Path
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
 from docx import Document
 from fastapi import APIRouter, Depends, HTTPException
@@ -15,6 +15,7 @@ from config import Paths, load_career_goal, load_skills_inventory, model
 from db import Application, JobLead, get_session, get_setting
 from services import analyzer, generator, interview, researcher, reviewer
 from services.interview_export import render_interview_pdf
+from services.interview_rounds import load_rounds, find_round
 from services.interview_schema import InterviewPrep, ensure_ids
 from services.pdf import build_pdfs
 
@@ -338,6 +339,14 @@ class InterviewPrepRequest(BaseModel):
     focus_skills: str = ""
 
 
+class GenerateRoundPrepRequest(BaseModel):
+    application_id: str
+    round_id: str
+    interview_round: str = "Technical"
+    interviewer_type: str = "Hiring Manager"
+    focus_skills: str = ""
+
+
 @router.post("/interview-debrief")
 async def generate_interview_debrief(body: InterviewPrepRequest, session: Session = Depends(get_session)):
     app = session.get(Application, body.application_id)
@@ -363,10 +372,14 @@ async def generate_interview_debrief(body: InterviewPrepRequest, session: Sessio
 
 
 @router.post("/interview-prep")
-async def generate_interview_prep(body: InterviewPrepRequest, session: Session = Depends(get_session)):
+async def generate_interview_prep(body: GenerateRoundPrepRequest, session: Session = Depends(get_session)):
     app = session.get(Application, body.application_id)
     if not app:
         raise HTTPException(404, "Application not found")
+    rounds = load_rounds(app)
+    round_ = find_round(rounds, body.round_id)
+    if not round_:
+        raise HTTPException(404, "Round not found")
     master = _master(app.language)
     if not master.exists():
         raise HTTPException(404, "Master resume not found")
@@ -385,36 +398,50 @@ async def generate_interview_prep(body: InterviewPrepRequest, session: Session =
         cover_letter=app.cover_letter_final_md or app.cover_letter_draft_md or "",
         persona_path=PERSONA,
     )
-    app.interview_prep_json = json.dumps(prep, ensure_ascii=False)
+    round_["prep"] = prep
+    app.interview_rounds_json = json.dumps(rounds)
     session.add(app)
     session.commit()
     return prep
 
 
+class SaveInterviewPrepRequest(BaseModel):
+    round_id: str
+    prep: InterviewPrep
+
+
 @router.put("/{app_id}/interview-prep")
-def save_interview_prep(app_id: str, body: InterviewPrep, session: Session = Depends(get_session)):
+def save_interview_prep(app_id: str, body: SaveInterviewPrepRequest, session: Session = Depends(get_session)):
     """Write-back endpoint for the Claude 'Copy prompt for Claude' interview-prep path."""
     app = session.get(Application, app_id)
     if not app:
         raise HTTPException(404, "Application not found")
-    prep = ensure_ids(body.model_dump())
-    app.interview_prep_json = json.dumps(prep, ensure_ascii=False)
+    rounds = load_rounds(app)
+    round_ = find_round(rounds, body.round_id)
+    if not round_:
+        raise HTTPException(404, "Round not found")
+    prep = ensure_ids(body.prep.model_dump())
+    round_["prep"] = prep
+    app.interview_rounds_json = json.dumps(rounds)
     session.add(app)
     session.commit()
     return {"saved": True, "prep": prep}
 
 
 @router.get("/{app_id}/interview-export.pdf")
-def export_interview_pdf(app_id: str, session: Session = Depends(get_session)):
-    """Render this scheduled interview's prep (prep + notes + JD) to a PDF and
+def export_interview_pdf(app_id: str, round_id: Optional[str] = None, session: Session = Depends(get_session)):
+    """Render one interview round's prep (prep + notes + JD) to a PDF and
     stream it as a download. Derived artifact — regenerated each request, not
-    persisted under applications/."""
+    persisted under applications/. Defaults to the most recently created round."""
     app = session.get(Application, app_id)
     if not app:
         raise HTTPException(404, "Application not found")
 
+    rounds = load_rounds(app)
+    round_ = find_round(rounds, round_id) if round_id else (rounds[-1] if rounds else None)
+
     tmp_dir = Path(tempfile.mkdtemp())
-    pdf_path = render_interview_pdf(app, tmp_dir)
+    pdf_path = render_interview_pdf(app, tmp_dir, round_)
 
     person = get_setting("person.name", "") or "Candidate"
     safe = lambda s: re.sub(r"[^\w]+", "_", s).strip("_") or "x"

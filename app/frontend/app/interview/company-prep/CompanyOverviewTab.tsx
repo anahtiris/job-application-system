@@ -11,7 +11,6 @@ import { PrepQAList } from "../shared";
 
 // ─── Prep generation constants ─────────────────────────────────────────────────
 
-const PREP_ROUNDS = ["Screening", "Technical", "Final"] as const;
 const PREP_INTERVIEWERS = ["HR / Recruiter", "Hiring Manager", "Technical Peer"] as const;
 
 const pillBtnCls = (primary = false): string => {
@@ -31,8 +30,7 @@ export function CompanyOverviewTab({
   generatingPrep,
   showPrepOptions,
   setShowPrepOptions,
-  round,
-  setRound,
+  roundType,
   interviewer,
   setInterviewer,
   focus,
@@ -48,8 +46,7 @@ export function CompanyOverviewTab({
   generatingPrep: boolean;
   showPrepOptions: boolean;
   setShowPrepOptions: (v: boolean) => void;
-  round: string;
-  setRound: (v: string) => void;
+  roundType: string;
   interviewer: string;
   setInterviewer: (v: string) => void;
   focus: string;
@@ -78,21 +75,8 @@ export function CompanyOverviewTab({
       {showPrepOptions && (
         <SectionCard title="Generate prep">
           <div className="flex flex-col gap-3">
-            <div>
-              <div className={sectionLabelCls}>Round</div>
-              <div className="flex gap-1 flex-wrap">
-                {PREP_ROUNDS.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setRound(r)}
-                    className={`text-[11px] font-medium py-1 px-2.5 rounded-[6px] cursor-pointer font-shell ${
-                      round === r ? "border-none bg-custom text-white" : "border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
+            <div className={mutedTextCls("11px")}>
+              Round: <strong className="text-text-primary">{roundType}</strong>
             </div>
             <div>
               <div className={sectionLabelCls}>Interviewer</div>

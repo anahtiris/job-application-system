@@ -7,9 +7,8 @@ export interface Interview {
   job_description: string | null;
   language: string;
   status: string;
+  interview_rounds_json: string | null;
   interview_date: string | null;
-  interview_notes_json: string | null;
-  interview_prep_json?: string | null;
 }
 
 export interface PrepQA { id: string; q: string; a: string }
@@ -157,3 +156,12 @@ export const DEFAULT_NOTES: InterviewNotes = {
   notes: "",
   my_q_state: {},
 };
+
+export interface InterviewRound {
+  id: string;
+  round_type: string;
+  date: string | null;
+  prep: InterviewPrep;
+  notes: InterviewNotes;
+  created_at: string;
+}

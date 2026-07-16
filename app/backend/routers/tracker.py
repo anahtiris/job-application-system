@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from db import Application, JobLead, get_session, get_setting, now_utc, set_setting
+from services.interview_rounds import new_round, load_rounds, find_round, recompute_interview_date
 from services.rejection_analysis import _aggregate, generate_narrative
 
 router = APIRouter()
@@ -29,6 +30,21 @@ NEXT_STATUSES: dict[str, list[str]] = {
     "Rejected after interview": ["Rejected", "Ghosted after interview"],
     "Ghosted after interview":  ["Interview", "Rejected after interview"],
 }
+
+
+def _ensure_rounds_migrated(app: Application, session: Session) -> Application:
+    """GET endpoints must trigger the same lazy legacy-migration load_rounds()
+    performs in memory, and persist it — otherwise an application with old-shape
+    interview_prep_json/interview_date/interview_notes_json but no
+    interview_rounds_json yet renders as having zero rounds."""
+    if not app.interview_rounds_json:
+        rounds = load_rounds(app)
+        if rounds:
+            app.interview_rounds_json = json_module.dumps(rounds)
+            session.add(app)
+            session.commit()
+            session.refresh(app)
+    return app
 
 
 class CreateApplicationRequest(BaseModel):
@@ -90,7 +106,7 @@ def list_applications(session: Session = Depends(get_session)):
         .where(Application.deleted_at == None)  # noqa: E711
         .order_by(Application.created_at.desc())
     ).all()
-    return apps
+    return [_ensure_rounds_migrated(app, session) for app in apps]
 
 
 CLOSED_STATUSES = {"Rejected", "Rejected after interview", "Ghosted after interview"}
@@ -189,7 +205,7 @@ def get_application(app_id: str, session: Session = Depends(get_session)):
     app = session.get(Application, app_id)
     if not app:
         raise HTTPException(404, "Application not found")
-    return app
+    return _ensure_rounds_migrated(app, session)
 
 
 @router.patch("/{app_id}/details")
@@ -266,34 +282,87 @@ def update_notes(app_id: str, body: UpdateNotesRequest, session: Session = Depen
     return {"saved": True}
 
 
-class UpdateInterviewDateRequest(BaseModel):
-    interview_date: Optional[str] = None
+class AddRoundRequest(BaseModel):
+    round_type: str
+    date: Optional[str] = None
 
 
-@router.patch("/{app_id}/interview-date")
-def update_interview_date(app_id: str, body: UpdateInterviewDateRequest, session: Session = Depends(get_session)):
+def _rounds_response(app: Application, rounds: list[dict]) -> dict:
+    app.interview_rounds_json = json_module.dumps(rounds)
+    app.interview_date = recompute_interview_date(rounds)
+    return {"rounds": rounds, "interview_date": app.interview_date}
+
+
+@router.post("/{app_id}/interview-rounds")
+def add_round(app_id: str, body: AddRoundRequest, session: Session = Depends(get_session)):
     app = session.get(Application, app_id)
     if not app:
         raise HTTPException(404, "Application not found")
-    app.interview_date = body.interview_date
+    rounds = load_rounds(app)
+    rounds.append(new_round(body.round_type, body.date))
+    result = _rounds_response(app, rounds)
     session.add(app)
     session.commit()
-    return {"saved": True}
+    return result
 
 
-class UpdateInterviewNotesRequest(BaseModel):
-    notes_json: str
+class UpdateRoundRequest(BaseModel):
+    round_type: Optional[str] = None
+    date: Optional[str] = None
 
 
-@router.patch("/{app_id}/interview-notes")
-def update_interview_notes(app_id: str, body: UpdateInterviewNotesRequest, session: Session = Depends(get_session)):
+@router.patch("/{app_id}/interview-rounds/{round_id}")
+def update_round(app_id: str, round_id: str, body: UpdateRoundRequest, session: Session = Depends(get_session)):
     app = session.get(Application, app_id)
     if not app:
         raise HTTPException(404, "Application not found")
-    app.interview_notes_json = body.notes_json
+    rounds = load_rounds(app)
+    round_ = find_round(rounds, round_id)
+    if not round_:
+        raise HTTPException(404, "Round not found")
+    if body.round_type is not None:
+        round_["round_type"] = body.round_type
+    if "date" in body.model_fields_set:
+        round_["date"] = body.date
+    result = _rounds_response(app, rounds)
     session.add(app)
     session.commit()
-    return {"saved": True}
+    return result
+
+
+class UpdateRoundNotesRequest(BaseModel):
+    notes: dict
+
+
+@router.patch("/{app_id}/interview-rounds/{round_id}/notes")
+def update_round_notes(app_id: str, round_id: str, body: UpdateRoundNotesRequest, session: Session = Depends(get_session)):
+    app = session.get(Application, app_id)
+    if not app:
+        raise HTTPException(404, "Application not found")
+    rounds = load_rounds(app)
+    round_ = find_round(rounds, round_id)
+    if not round_:
+        raise HTTPException(404, "Round not found")
+    round_["notes"] = body.notes
+    app.interview_rounds_json = json_module.dumps(rounds)
+    session.add(app)
+    session.commit()
+    return {"rounds": rounds, "interview_date": app.interview_date}
+
+
+@router.delete("/{app_id}/interview-rounds/{round_id}")
+def delete_round(app_id: str, round_id: str, session: Session = Depends(get_session)):
+    app = session.get(Application, app_id)
+    if not app:
+        raise HTTPException(404, "Application not found")
+    rounds = load_rounds(app)
+    if not find_round(rounds, round_id):
+        raise HTTPException(404, "Round not found")
+    rounds = [r for r in rounds if r["id"] != round_id]
+    result = _rounds_response(app, rounds)
+    session.add(app)
+    session.commit()
+    return result
 
 
 @router.delete("/{app_id}")

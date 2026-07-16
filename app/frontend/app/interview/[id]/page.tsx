@@ -7,7 +7,7 @@ import { useInterviewList } from "../InterviewListContext";
 // /interview/[id] — company-specific prep for a single interview.
 export default function InterviewDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { interviews, loaded, isDark, onDateChange, onPrepChange, onNotesChange } = useInterviewList();
+  const { interviews, loaded, isDark, onDateChange } = useInterviewList();
   const app = interviews.find((a) => a.id === id) ?? null;
 
   if (!app) {
@@ -25,8 +25,6 @@ export default function InterviewDetailPage() {
       app={app}
       isDark={isDark}
       onDateChange={onDateChange}
-      onPrepChange={onPrepChange}
-      onNotesChange={onNotesChange}
     />
   );
 }
