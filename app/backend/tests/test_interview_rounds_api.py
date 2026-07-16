@@ -81,3 +81,36 @@ def test_patch_missing_round_id_404s(client):
     app_id = _make_app(client)
     r = client.patch(f"/api/tracker/{app_id}/interview-rounds/missing", json={"date": None})
     assert r.status_code == 404
+
+
+def test_get_application_migrates_legacy_interview_data(client):
+    app_id = _make_app(client)
+    # Simulate a pre-rounds application: write legacy fields directly via the
+    # DB, bypassing the API (no endpoint writes these fields anymore).
+    from db import Application, engine
+    from sqlmodel import Session
+    import json
+    with Session(engine) as session:
+        app = session.get(Application, app_id)
+        app.interview_prep_json = json.dumps({"salary": "90k", "common_questions": []})
+        app.interview_notes_json = json.dumps({"notes": "legacy note"})
+        app.interview_date = "2026-05-01T10:00"
+        session.add(app)
+        session.commit()
+
+    r = client.get(f"/api/tracker/{app_id}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["interview_rounds_json"] is not None
+    rounds = json.loads(body["interview_rounds_json"])
+    assert len(rounds) == 1
+    assert rounds[0]["round_type"] == "Technical"
+    assert rounds[0]["prep"]["salary"] == "90k"
+    assert rounds[0]["notes"]["notes"] == "legacy note"
+
+    # Migration must persist — a second GET (or the list endpoint) must see
+    # the same round without needing legacy fields anymore.
+    r2 = client.get("/api/tracker/")
+    matching = next(a for a in r2.json() if a["id"] == app_id)
+    assert matching["interview_rounds_json"] is not None
+    assert json.loads(matching["interview_rounds_json"])[0]["prep"]["salary"] == "90k"

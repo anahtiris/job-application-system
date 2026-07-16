@@ -32,6 +32,21 @@ NEXT_STATUSES: dict[str, list[str]] = {
 }
 
 
+def _ensure_rounds_migrated(app: Application, session: Session) -> Application:
+    """GET endpoints must trigger the same lazy legacy-migration load_rounds()
+    performs in memory, and persist it — otherwise an application with old-shape
+    interview_prep_json/interview_date/interview_notes_json but no
+    interview_rounds_json yet renders as having zero rounds."""
+    if not app.interview_rounds_json:
+        rounds = load_rounds(app)
+        if rounds:
+            app.interview_rounds_json = json_module.dumps(rounds)
+            session.add(app)
+            session.commit()
+            session.refresh(app)
+    return app
+
+
 class CreateApplicationRequest(BaseModel):
     company: str
     job_title: str
@@ -91,7 +106,7 @@ def list_applications(session: Session = Depends(get_session)):
         .where(Application.deleted_at == None)  # noqa: E711
         .order_by(Application.created_at.desc())
     ).all()
-    return apps
+    return [_ensure_rounds_migrated(app, session) for app in apps]
 
 
 CLOSED_STATUSES = {"Rejected", "Rejected after interview", "Ghosted after interview"}
@@ -190,7 +205,7 @@ def get_application(app_id: str, session: Session = Depends(get_session)):
     app = session.get(Application, app_id)
     if not app:
         raise HTTPException(404, "Application not found")
-    return app
+    return _ensure_rounds_migrated(app, session)
 
 
 @router.patch("/{app_id}/details")
