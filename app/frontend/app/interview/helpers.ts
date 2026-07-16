@@ -1,5 +1,5 @@
-import type { DateTimeValue, InterviewPrep } from "./types";
-import { EMPTY_PREP } from "./types";
+import type { DateTimeValue, InterviewPrep, InterviewRound } from "./types";
+import { EMPTY_PREP, DEFAULT_NOTES } from "./types";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -47,4 +47,21 @@ export function formatDate(iso: string | null): { label: string; isToday: boolea
   const dateStr = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(d);
   const timeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   return { label: `${dateStr} · ${timeStr}`, isToday };
+}
+
+export function parseRounds(raw: string | null | undefined): InterviewRound[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw) as Partial<InterviewRound>[];
+    return arr.map((r) => ({
+      id: r.id ?? uid(),
+      round_type: r.round_type ?? "Technical",
+      date: r.date ?? null,
+      prep: { ...EMPTY_PREP, ...r.prep },
+      notes: { ...DEFAULT_NOTES, ...r.notes },
+      created_at: r.created_at ?? "",
+    }));
+  } catch {
+    return [];
+  }
 }
