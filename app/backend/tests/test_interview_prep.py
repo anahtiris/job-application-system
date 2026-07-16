@@ -69,11 +69,15 @@ def _make_app(client):
 
 def test_put_interview_prep_stores_json_and_fills_ids(client):
     app_id = _make_app(client)
+    round_id = client.post(f"/api/tracker/{app_id}/interview-rounds", json={"round_type": "Technical"}).json()["rounds"][0]["id"]
     body = {
-        "company_analysis": "c", "introduction_script": "i",
-        "common_questions": [{"id": "", "q": "q1", "a": "a1"}],
-        "job_specific_questions": [], "weak_spots": [],
-        "questions_to_ask": [{"id": "", "text": "t"}], "salary": "s",
+        "round_id": round_id,
+        "prep": {
+            "company_analysis": "c", "introduction_script": "i",
+            "common_questions": [{"id": "", "q": "q1", "a": "a1"}],
+            "job_specific_questions": [], "weak_spots": [],
+            "questions_to_ask": [{"id": "", "text": "t"}], "salary": "s",
+        },
     }
     r = client.put(f"/api/application/{app_id}/interview-prep", json=body)
     assert r.status_code == 200
@@ -81,8 +85,20 @@ def test_put_interview_prep_stores_json_and_fills_ids(client):
     assert prep["common_questions"][0]["id"]
     assert prep["questions_to_ask"][0]["id"]
 
-    app = client.get(f"/api/tracker/{app_id}").json()
-    assert json.loads(app["interview_prep_json"])["salary"] == "s"
+    rounds = client.get(f"/api/tracker/{app_id}").json()
+    stored = json.loads(rounds["interview_rounds_json"])
+    assert stored[0]["prep"]["salary"] == "s"
+
+
+def test_put_interview_prep_404s_for_missing_round(client):
+    app_id = _make_app(client)
+    body = {"round_id": "missing", "prep": {
+        "company_analysis": "", "introduction_script": "",
+        "common_questions": [], "job_specific_questions": [], "weak_spots": [],
+        "questions_to_ask": [], "salary": "",
+    }}
+    r = client.put(f"/api/application/{app_id}/interview-prep", json=body)
+    assert r.status_code == 404
 
 
 def test_post_interview_prep_persists_generated_dict(client, monkeypatch, tmp_path):
@@ -103,15 +119,31 @@ def test_post_interview_prep_persists_generated_dict(client, monkeypatch, tmp_pa
     monkeypatch.setattr(app_router, "_master", lambda lang: master)
 
     app_id = _make_app(client)
+    round_id = client.post(f"/api/tracker/{app_id}/interview-rounds", json={"round_type": "Technical"}).json()["rounds"][0]["id"]
     r = client.post("/api/application/interview-prep", json={
-        "application_id": app_id, "interview_round": "Technical",
+        "application_id": app_id, "round_id": round_id, "interview_round": "Technical",
         "interviewer_type": "Hiring Manager", "focus_skills": "",
     })
     assert r.status_code == 200
     assert r.json()["common_questions"][0]["q"] == "q1"
 
-    stored = json.loads(client.get(f"/api/tracker/{app_id}").json()["interview_prep_json"])
-    assert stored["salary"] == "s"
+    app = client.get(f"/api/tracker/{app_id}").json()
+    stored = json.loads(app["interview_rounds_json"])
+    assert stored[0]["prep"]["salary"] == "s"
+
+
+def test_post_interview_prep_404s_for_missing_round(client, monkeypatch, tmp_path):
+    import routers.application as app_router
+    master = tmp_path / "m.md"
+    master.write_text("# CV", encoding="utf-8")
+    monkeypatch.setattr(app_router, "_master", lambda lang: master)
+
+    app_id = _make_app(client)
+    r = client.post("/api/application/interview-prep", json={
+        "application_id": app_id, "round_id": "missing", "interview_round": "Technical",
+        "interviewer_type": "Hiring Manager", "focus_skills": "",
+    })
+    assert r.status_code == 404
 
 
 @pytest.mark.asyncio
