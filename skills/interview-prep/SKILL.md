@@ -4,9 +4,9 @@ description: Web-researched, 7-field interview preparation for an application. D
 ---
 # Skill: Interview Preparation
 
-**Description**: Produce the `interview_prep_json` object for an application's
-Interview tab — Company Analysis grounded in real web research plus six
-candidate-facing fields (script, Q&A, gaps, questions to ask, salary).
+**Description**: Produce the `prep` object for one interview round on an
+application's Interview tab — Company Analysis grounded in real web research
+plus six candidate-facing fields (script, Q&A, gaps, questions to ask, salary).
 
 ## Inputs to read first
 
