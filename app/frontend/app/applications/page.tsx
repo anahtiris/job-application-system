@@ -40,6 +40,11 @@ const FILTER_MAP: Record<string, string[]> = {
 
 const FILTER_LABELS = ["Analyzed", "Draft", "Finalized", "Applied", "Interview", "Offer", "Rejected", "Ghosted"] as const;
 
+// Fit verdict filter — labels shown in the dropdown map to the lowercase backend verdict values
+const FIT_LABELS = ["Strong", "Maybe", "Skip"] as const;
+const FIT_MAP: Record<(typeof FIT_LABELS)[number], string> = { Strong: "strong", Maybe: "maybe", Skip: "skip" };
+type FitLabel = (typeof FIT_LABELS)[number];
+
 // Backend statuses where the company chip is amber (active)
 const ACTIVE_STATUSES = new Set(["Applied", "Interview", "Offer"]);
 
@@ -138,6 +143,55 @@ function FilterDropdown({
   );
 }
 
+// Shared button style for the leads-style filter dropdown (Fit)
+const selectCls =
+  "text-[12px] font-medium py-1 px-2.5 rounded-full border-[0.5px] border-border-tertiary bg-background-secondary text-text-secondary font-shell cursor-pointer outline-none capitalize";
+
+// Multiselect dropdown for filtering by fit verdict — styled to match /leads
+function FitFilterDropdown({
+  allLabel,
+  labels,
+  activeFilters,
+  onToggle,
+}: {
+  allLabel: string;
+  labels: readonly FitLabel[];
+  activeFilters: Set<FitLabel>;
+  onToggle: (label: FitLabel) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useClickOutside(ref, open, () => setOpen(false));
+
+  const label =
+    activeFilters.size === 0 || activeFilters.size === labels.length
+      ? allLabel
+      : [...activeFilters].join(", ");
+
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen((o) => !o)} className={`${selectCls} inline-flex items-center gap-1`}>
+        {label}
+        <ChevronDown size={11} />
+      </button>
+
+      {open && (
+        <div className="absolute top-[calc(100%+4px)] right-0 z-30 bg-background-primary border-[0.5px] border-border-tertiary rounded-card p-1 min-w-[150px] shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
+          {labels.map((label) => (
+            <label
+              key={label}
+              className="flex items-center gap-2 text-[12px] font-medium py-1.5 px-2 rounded-[5px] text-text-secondary font-shell capitalize cursor-pointer hover:bg-background-secondary"
+            >
+              <input type="checkbox" checked={activeFilters.has(label)} onChange={() => onToggle(label)} />
+              {label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ApplicationsPage() {
   const router = useRouter();
   const [apps, setApps] = useState<Application[]>([]);
@@ -158,6 +212,7 @@ export default function ApplicationsPage() {
 
   // Filter state — empty set means "All"; persisted in localStorage
   const [activeFilters, setActiveFilters] = useState<Set<FilterLabel>>(new Set());
+  const [activeFitFilters, setActiveFitFilters] = useState<Set<FitLabel>>(new Set());
 
   // Load saved filters after mount (avoids SSR/hydration mismatch)
   useEffect(() => {
@@ -169,6 +224,13 @@ export default function ApplicationsPage() {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only hydration from localStorage (cannot run during SSR)
         if (valid.length) setActiveFilters(new Set(valid));
       }
+      const storedFit = localStorage.getItem("applications.fitFilters");
+      if (storedFit) {
+        const parsedFit: FitLabel[] = JSON.parse(storedFit);
+        const validFit = parsedFit.filter((l) => (FIT_LABELS as readonly string[]).includes(l));
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only hydration from localStorage (cannot run during SSR)
+        if (validFit.length) setActiveFitFilters(new Set(validFit));
+      }
     } catch {}
   }, []);
 
@@ -177,8 +239,21 @@ export default function ApplicationsPage() {
     localStorage.setItem("applications.filters", JSON.stringify([...activeFilters]));
   }, [activeFilters]);
 
+  useEffect(() => {
+    localStorage.setItem("applications.fitFilters", JSON.stringify([...activeFitFilters]));
+  }, [activeFitFilters]);
+
   const toggleFilter = (label: FilterLabel) => {
     setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
+
+  const toggleFitFilter = (label: FitLabel) => {
+    setActiveFitFilters((prev) => {
       const next = new Set(prev);
       if (next.has(label)) next.delete(label);
       else next.add(label);
@@ -290,6 +365,10 @@ export default function ApplicationsPage() {
       );
       if (!matchesFilter) return false;
     }
+    if (activeFitFilters.size > 0) {
+      const matchesFit = [...activeFitFilters].some((label) => FIT_MAP[label] === a.fit_verdict);
+      if (!matchesFit) return false;
+    }
     return true;
   }).sort((a, b) => {
     const ra = STATUS_RANK[a.status] ?? 99;
@@ -377,6 +456,12 @@ export default function ApplicationsPage() {
           >
             Analysis
           </Link>
+          <FitFilterDropdown
+            allLabel="All fits"
+            labels={FIT_LABELS}
+            activeFilters={activeFitFilters}
+            onToggle={toggleFitFilter}
+          />
           <FilterDropdown activeFilters={activeFilters} onToggle={toggleFilter} onClear={clearFilters} />
         </div>
       </div>
