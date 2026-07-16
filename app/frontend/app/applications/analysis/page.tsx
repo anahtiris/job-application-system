@@ -60,6 +60,7 @@ export default function RejectionAnalysisPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time data fetch; the loading/error flags inside load() are intentional
     load();
   }, []);
 

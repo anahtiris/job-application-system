@@ -137,7 +137,15 @@ export default function LeadsPage() {
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilters, setStatusFilters] = useState<string[]>([]);
+  const [statusFilters, setStatusFilters] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem("leads.statusFilters");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
   const [copying, setCopying] = useState(false);
   const [bulkAnalyzing, setBulkAnalyzing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<string | null>(null);
@@ -145,7 +153,15 @@ export default function LeadsPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvingAll, setApprovingAll] = useState(false);
   const [search, setSearch] = useState("");
-  const [fitFilters, setFitFilters] = useState<string[]>([]);
+  const [fitFilters, setFitFilters] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem("leads.fitFilters");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
   const [capturedCollapsed, setCapturedCollapsed] = useState(false);
 
   const load = () => {
@@ -154,16 +170,6 @@ export default function LeadsPage() {
   };
   // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time data fetch; the loading flag inside load() is intentional
   useEffect(() => { load(); }, []);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate persisted filters on mount
-  useEffect(() => {
-    try {
-      const storedStatus = localStorage.getItem("leads.statusFilters");
-      if (storedStatus) setStatusFilters(JSON.parse(storedStatus));
-      const storedFit = localStorage.getItem("leads.fitFilters");
-      if (storedFit) setFitFilters(JSON.parse(storedFit));
-    } catch {}
-  }, []);
 
   useEffect(() => {
     localStorage.setItem("leads.statusFilters", JSON.stringify(statusFilters));
