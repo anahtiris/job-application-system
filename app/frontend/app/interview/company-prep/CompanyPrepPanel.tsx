@@ -418,7 +418,7 @@ function AddRoundPopover({
 }) {
   const [roundType, setRoundType] = useState<string>("Technical");
   return (
-    <div className="absolute top-[calc(100%+6px)] left-4 z-40 bg-background-primary border-[0.5px] border-border-tertiary rounded-[12px] p-3 shadow-[0_8px_32px_rgba(0,0,0,0.15)] flex flex-col gap-2 w-[220px]">
+    <div className="absolute top-[calc(100%+6px)] left-4 z-40 bg-background-primary border-[0.5px] border-border-tertiary rounded-[12px] p-3 shadow-[0_8px_32px_rgba(0,0,0,0.15)] flex flex-col gap-2 w-[240px]">
       <div className="flex gap-1 flex-wrap">
         {ADD_ROUND_TYPES.map((r) => (
           <button
