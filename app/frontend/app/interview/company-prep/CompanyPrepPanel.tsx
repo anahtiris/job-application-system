@@ -291,7 +291,7 @@ export function CompanyPrepPanel({
       <div className="flex-1 overflow-auto py-3.5 px-4 flex flex-col gap-3 min-h-0">
         {!selectedRound && (
           <div className="text-center py-12 px-5 text-text-tertiary text-[12px] font-shell">
-            No interview rounds yet — click "+ Add Round" above to create one.
+            No interview rounds yet — click &quot;+ Add Round&quot; above to create one.
           </div>
         )}
 
