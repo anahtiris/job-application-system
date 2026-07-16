@@ -278,17 +278,17 @@ export default function ApplicationsPage() {
 
   const q = search.trim().toLowerCase();
   const visible = apps.filter((a) => {
-    if (activeFilters.size > 0) {
-      const matchesFilter = [...activeFilters].some((label) =>
-        (FILTER_MAP[label] ?? []).includes(a.status)
-      );
-      if (!matchesFilter) return false;
-    }
     if (q) {
       return (
         a.company.toLowerCase().includes(q) ||
         a.job_title.toLowerCase().includes(q)
       );
+    }
+    if (activeFilters.size > 0) {
+      const matchesFilter = [...activeFilters].some((label) =>
+        (FILTER_MAP[label] ?? []).includes(a.status)
+      );
+      if (!matchesFilter) return false;
     }
     return true;
   }).sort((a, b) => {
