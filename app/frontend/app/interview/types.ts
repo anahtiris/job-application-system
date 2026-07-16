@@ -8,6 +8,7 @@ export interface Interview {
   language: string;
   status: string;
   interview_rounds_json: string | null;
+  interview_date: string | null;
 }
 
 export interface PrepQA { id: string; q: string; a: string }
