@@ -27,7 +27,7 @@ NEXT_STATUSES: dict[str, list[str]] = {
     "Rejected":                 ["Rejected after interview", "Applied", "Interview"],
     "Ghosted":                  ["Applied", "Interview", "Rejected"],
     "Rejected after interview": ["Rejected", "Ghosted after interview"],
-    "Ghosted after interview":  ["Rejected", "Rejected after interview"],
+    "Ghosted after interview":  ["Interview", "Rejected after interview"],
 }
 
 
