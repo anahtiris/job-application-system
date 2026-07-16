@@ -23,6 +23,9 @@ candidate-facing fields (script, Q&A, gaps, questions to ask, salary).
 
 ## Parameters (from the "Copy prompt for Claude" button)
 
+- `ROUND_ID`: the id of the interview round this prep is for (a round already
+  exists — created via "+ Add Round" in the workspace before this prompt is
+  copied). Save into that round, not a new one.
 - `INTERVIEW_ROUND`: Screening | Technical | Final — controls depth/breadth of
   Job-Specific Questions (Screening = broader, Technical = deeper, Final = system
   design + culture).
@@ -102,6 +105,7 @@ persona); only the container is now JSON fields instead of `## ` sections.
 
 ## Save
 
-`PUT http://localhost:8000/api/application/{id}/interview-prep` with the JSON
-object as the request body (Content-Type: application/json). The server fills any
-blank `id`s and returns `{"saved": true, "prep": { … }}`.
+`PUT http://localhost:8000/api/application/{id}/interview-prep` with body
+`{"round_id": ROUND_ID, "prep": { …the JSON object above… }}`
+(Content-Type: application/json). The server fills any blank `id`s within `prep`
+and returns `{"saved": true, "prep": { … }}`.
