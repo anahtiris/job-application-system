@@ -4,7 +4,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { FlipClock } from "@anahtiris/flipclock";
 import { api, BASE } from "@/lib/api";
 import {
-  type SaveState, SaveIndicator, useAutoSave, GrowTextarea, SectionCard,
+  type SaveState, SaveIndicator, GrowTextarea, SectionCard,
 } from "@/components/ui-kit";
 import {
   type Interview, type InterviewNotes, type InterviewPrep, type InterviewRound,
@@ -93,28 +93,32 @@ export function CompanyPrepPanel({
     }
   };
 
-  const saveFn = useCallback(async (n: InterviewNotes) => {
-    if (!selectedRoundId) return;
-    await api.patch(`/api/tracker/${app.id}/interview-rounds/${selectedRoundId}/notes`, { notes: n });
-  }, [app.id, selectedRoundId]);
-
   const notes = selectedRound?.notes ?? DEFAULT_NOTES;
-  const { saveState, markDirty, markClean } = useAutoSave(notes, saveFn);
+
+  // Debounced notes save — keyed per round so switching rounds mid-edit
+  // doesn't cancel another round's still-pending save.
+  const [notesSaveState, setNotesSaveState] = useState<SaveState>("idle");
+  const notesSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const saveNotes = useCallback((roundId: string, next: InterviewNotes) => {
+    if (notesSaveTimers.current[roundId]) clearTimeout(notesSaveTimers.current[roundId]);
+    setNotesSaveState("saving");
+    notesSaveTimers.current[roundId] = setTimeout(async () => {
+      await api.patch(`/api/tracker/${app.id}/interview-rounds/${roundId}/notes`, { notes: next });
+      delete notesSaveTimers.current[roundId];
+      setNotesSaveState("saved");
+      setTimeout(() => setNotesSaveState("idle"), 2000);
+    }, 800);
+  }, [app.id]);
+
   const update = (patch: Partial<InterviewNotes>) => {
     if (!selectedRoundId) return;
-    markDirty();
-    setRounds((prev) => prev.map((r) => (r.id === selectedRoundId ? { ...r, notes: { ...r.notes, ...patch } } : r)));
+    setRounds((prev) => prev.map((r) => {
+      if (r.id !== selectedRoundId) return r;
+      const next = { ...r.notes, ...patch };
+      saveNotes(selectedRoundId, next);
+      return { ...r, notes: next };
+    }));
   };
-
-  // Reset the auto-save dirty flag whenever the selected round changes —
-  // `notes` is re-derived from `selectedRound?.notes` on every round switch,
-  // so its object reference changes even with no edit; without this the
-  // useAutoSave effect re-fires on switch and issues a spurious re-save.
-  const [lastRoundId, setLastRoundId] = useState(selectedRoundId);
-  if (selectedRoundId !== lastRoundId) {
-    setLastRoundId(selectedRoundId);
-    markClean();
-  }
 
   // Debounced prep save — keyed per round so switching rounds mid-edit
   // doesn't cancel another round's still-pending save.
@@ -249,7 +253,7 @@ export function CompanyPrepPanel({
         )}
 
         <TabBar tabs={[...COMPANY_TABS]} active={tab} onChange={(t) => setTab(t as CompanyTab)} />
-        <SaveIndicator state={saveState} />
+        <SaveIndicator state={notesSaveState} />
         <button
           onClick={exportPdf}
           disabled={exporting || !selectedRoundId}
