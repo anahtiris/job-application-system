@@ -193,6 +193,16 @@ Soft-deleting an `Application` does not affect a `JobLead` that references it vi
 
 When resuming an existing application, `inferStep` skips Job Analysis (returns step 3/4/5 based on progress).
 
+## Writing Style
+- Never use the em-dash (—) symbol in writing documents. Use commas or periods instead.
+- No corporate buzzwords ("leverage", "passionate", "drive innovation") unless quoting source material.
+- For application materials specifically: no contractions, consistent tense, no fabricated enthusiasm.
+
+## Honest Representation
+- Never claim production/deployed status for prototype or personal projects unless explicitly confirmed.
+- Skill tier claims must match the 4-tier framework (daily-driver / solid applied / AI-assisted / exposure only) — never round up.
+- Flag if a generated claim sounds stronger than the underlying evidence.
+
 ### Company tone classification
 `researcher.py` classifies companies into 4 tones used to adapt the cover letter opening strategy:
 - `direct` — established product/service company
