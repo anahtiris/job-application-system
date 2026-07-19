@@ -22,19 +22,22 @@ export function GeneralPrepPanel() {
   const [tab, setTab] = useState<GeneralTab>("Introduction");
   const [lang, setLang] = useState<"en" | "de">("en");
 
-  useEffect(() => {
-    api.get("/api/settings/general-prep").then((data) => {
-      if (data && typeof data === "object" && Object.keys(data).length > 0) {
-        setPrep({ ...DEFAULT_PREP, ...(data as Partial<GeneralPrep>) });
-      }
-    }).catch(() => {});
+  const fetchPrep = useCallback(async (): Promise<GeneralPrep> => {
+    const data = await api.get("/api/settings/general-prep");
+    return data && typeof data === "object" && Object.keys(data).length > 0
+      ? { ...DEFAULT_PREP, ...(data as Partial<GeneralPrep>) }
+      : DEFAULT_PREP;
   }, []);
+
+  useEffect(() => {
+    fetchPrep().then(setPrep).catch(() => {});
+  }, [fetchPrep]);
 
   const saveFn = useCallback(async (p: GeneralPrep) => {
     await api.put("/api/settings/general-prep", p);
   }, []);
 
-  const { saveState, markDirty } = useAutoSave(prep, saveFn);
+  const { saveState, markDirty } = useAutoSave(prep, saveFn, fetchPrep, setPrep);
 
   const update = (patch: Partial<GeneralPrep>) => {
     markDirty();
