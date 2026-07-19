@@ -1,6 +1,6 @@
 "use client";
-import React, { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, Trash2, GripVertical, Search } from "lucide-react";
 import { api } from "@/lib/api";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -23,27 +23,63 @@ import { LangToggle, QARow } from "../shared";
 export function TechnicalQuestionsPanel() {
   const [prep, setPrep] = useState<GeneralPrep>(DEFAULT_PREP);
   const [lang, setLang] = useState<"en" | "de">("en");
+  const [query, setQuery] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const fetchPrep = useCallback(async (): Promise<GeneralPrep> => {
+    const data = await api.get("/api/settings/general-prep");
+    return data && typeof data === "object" && Object.keys(data).length > 0
+      ? { ...DEFAULT_PREP, ...(data as Partial<GeneralPrep>) }
+      : DEFAULT_PREP;
+  }, []);
 
   useEffect(() => {
-    api.get("/api/settings/general-prep").then((data) => {
-      if (data && typeof data === "object" && Object.keys(data).length > 0) {
-        setPrep({ ...DEFAULT_PREP, ...(data as Partial<GeneralPrep>) });
-      }
-    }).catch(() => {});
-  }, []);
+    fetchPrep().then(setPrep).catch(() => {});
+  }, [fetchPrep]);
 
   const saveFn = useCallback(async (p: GeneralPrep) => {
     await api.put("/api/settings/general-prep", p);
   }, []);
 
-  const { saveState, markDirty } = useAutoSave(prep, saveFn);
+  const { saveState, markDirty } = useAutoSave(prep, saveFn, fetchPrep, setPrep);
 
   const update = (patch: Partial<GeneralPrep>) => {
     markDirty();
     setPrep((p) => ({ ...p, ...patch }));
   };
 
-  const groups = prep.technical_qa_groups ?? [];
+  const groups = useMemo(() => prep.technical_qa_groups ?? [], [prep.technical_qa_groups]);
+
+  const isSearching = query.trim().length > 0;
+
+  const visibleGroups = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return groups;
+    return groups
+      .map((g) => {
+        if (g.name.toLowerCase().includes(q)) return g;
+        return {
+          ...g,
+          questions: g.questions.filter((item) =>
+            [item.q_en, item.q_de, item.a_en, item.a_de].some((s) => s.toLowerCase().includes(q))
+          ),
+        };
+      })
+      .filter((g) => g.questions.length > 0 || g.name.toLowerCase().includes(q));
+  }, [groups, query]);
+
+  const allCollapsed = groups.length > 0 && groups.every((g) => collapsedGroups.has(g.id));
+
+  const toggleAllGroups = () =>
+    setCollapsedGroups(allCollapsed ? new Set() : new Set(groups.map((g) => g.id)));
+
+  const toggleGroupCollapse = (groupId: string) =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -90,8 +126,28 @@ export function TechnicalQuestionsPanel() {
       {/* Topbar */}
       <div className="flex items-center py-[11px] px-4 border-b-[0.5px] border-border-tertiary gap-2.5 shrink-0 flex-wrap">
         <span className="text-[14px] font-medium font-shell">Technical questions</span>
+
+        <div className="relative">
+          <Search size={12} className="absolute left-[8px] top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search…"
+            className="text-[11px] py-[5px] pr-2.5 pl-6 rounded-full border-[0.5px] border-border-tertiary bg-background-secondary text-text-primary font-shell outline-none w-[140px]"
+          />
+        </div>
+
         <LangToggle lang={lang} onChange={setLang} />
         <SaveIndicator state={saveState} />
+
+        <button
+          onClick={toggleAllGroups}
+          disabled={groups.length === 0}
+          className="text-[11px] font-medium py-1 px-2.5 rounded-full cursor-pointer font-shell border-[0.5px] border-border-tertiary bg-transparent text-text-secondary disabled:opacity-40 disabled:cursor-default"
+        >
+          {allCollapsed ? "Expand all" : "Collapse all"}
+        </button>
         <button
           onClick={addGroup}
           className="ml-auto inline-flex items-center gap-1 text-[11px] font-medium py-1 px-2.5 rounded-full cursor-pointer font-shell border-[0.5px] border-border-tertiary bg-transparent text-text-secondary"
@@ -102,25 +158,49 @@ export function TechnicalQuestionsPanel() {
 
       {/* Content */}
       <div className="flex-1 overflow-auto py-3.5 px-4 flex flex-col gap-2.5 min-h-0">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={reorderGroups}>
-          <SortableContext items={groups.map((g) => g.id)} strategy={verticalListSortingStrategy}>
-            {groups.map((group) => (
-              <SortableTechQAGroupCard
-                key={group.id}
-                group={group}
-                lang={lang}
-                onRename={(name) => renameGroup(group.id, name)}
-                onDelete={() => deleteGroup(group.id)}
-                onAddQuestion={() => addQuestionToGroup(group.id)}
-                onPatchQuestion={(qId, patch) => patchQuestionInGroup(group.id, qId, patch)}
-                onDeleteQuestion={(qId) => deleteQuestionFromGroup(group.id, qId)}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
+        {isSearching ? (
+          visibleGroups.map((group) => (
+            <TechQAGroupCard
+              key={group.id}
+              group={group}
+              lang={lang}
+              collapsed={false}
+              onToggleCollapse={() => {}}
+              onRename={(name) => renameGroup(group.id, name)}
+              onDelete={() => deleteGroup(group.id)}
+              onAddQuestion={() => addQuestionToGroup(group.id)}
+              onPatchQuestion={(qId, patch) => patchQuestionInGroup(group.id, qId, patch)}
+              onDeleteQuestion={(qId) => deleteQuestionFromGroup(group.id, qId)}
+            />
+          ))
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={reorderGroups}>
+            <SortableContext items={groups.map((g) => g.id)} strategy={verticalListSortingStrategy}>
+              {groups.map((group) => (
+                <SortableTechQAGroupCard
+                  key={group.id}
+                  group={group}
+                  lang={lang}
+                  collapsed={collapsedGroups.has(group.id)}
+                  onToggleCollapse={() => toggleGroupCollapse(group.id)}
+                  onRename={(name) => renameGroup(group.id, name)}
+                  onDelete={() => deleteGroup(group.id)}
+                  onAddQuestion={() => addQuestionToGroup(group.id)}
+                  onPatchQuestion={(qId, patch) => patchQuestionInGroup(group.id, qId, patch)}
+                  onDeleteQuestion={(qId) => deleteQuestionFromGroup(group.id, qId)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+        )}
         {groups.length === 0 && (
           <div className={`text-center p-8 ${mutedTextCls()}`}>
             No groups — add one above.
+          </div>
+        )}
+        {groups.length > 0 && isSearching && visibleGroups.length === 0 && (
+          <div className={`text-center p-8 ${mutedTextCls()}`}>
+            No matches for &quot;{query.trim()}&quot;.
           </div>
         )}
       </div>
@@ -131,11 +211,13 @@ export function TechnicalQuestionsPanel() {
 // ─── Technical Q&A groups ───────────────────────────────────────────────────────
 
 function TechQAGroupCard({
-  group, lang, onRename, onDelete, onAddQuestion, onPatchQuestion, onDeleteQuestion,
+  group, lang, collapsed, onToggleCollapse, onRename, onDelete, onAddQuestion, onPatchQuestion, onDeleteQuestion,
   dragListeners, dragAttributes,
 }: {
   group: TechQAGroup;
   lang: "en" | "de";
+  collapsed: boolean;
+  onToggleCollapse: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
   onAddQuestion: () => void;
@@ -148,7 +230,6 @@ function TechQAGroupCard({
 }) {
   const [editing, setEditing] = useState(false);
   const [nameVal, setNameVal] = useState(group.name);
-  const [collapsed, setCollapsed] = useState(false);
   const total = group.questions.length;
 
   const commitName = () => {
@@ -172,7 +253,7 @@ function TechQAGroupCard({
 
         {/* Collapse toggle */}
         <button
-          onClick={() => setCollapsed((v) => !v)}
+          onClick={onToggleCollapse}
           className="bg-transparent border-none cursor-pointer text-text-tertiary pr-0.5 shrink-0 text-[10px] leading-none"
         >
           {collapsed ? "▶" : "▼"}
