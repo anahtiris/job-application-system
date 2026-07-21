@@ -4,7 +4,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { FlipClock } from "@anahtiris/flipclock";
 import { api, BASE } from "@/lib/api";
 import {
-  type SaveState, SaveIndicator, GrowTextarea, SectionCard,
+  type SaveState, SaveIndicator, GrowTextarea, SectionCard, mergeOnFresh,
 } from "@/components/ui-kit";
 import {
   type Interview, type InterviewNotes, type InterviewPrep, type InterviewRound,
@@ -96,15 +96,26 @@ export function CompanyPrepPanel({
   const notes = selectedRound?.notes ?? DEFAULT_NOTES;
 
   // Debounced notes save — keyed per round so switching rounds mid-edit
-  // doesn't cancel another round's still-pending save.
+  // doesn't cancel another round's still-pending save. Before writing, it
+  // re-fetches the round fresh from the server and merges the edit onto that
+  // copy (via mergeOnFresh) instead of blindly PUTting the in-memory object —
+  // otherwise a slower, older save completing after a newer one clobbers it
+  // (classic lost-update race; see CompanyPrepPanel's savePrep for the twin
+  // bug this fixes on the prep side).
   const [notesSaveState, setNotesSaveState] = useState<SaveState>("idle");
   const notesSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const saveNotes = useCallback((roundId: string, next: InterviewNotes) => {
+  const notesBaselines = useRef<Record<string, InterviewNotes>>({});
+  const saveNotes = useCallback((roundId: string, next: InterviewNotes, baseline: InterviewNotes) => {
     if (notesSaveTimers.current[roundId]) clearTimeout(notesSaveTimers.current[roundId]);
     setNotesSaveState("saving");
     notesSaveTimers.current[roundId] = setTimeout(async () => {
-      await api.patch(`/api/tracker/${app.id}/interview-rounds/${roundId}/notes`, { notes: next });
       delete notesSaveTimers.current[roundId];
+      delete notesBaselines.current[roundId];
+      const fresh = await api.get(`/api/tracker/${app.id}`) as { interview_rounds_json: string };
+      const freshNotes = parseRounds(fresh.interview_rounds_json).find((r) => r.id === roundId)?.notes ?? next;
+      const merged = mergeOnFresh(next, baseline, freshNotes);
+      await api.patch(`/api/tracker/${app.id}/interview-rounds/${roundId}/notes`, { notes: merged });
+      setRounds((prev) => prev.map((r) => (r.id === roundId ? { ...r, notes: merged } : r)));
       setNotesSaveState("saved");
       setTimeout(() => setNotesSaveState("idle"), 2000);
     }, 800);
@@ -114,21 +125,31 @@ export function CompanyPrepPanel({
     if (!selectedRoundId) return;
     setRounds((prev) => prev.map((r) => {
       if (r.id !== selectedRoundId) return r;
+      if (!notesBaselines.current[selectedRoundId]) notesBaselines.current[selectedRoundId] = r.notes;
       const next = { ...r.notes, ...patch };
-      saveNotes(selectedRoundId, next);
+      saveNotes(selectedRoundId, next, notesBaselines.current[selectedRoundId]);
       return { ...r, notes: next };
     }));
   };
 
   // Debounced prep save — keyed per round so switching rounds mid-edit
-  // doesn't cancel another round's still-pending save.
+  // doesn't cancel another round's still-pending save. Same fetch-then-merge
+  // guard as saveNotes above: a stale full-object PUT completing after a
+  // newer one silently dropped edits (e.g. an Introduction Script edit lost
+  // to an overlapping save) — fetching fresh and merging onto it fixes that.
   const prepSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const savePrep = useCallback((roundId: string, next: InterviewPrep) => {
+  const prepBaselines = useRef<Record<string, InterviewPrep>>({});
+  const savePrep = useCallback((roundId: string, next: InterviewPrep, baseline: InterviewPrep) => {
     if (prepSaveTimers.current[roundId]) clearTimeout(prepSaveTimers.current[roundId]);
     setPrepSaveState("saving");
     prepSaveTimers.current[roundId] = setTimeout(async () => {
-      await api.put(`/api/application/${app.id}/interview-prep`, { round_id: roundId, prep: next });
       delete prepSaveTimers.current[roundId];
+      delete prepBaselines.current[roundId];
+      const fresh = await api.get(`/api/tracker/${app.id}`) as { interview_rounds_json: string };
+      const freshPrep = parseRounds(fresh.interview_rounds_json).find((r) => r.id === roundId)?.prep ?? next;
+      const merged = mergeOnFresh(next, baseline, freshPrep);
+      await api.put(`/api/application/${app.id}/interview-prep`, { round_id: roundId, prep: merged });
+      setRounds((prev) => prev.map((r) => (r.id === roundId ? { ...r, prep: merged } : r)));
       setPrepSaveState("saved");
       setTimeout(() => setPrepSaveState("idle"), 2000);
     }, 1000);
@@ -138,8 +159,9 @@ export function CompanyPrepPanel({
     if (!selectedRoundId) return;
     setRounds((prev) => prev.map((r) => {
       if (r.id !== selectedRoundId) return r;
+      if (!prepBaselines.current[selectedRoundId]) prepBaselines.current[selectedRoundId] = r.prep;
       const next = { ...r.prep, ...patch };
-      savePrep(selectedRoundId, next);
+      savePrep(selectedRoundId, next, prepBaselines.current[selectedRoundId]);
       return { ...r, prep: next };
     }));
   };

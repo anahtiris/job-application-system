@@ -49,20 +49,36 @@ function mergeIdArray<I extends IdItem>(fresh: I[], base: I[], local: I[]): I[] 
   return result;
 }
 
+// Rebuilds a save payload on top of a freshly-fetched server copy: array
+// fields keyed by `id` (groups, categories, Q&A lists, …) are merged
+// item-by-item via `mergeIdArray` so two edits to different items in the
+// same array both survive; other fields fall back to "local wins if it
+// differs from the last known baseline". This is what avoids clobbering
+// out-of-band writes (another tab, a direct API call, a second in-flight
+// autosave) with a stale full-object PUT — the classic lost-update race.
+export function mergeOnFresh<T extends object>(value: T, baseline: T, fresh: T): T {
+  const merged: T = { ...fresh };
+  (Object.keys(value) as (keyof T)[]).forEach((key) => {
+    const localVal = value[key];
+    const baseVal = baseline[key];
+    const freshVal = fresh[key];
+    if (isIdArray(localVal) && isIdArray(baseVal) && isIdArray(freshVal)) {
+      merged[key] = mergeIdArray(freshVal, baseVal, localVal) as T[typeof key];
+    } else if (localVal !== baseVal) {
+      merged[key] = localVal;
+    }
+  });
+  return merged;
+}
+
 // Saves `value` after `delay`, but only once the consumer has signalled a real
 // user edit via `markDirty`. Value changes that come from initial state, an
 // async server load, or switching the tracked record do not trigger a save —
 // that prevents the "saving on open" flicker and redundant idempotent writes.
 //
-// Before writing, it re-fetches the current server record and rebuilds the
-// save payload on top of that fresh copy: array fields keyed by `id` (groups,
-// categories, Q&A lists, …) are merged item-by-item via `mergeIdArray` so two
-// edits to different items in the same array both survive; other fields fall
-// back to "local wins if it differs from the last known baseline". It then
-// calls `onMerge` so the caller's own state picks up whatever changed
-// server-side in the meantime. This avoids clobbering out-of-band writes
-// (another tab, a direct API call) with a stale full-object PUT — the classic
-// lost-update race.
+// Before writing, it re-fetches the current server record and merges onto it
+// via `mergeOnFresh`, then calls `onMerge` so the caller's own state picks up
+// whatever changed server-side in the meantime.
 export function useAutoSave<T extends object>(
   value: T,
   saveFn: (v: T) => Promise<void>,
@@ -89,17 +105,7 @@ export function useAutoSave<T extends object>(
     timer.current = setTimeout(async () => {
       const prevBaseline = baseline.current;
       const fresh = await fetchFn();
-      const merged: T = { ...fresh };
-      (Object.keys(value) as (keyof T)[]).forEach((key) => {
-        const localVal = value[key];
-        const baseVal = prevBaseline[key];
-        const freshVal = fresh[key];
-        if (isIdArray(localVal) && isIdArray(baseVal) && isIdArray(freshVal)) {
-          merged[key] = mergeIdArray(freshVal, baseVal, localVal) as T[typeof key];
-        } else if (localVal !== baseVal) {
-          merged[key] = localVal;
-        }
-      });
+      const merged = mergeOnFresh(value, prevBaseline, fresh);
       await saveFn(merged);
       dirty.current = false;
       baseline.current = merged;
