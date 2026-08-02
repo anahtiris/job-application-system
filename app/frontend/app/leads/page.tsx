@@ -15,6 +15,7 @@ type Lead = {
   source_url: string | null;
   fit_score: number | null;
   fit_verdict: string | null;
+  cover_letter_required: boolean;
   created_at: string;
 };
 
@@ -182,13 +183,9 @@ export default function LeadsPage() {
   const handleApprove = async (leadId: string) => {
     setApprovingId(leadId);
     try {
-      const result = await api.post(`/api/leads/${leadId}/approve`, {});
+      await api.post(`/api/leads/${leadId}/approve`, {});
       toast.success("Approved → Application created");
-      if (result?.application_id) {
-        router.push(`/apply/${result.application_id}`);
-      } else {
-        load();
-      }
+      load();
     } catch {
       toast.error("Approve failed");
     } finally {
@@ -459,6 +456,11 @@ export default function LeadsPage() {
                 {lead.job_title || (
                   <span className="font-mono text-[11px] text-text-tertiary">
                     {hostname(lead.source_url)}
+                  </span>
+                )}
+                {lead.cover_letter_required === false && (
+                  <span className="ml-1.5 text-[10px] font-medium py-0.5 px-1.5 rounded-[4px] bg-background-secondary text-text-tertiary font-shell whitespace-nowrap">
+                    no cover letter
                   </span>
                 )}
               </div>
