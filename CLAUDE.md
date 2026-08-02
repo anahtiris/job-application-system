@@ -93,12 +93,14 @@ When the user says **"process my captured jobs"**, Claude Code does extraction *
 2. Read `resume_master.md` (or `resume_master_de.md` for German), `data/skills.json`, and `data/career_goal.md` from disk.
 3. For each lead: extract `company`/`job_title`/`language`/`job_description` from `raw_text`; analyze fit against the resume + skills inventory + career goal; research the company on the web for tone + sentiment. Say "no reliable data found" when a company is thin — **never fabricate** reviews, salary, or facts.
    - **`job_description` must be the verbatim role content, not a summary.** Copy the actual posting sections (intro/Einleitung, responsibilities/Aufgaben, requirements/Profil, benefits/Wir bieten, and any salary figure) word-for-word from `raw_text`. Only strip job-board chrome — site nav, "related jobs" lists, SEO link spam, footers, and the board's own auto-match widgets (e.g. Stepstone's "Passt hervorragend / Du erfüllst alle Anforderungen", which is scored against the user's uploaded CV, not employer text). Keep the original wording and language of each section (postings are often bilingual). Do not paraphrase or compress — downstream steps (Job Analysis, generation, **interview prep**) depend on full-fidelity JD text, and `raw_text` is not copied onto the `Application`, so a lossy `job_description` is unrecoverable after approve. Flag board-estimated salaries as such (e.g. "von Stepstone geschätzt, nicht vom Arbeitgeber angegeben"), never as the employer's stated number.
+   - **Check for a "no cover letter" tag.** If `raw_text` contains a phrase like "Anschreiben nicht erforderlich", "kein Anschreiben erforderlich/nötig", "cover letter not required", or "no cover letter needed", set `cover_letter_required: false` in the payload below. This is a default, not a hard rule — the wizard has a manual checkbox override, so a false positive/negative is recoverable.
 4. `PUT /api/leads/{id}/processed` with this body (the `fit_analysis` shape must match exactly — it is what `/leads/[id]` renders):
    ```json
    {
      "company": "...", "job_title": "...", "language": "en|de", "job_description": "...",
      "company_tone": "direct|startup|contractor|agency",
      "company_research": "one-line tone reasoning",
+     "cover_letter_required": true,
      "fit_analysis": {
        "core_theme": "...",
        "must_haves":    [{"skill": "...", "status": "STRONG|HONEST|GAP|UNKNOWN", "tier": 1, "evidence": "..."}],

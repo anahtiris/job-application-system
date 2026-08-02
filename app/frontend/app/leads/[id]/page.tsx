@@ -55,6 +55,7 @@ type Lead = {
   company_tone: string | null;
   company_research: string | null;
   application_id: string | null;
+  cover_letter_required: boolean;
 };
 
 // ─── Style helpers ────────────────────────────────────────────────────────────
@@ -214,6 +215,11 @@ export default function LeadDetailPage() {
             <span className={`${chipCls(statusChipStyleCls(lead.status))} capitalize`}>{lead.status}</span>
             {lead.fit_verdict && (
               <span className={`${chipCls(verdictStyleCls(lead.fit_verdict))} capitalize`}>{lead.fit_verdict}</span>
+            )}
+            {lead.cover_letter_required === false && (
+              <span className="inline-flex items-center text-[10px] font-medium px-[9px] py-[3px] rounded-[99px] font-mono bg-(--color-background-secondary) text-(--color-text-tertiary)">
+                no cover letter
+              </span>
             )}
           </div>
           <span className="text-[12px] text-(--color-text-secondary)">{lead.job_title}</span>

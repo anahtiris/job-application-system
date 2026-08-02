@@ -388,7 +388,7 @@ export default function ApplicationDetailPage() {
         )}
 
         <DownloadDropdown label="CV" pdf={cvPdf} docx={cvDocx} />
-        <DownloadDropdown label="Cover Letter" pdf={clPdf} docx={clDocx} />
+        {String(app.cover_letter_required) !== "false" && <DownloadDropdown label="Cover Letter" pdf={clPdf} docx={clDocx} />}
       </div>
 
       {/* ── Body: left tabs + right notes ── */}

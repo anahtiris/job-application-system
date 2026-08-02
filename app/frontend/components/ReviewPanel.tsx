@@ -265,9 +265,11 @@ export function ReviewPanel({
           <button className={pillBtnCls(activeDoc === "cv", false, "sm")} onClick={() => setActiveDoc("cv")}>
             CV {cvPending > 0 && <span className="ml-1.5 opacity-60">{cvPending}</span>}
           </button>
-          <button className={pillBtnCls(activeDoc === "cl", false, "sm")} onClick={() => setActiveDoc("cl")}>
-            Cover Letter {clPending > 0 && <span className="ml-1.5 opacity-60">{clPending}</span>}
-          </button>
+          {clDraft && (
+            <button className={pillBtnCls(activeDoc === "cl", false, "sm")} onClick={() => setActiveDoc("cl")}>
+              Cover Letter {clPending > 0 && <span className="ml-1.5 opacity-60">{clPending}</span>}
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{reviewed} / {total}</span>

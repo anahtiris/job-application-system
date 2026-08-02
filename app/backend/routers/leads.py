@@ -17,6 +17,17 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+NO_COVER_LETTER_PATTERN = re.compile(
+    r"anschreiben\s+nicht\s+erforderlich|kein\s+anschreiben\s+(erforderlich|notwendig|n[oö]tig)"
+    r"|cover\s+letter\s+(is\s+)?not\s+required|no\s+cover\s+letter\s+(needed|required)",
+    re.IGNORECASE,
+)
+
+
+def _detect_no_cover_letter(*texts: Optional[str]) -> bool:
+    return any(t and NO_COVER_LETTER_PATTERN.search(t) for t in texts)
+
+
 def _verdict(score: int, is_poor_match: bool) -> str:
     if is_poor_match:
         return "skip"
@@ -162,6 +173,7 @@ async def analyze_lead(lead_id: str, session: Session = Depends(get_session)):
     lead.fit_analysis_json = json.dumps(fit_result)
     lead.company_tone = research_result.get("tone", "direct")
     lead.company_research = research_result.get("tone_reasoning", "")
+    lead.cover_letter_required = not _detect_no_cover_letter(lead.job_description, lead.raw_text)
     lead.status = "analyzed"
     lead.updated_at = now_utc()
     session.add(lead)
@@ -188,6 +200,7 @@ def approve_lead(lead_id: str, session: Session = Depends(get_session)):
         fit_analysis_json=lead.fit_analysis_json,
         fit_score=lead.fit_score,
         fit_verdict=lead.fit_verdict,
+        cover_letter_required=lead.cover_letter_required,
         status="New",
     )
     session.add(app)
@@ -284,6 +297,7 @@ class ProcessedLeadRequest(BaseModel):
     company_tone: str = "direct"
     company_research: Optional[str] = None
     fit_analysis: dict
+    cover_letter_required: bool = True
 
 
 @router.put("/{lead_id}/processed")
@@ -312,6 +326,7 @@ def save_processed_lead(lead_id: str, body: ProcessedLeadRequest, session: Sessi
     lead.fit_score = score
     lead.fit_verdict = _verdict(score, is_poor)
     lead.fit_analysis_json = json.dumps(body.fit_analysis)
+    lead.cover_letter_required = body.cover_letter_required
     lead.status = "analyzed"
     lead.updated_at = now_utc()
     session.add(lead)

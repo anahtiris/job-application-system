@@ -55,8 +55,12 @@ export function GenerateStep({ w }: { w: WizardState }) {
       {w.resumeMd && !w.generating && (
         <>
           <MarkdownEditor label="Tailored Resume" value={w.resumeMd} onChange={w.setResumeMd} />
-          <MarkdownEditor label="Cover Letter" value={w.clMd} onChange={w.setClMd} />
-          <ClWordCount text={w.clMd} />
+          {w.coverLetterRequired && (
+            <>
+              <MarkdownEditor label="Cover Letter" value={w.clMd} onChange={w.setClMd} />
+              <ClWordCount text={w.clMd} />
+            </>
+          )}
         </>
       )}
       <div className="flex gap-2 flex-wrap">

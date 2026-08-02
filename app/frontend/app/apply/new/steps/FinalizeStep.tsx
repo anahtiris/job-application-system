@@ -32,15 +32,17 @@ export function FinalizeStep({ w }: { w: WizardState }) {
           <InfoText>Used in the cover letter header. Auto-filled from research; edit if incorrect.</InfoText>
         </div>
       </SectionCard>
-      <div className="grid grid-cols-2 gap-3">
+      <div className={w.coverLetterRequired ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3"}>
         <div className="flex flex-col gap-1.5">
           <MarkdownEditor label="Final Resume" value={w.resumeMd} onChange={w.setResumeMd} copyText={w.resumeMd} />
           <InfoText>Only the Profile summary and Skills sections are written into the PDF. Experience, education and other sections come from the resume template and cannot be changed here.</InfoText>
         </div>
-        <div className="flex flex-col gap-1.5">
-          <MarkdownEditor label="Final Cover Letter" value={w.clMd} onChange={w.setClMd} copyText={w.clMd} />
-          <ClWordCount text={w.clMd} />
-        </div>
+        {w.coverLetterRequired && (
+          <div className="flex flex-col gap-1.5">
+            <MarkdownEditor label="Final Cover Letter" value={w.clMd} onChange={w.setClMd} copyText={w.clMd} />
+            <ClWordCount text={w.clMd} />
+          </div>
+        )}
       </div>
       {w.pdfError && <ErrorBanner msg={w.pdfError} />}
       <div className="flex gap-2 items-center">

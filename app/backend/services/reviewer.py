@@ -255,12 +255,24 @@ async def _synthesize(reviews: list[dict], cv_consolidated: dict, cl_consolidate
         return {}
 
 
+EMPTY_CL_CONSOLIDATED = {
+    "average_scores": {},
+    "critical_criteria": [],
+    "all_issues": [],
+    "all_rewrites": [],
+    "priority_issues": [],
+    "resolved_rewrites": [],
+    "revised_draft": "",
+}
+
+
 async def run_review(
     resume_md: str,
     cover_letter_md: str,
     master_path: Path,
     persona_path: Path,
     model: str,
+    skip_cover_letter: bool = False,
 ) -> dict:
     master_md = master_path.read_text(encoding="utf-8")
     persona_text = persona_path.read_text(encoding="utf-8") if persona_path.exists() else ""
@@ -271,12 +283,14 @@ async def run_review(
     if persona_text:
         persona_system = f"Additional personal guidelines:\n{persona_text}\n\n" + PERSONA_REVIEW_SYSTEM
 
+    cl_for_review = "(No cover letter required for this application — skip reviewing it.)" if skip_cover_letter else cover_letter_md
+
     coros = [
         _run_review("user", "You (Personal Reviewer)", persona_system,
-                    resume_md, cover_letter_md, master_md, model),
+                    resume_md, cl_for_review, master_md, model),
         *[
             _run_review(key, PERSONAS[key]["name"], REVIEW_SYSTEM,
-                        resume_md, cover_letter_md, master_md, model)
+                        resume_md, cl_for_review, master_md, model)
             for key in selected_keys
         ],
     ]
@@ -287,7 +301,7 @@ async def run_review(
     reviews = list(results)
 
     cv_consolidated = _consolidate(reviews, "cv", CV_CRITERIA)
-    cl_consolidated = _consolidate(reviews, "cover_letter", CL_CRITERIA)
+    cl_consolidated = dict(EMPTY_CL_CONSOLIDATED) if skip_cover_letter else _consolidate(reviews, "cover_letter", CL_CRITERIA)
 
     synthesis = await _synthesize(reviews, cv_consolidated, cl_consolidated, model)
     if synthesis.get("cv"):
@@ -295,7 +309,7 @@ async def run_review(
         cv_consolidated["resolved_rewrites"] = _validated_rewrites(
             synthesis["cv"].get("rewrites", []), cv_consolidated["all_rewrites"]
         )
-    if synthesis.get("cover_letter"):
+    if not skip_cover_letter and synthesis.get("cover_letter"):
         cl_consolidated["priority_issues"] = synthesis["cover_letter"].get("priority_issues", [])
         cl_consolidated["resolved_rewrites"] = _validated_rewrites(
             synthesis["cover_letter"].get("rewrites", []), cl_consolidated["all_rewrites"]

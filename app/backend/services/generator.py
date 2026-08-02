@@ -196,6 +196,7 @@ async def stream_generation(
     cover_letter_notes: str = "",
     skills_inventory: dict | None = None,
     relevant_skills: list[str] | None = None,
+    skip_cover_letter: bool = False,
 ):
     """Yield SSE-formatted chunks for resume then cover letter."""
     master_md = master_path.read_text(encoding="utf-8")
@@ -217,6 +218,11 @@ async def stream_generation(
     except Exception:
         resume_md = master_md
     yield f"data: {{\"type\": \"resume_done\", \"markdown\": {json.dumps(resume_md)}}}\n\n"
+
+    if skip_cover_letter:
+        yield f"data: {{\"type\": \"cl_start\"}}\n\n"
+        yield f"data: {{\"type\": \"cl_done\", \"markdown\": {json.dumps('')}}}\n\n"
+        return
 
     TIER_LABELS = {1: "Core", 2: "Proficient", 3: "Familiar", 4: "Exposure"}
     skills_block = ""

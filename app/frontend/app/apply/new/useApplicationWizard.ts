@@ -46,6 +46,7 @@ export function useApplicationWizard() {
   const [language, setLanguage] = useState<"en" | "de">("en");
   const [jd, setJd] = useState("");
   const [clNotes, setClNotes] = useState("");
+  const [coverLetterRequired, setCoverLetterRequired] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -90,6 +91,7 @@ export function useApplicationWizard() {
       setClMd(app.cover_letter_final_md ?? app.cover_letter_draft_md ?? "");
       setCompanyAddress(app.company_address ?? "");
       setClNotes(app.cover_letter_notes ?? "");
+      setCoverLetterRequired(app.cover_letter_required ?? true);
       setSourceUrl(app.source_url ?? "");
       hadExistingPdfRef.current = !!app.resume_pdf_path;
       setStep(regen ? 2 : inferStep(app));
@@ -172,10 +174,10 @@ export function useApplicationWizard() {
     setSubmitting(true); setSubmitError("");
     let id = appId;
     if (id) {
-      const res = await api.patch(`/api/tracker/${id}/details`, { company, job_title: jobTitle, language, job_description: jd, cover_letter_notes: clNotes, source_url: sourceUrl });
+      const res = await api.patch(`/api/tracker/${id}/details`, { company, job_title: jobTitle, language, job_description: jd, cover_letter_notes: clNotes, source_url: sourceUrl, cover_letter_required: coverLetterRequired });
       if (res?.detail) { setSubmitError(res.detail); setSubmitting(false); return; }
     } else {
-      const app = await api.post("/api/tracker/", { company, job_title: jobTitle, language, job_description: jd, cover_letter_notes: clNotes, source_url: sourceUrl });
+      const app = await api.post("/api/tracker/", { company, job_title: jobTitle, language, job_description: jd, cover_letter_notes: clNotes, source_url: sourceUrl, cover_letter_required: coverLetterRequired });
       if (!app?.id) { setSubmitError(app?.detail ?? "Failed to create application."); setSubmitting(false); return; }
       id = app.id; setAppId(id);
     }
@@ -278,6 +280,7 @@ export function useApplicationWizard() {
     // Step 0
     company, setCompany, companyUrl, setCompanyUrl, sourceUrl, setSourceUrl,
     jobTitle, setJobTitle, language, setLanguage, jd, setJd, clNotes, setClNotes,
+    coverLetterRequired, setCoverLetterRequired,
     submitting, submitError, handleJobDetails,
     // Step 1
     analyzing, analyzeError, activeResult, runAnalysis, setAnalysisResult, setAnalyzeError,

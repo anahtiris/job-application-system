@@ -54,10 +54,23 @@ export function JobDetailsStep({ w }: { w: WizardState }) {
             <textarea className={`${inputCls} resize-y min-h-[180px]`} value={w.jd} onChange={(e) => w.setJd(e.target.value)} placeholder="Paste the full job description here…" />
           </div>
           <div>
-            <Label hint="optional">Cover letter notes</Label>
-            <textarea className={`${inputCls} resize-y min-h-[70px]`} value={w.clNotes} onChange={(e) => w.setClNotes(e.target.value)} placeholder="e.g. mention relocating to Munich, emphasise Python over React…" />
-            <InfoText>Points to incorporate. Must not contradict your resume.</InfoText>
+            <label className="flex items-center gap-2 text-[11px] font-medium text-text-secondary cursor-pointer">
+              <input
+                type="checkbox"
+                checked={w.coverLetterRequired}
+                onChange={(e) => w.setCoverLetterRequired(e.target.checked)}
+              />
+              Cover letter required
+            </label>
+            <InfoText>Uncheck if the posting says a cover letter isn&apos;t required. Skips it in Generate, Review, and Finalize.</InfoText>
           </div>
+          {w.coverLetterRequired && (
+            <div>
+              <Label hint="optional">Cover letter notes</Label>
+              <textarea className={`${inputCls} resize-y min-h-[70px]`} value={w.clNotes} onChange={(e) => w.setClNotes(e.target.value)} placeholder="e.g. mention relocating to Munich, emphasise Python over React…" />
+              <InfoText>Points to incorporate. Must not contradict your resume.</InfoText>
+            </div>
+          )}
         </div>
       </SectionCard>
       {w.submitError && <ErrorBanner msg={w.submitError} />}

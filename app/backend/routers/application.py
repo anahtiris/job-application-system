@@ -156,6 +156,7 @@ async def generate(body: GenerateRequest, session: Session = Depends(get_session
             cover_letter_notes=cl_notes,
             skills_inventory=skills_inventory,
             relevant_skills=relevant_skills,
+            skip_cover_letter=app_record is not None and not app_record.cover_letter_required,
         ):
             if '"type": "resume_done"' in chunk:
                 data = json.loads(chunk.removeprefix("data: ").strip())
@@ -213,15 +214,16 @@ async def review(body: ReviewRequest, session: Session = Depends(get_session)):
     app = session.get(Application, body.application_id)
     if not app:
         raise HTTPException(404, "Application not found")
-    if not app.resume_draft_md or not app.cover_letter_draft_md:
+    if not app.resume_draft_md or (app.cover_letter_required and not app.cover_letter_draft_md):
         raise HTTPException(400, "Generate documents first before reviewing")
 
     result = await reviewer.run_review(
         resume_md=app.resume_draft_md,
-        cover_letter_md=app.cover_letter_draft_md,
+        cover_letter_md=app.cover_letter_draft_md or "",
         master_path=_master(app.language),
         persona_path=PERSONA,
         model=model("reviewer"),
+        skip_cover_letter=not app.cover_letter_required,
     )
 
     app.resume_final_md = result["cv_consolidated"].get("revised_draft", app.resume_draft_md)
@@ -272,7 +274,7 @@ async def generate_pdf(body: PdfRequest, session: Session = Depends(get_session)
         raise HTTPException(404, "Application not found")
     if not app.review_completed:
         raise HTTPException(400, "Review must be completed before generating PDFs")
-    if not app.resume_final_md or not app.cover_letter_final_md:
+    if not app.resume_final_md or (app.cover_letter_required and not app.cover_letter_final_md):
         raise HTTPException(400, "Final documents not found")
 
     def _slug(s: str) -> str:
@@ -305,7 +307,7 @@ async def generate_pdf(body: PdfRequest, session: Session = Depends(get_session)
     try:
         paths = build_pdfs(
             resume_md=app.resume_final_md,
-            cover_letter_md=app.cover_letter_final_md,
+            cover_letter_md=app.cover_letter_final_md or "",
             job_title=app.job_title,
             company=app.company,
             company_address=app.company_address or "",
@@ -314,14 +316,15 @@ async def generate_pdf(body: PdfRequest, session: Session = Depends(get_session)
             template_cover=TMPL_CL,
             output_dir=out_dir,
             person_name=get_setting("person.name", ""),
+            skip_cover_letter=not app.cover_letter_required,
         )
     except RuntimeError as e:
         raise HTTPException(422, str(e))
 
     app.resume_pdf_path = paths["resume_pdf"]
-    app.cover_letter_pdf_path = paths["cover_letter_pdf"]
+    app.cover_letter_pdf_path = paths.get("cover_letter_pdf")
     app.resume_docx_path = paths["resume_docx"]
-    app.cover_letter_docx_path = paths["cover_letter_docx"]
+    app.cover_letter_docx_path = paths.get("cover_letter_docx")
     if app.status in ("New", "Draft"):
         app.status = "Finalized"
     session.add(app)

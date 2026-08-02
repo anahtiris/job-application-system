@@ -392,6 +392,7 @@ def build_pdfs(
     template_cover: Path,
     output_dir: Path,
     person_name: str = "",
+    skip_cover_letter: bool = False,
 ) -> dict:
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -406,10 +407,8 @@ def build_pdfs(
         cl_name = f"{person_name}_Cover_Letter"
 
     cv_docx = output_dir / f"{cv_name}.docx"
-    cl_docx = output_dir / f"{cl_name}.docx"
 
     generate_resume_docx(resume_md, template_resume, cv_docx, language)
-    generate_cover_letter_docx(cover_letter_md, template_cover, cl_docx, job_title, company, company_address, language)
 
     cv_pdf = _libreoffice_to_pdf(cv_docx, output_dir)
     pages = _page_count(cv_pdf)
@@ -420,12 +419,17 @@ def build_pdfs(
             "Shorten the profile summary (< 200 chars) or trim skills/bullets."
         )
 
-    cl_pdf = _libreoffice_to_pdf(cl_docx, output_dir)
-
-    return {
+    result = {
         "resume_docx": str(cv_docx),
         "resume_pdf": str(cv_pdf),
-        "cover_letter_docx": str(cl_docx),
-        "cover_letter_pdf": str(cl_pdf),
         "cv_page_warning": cv_page_warning,
     }
+
+    if not skip_cover_letter:
+        cl_docx = output_dir / f"{cl_name}.docx"
+        generate_cover_letter_docx(cover_letter_md, template_cover, cl_docx, job_title, company, company_address, language)
+        cl_pdf = _libreoffice_to_pdf(cl_docx, output_dir)
+        result["cover_letter_docx"] = str(cl_docx)
+        result["cover_letter_pdf"] = str(cl_pdf)
+
+    return result
