@@ -1,10 +1,11 @@
 """Ollama HTTP client — blocking and streaming."""
 import json
+import os
 from typing import AsyncIterator
 
 import httpx
 
-OLLAMA_BASE = "http://localhost:11434"
+OLLAMA_BASE = os.environ.get("OLLAMA_BASE", "http://localhost:11434")
 
 
 def _build_payload(model: str, prompt: str, system: str, fmt: dict | None, stream: bool = False) -> dict:

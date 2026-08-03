@@ -108,6 +108,20 @@ cd app/frontend && npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Running with Docker
+
+Alternative to the manual setup above. Requires Docker and Docker Compose.
+
+```bash
+docker compose up --build
+```
+
+Notes:
+- Backend bundles LibreOffice inside the image (PDF export works out of the box).
+- Ollama still runs on the host — the backend container reaches it via `host.docker.internal:11434`. Make sure Ollama is running on the host before generating with the offline (non-Claude) path.
+- `data/`, `templates/`, `applications/`, `resume_master.md`, `resume_master_de.md`, and `app/backend/app.db` are bind-mounted from the host, so files Claude Code writes/reads directly are visible to the containers too. Create an empty `app/backend/app.db` file first if it doesn't exist, otherwise Docker mounts a directory instead of a file.
+- Claude Code itself always runs on the host, not in a container — it talks to the backend over the published `localhost:8000` port exactly as in the non-Docker setup.
+
 ## Testing
 
 ```bash
