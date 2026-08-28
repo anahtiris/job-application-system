@@ -128,12 +128,21 @@ RESUME_HEADINGS = {
     "de": {"summary": "PROFIL", "skills": "TECHNISCHE KENNTNISSE", "after_skills": "BERUFSERFAHRUNG"},
 }
 
-def _extract_sections(resume_md: str) -> dict[str, str]:
+# Top-level markdown headings used in resume_master.md / resume_master_de.md
+# (and therefore in every tailored resume_final_md derived from them).
+RESUME_MD_HEADINGS = {
+    "en": {"summary": "# Profile", "skills": "# Skills"},
+    "de": {"summary": "# Profil", "skills": "# Kenntnisse"},
+}
+
+
+def _extract_sections(resume_md: str, language: str = "en") -> dict[str, str]:
     """Pull the tailored profile summary and raw skills markdown from the resume."""
+    md_headings = RESUME_MD_HEADINGS.get(language, RESUME_MD_HEADINGS["en"])
     # Terminate each section at the next TOP-LEVEL heading ("# "), not at the
     # "## Group" sub-headings inside the skills section.
-    summary_match = re.search(r"# Profile\n(.*?)(?=\n#(?!#)|\Z)", resume_md, re.DOTALL)
-    skills_match = re.search(r"# Skills\n(.*?)(?=\n#(?!#)|\Z)", resume_md, re.DOTALL)
+    summary_match = re.search(rf"{re.escape(md_headings['summary'])}\n(.*?)(?=\n#(?!#)|\Z)", resume_md, re.DOTALL)
+    skills_match = re.search(rf"{re.escape(md_headings['skills'])}\n(.*?)(?=\n#(?!#)|\Z)", resume_md, re.DOTALL)
     return {
         "summary": (summary_match.group(1).strip() if summary_match else ""),
         "skills_md": (skills_match.group(1).strip() if skills_match else ""),
@@ -213,7 +222,7 @@ def generate_resume_docx(
     language: str = "en",
     accent_colour: str | None = None,
 ) -> Path:
-    sections = _extract_sections(resume_md)
+    sections = _extract_sections(resume_md, language)
     headings = RESUME_HEADINGS.get(language, RESUME_HEADINGS["en"])
     groups = _parse_skills_groups(sections["skills_md"])
 
