@@ -51,10 +51,20 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         headers["Access-Control-Allow-Credentials"] = "true"
     return JSONResponse(status_code=500, content={"detail": "Internal server error"}, headers=headers)
 
+class NoCacheStaticFiles(StaticFiles):
+    """Regenerated PDFs/DOCX reuse the same deterministic path on every export,
+    so browsers must revalidate instead of serving a cached copy of the old file."""
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+
 # Serve generated PDFs as static files
 pdf_dir = Paths.APPS_DIR
 pdf_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/files", StaticFiles(directory=str(pdf_dir)), name="files")
+app.mount("/files", NoCacheStaticFiles(directory=str(pdf_dir)), name="files")
 
 
 @app.get("/api/health")
