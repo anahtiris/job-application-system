@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Search, Check, CheckCheck, ChevronDown } from "lucide-react";
+import { Trash2, Search, Check, CheckCheck, ChevronDown, Pin } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { pillBtnCls, useClickOutside, statusChipStyleCls, verdictStyleCls } from "@/components/ui-kit";
@@ -16,13 +16,14 @@ type Lead = {
   fit_score: number | null;
   fit_verdict: string | null;
   cover_letter_required: boolean;
+  pinned: boolean;
   created_at: string;
 };
 
 const STATUS_TABS = ["new", "analyzing", "analyzed", "approved", "applied", "rejected"] as const;
 const CLAUDE_PROMPT = "process my captured jobs";
 
-const COL_GRID_CLS = "grid-cols-[2fr_2fr_64px_100px_90px_70px_66px]";
+const COL_GRID_CLS = "grid-cols-[2fr_2fr_64px_100px_90px_36px_70px_66px]";
 
 const FIT_VERDICTS = ["strong", "maybe", "skip"] as const;
 
@@ -218,6 +219,16 @@ export default function LeadsPage() {
     toast.success("Job deleted");
   };
 
+  const handleTogglePin = async (leadId: string, pinned: boolean) => {
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, pinned } : l)));
+    try {
+      await api.patch(`/api/leads/${leadId}/pin`, { pinned });
+    } catch {
+      toast.error("Pin update failed");
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, pinned: !pinned } : l)));
+    }
+  };
+
   const counts = STATUS_TABS.reduce<Record<string, number>>((acc, s) => {
     acc[s] = leads.filter((l) => l.status === s).length;
     return acc;
@@ -233,7 +244,8 @@ export default function LeadsPage() {
       q
         ? l.company.toLowerCase().includes(q) || l.job_title.toLowerCase().includes(q)
         : true
-    );
+    )
+    .sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
   const captured = leads.filter((l) => l.status === "captured");
   const unanalyzed = leads.filter((l) => l.status === "captured" || l.status === "new");
 
@@ -424,6 +436,7 @@ export default function LeadsPage() {
           {colHeader("Status")}
           <div />
           <div />
+          <div />
         </div>
 
         {/* Rows */}
@@ -497,6 +510,19 @@ export default function LeadsPage() {
               {/* Status */}
               <div>
                 <span className={leadBadgeCls(lead.status)}>{lead.status}</span>
+              </div>
+
+              {/* Pin */}
+              <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                <button
+                  aria-label={lead.pinned ? "Unpin" : "Pin"}
+                  onClick={() => handleTogglePin(lead.id, !lead.pinned)}
+                  className={`w-[26px] h-[26px] rounded-[5px] flex items-center justify-center border-none bg-transparent cursor-pointer transition-colors ${
+                    lead.pinned ? "text-custom" : "text-text-tertiary hover:text-custom"
+                  }`}
+                >
+                  <Pin size={14} fill={lead.pinned ? "currentColor" : "none"} />
+                </button>
               </div>
 
               {/* Approve */}

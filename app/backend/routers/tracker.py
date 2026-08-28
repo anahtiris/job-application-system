@@ -82,6 +82,10 @@ class UpdateDateRequest(BaseModel):
     date_applied: date
 
 
+class UpdatePinRequest(BaseModel):
+    pinned: bool
+
+
 @router.post("/")
 def create_application(body: CreateApplicationRequest, session: Session = Depends(get_session)):
     app = Application(
@@ -270,6 +274,17 @@ def update_date(app_id: str, body: UpdateDateRequest, session: Session = Depends
     if not app:
         raise HTTPException(404, "Application not found")
     app.date_applied = body.date_applied
+    session.add(app)
+    session.commit()
+    return {"saved": True}
+
+
+@router.patch("/{app_id}/pin")
+def update_pin(app_id: str, body: UpdatePinRequest, session: Session = Depends(get_session)):
+    app = session.get(Application, app_id)
+    if not app:
+        raise HTTPException(404, "Application not found")
+    app.pinned = body.pinned
     session.add(app)
     session.commit()
     return {"saved": True}

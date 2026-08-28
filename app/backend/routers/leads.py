@@ -52,6 +52,10 @@ class UpdateLeadRequest(BaseModel):
     language: Optional[str] = None
 
 
+class UpdatePinRequest(BaseModel):
+    pinned: bool
+
+
 @router.get("/pending-count")
 def pending_count(session: Session = Depends(get_session)):
     count = len(session.exec(
@@ -109,6 +113,17 @@ def update_lead(lead_id: str, body: UpdateLeadRequest, session: Session = Depend
     session.add(lead)
     session.commit()
     return lead
+
+
+@router.patch("/{lead_id}/pin")
+def update_pin(lead_id: str, body: UpdatePinRequest, session: Session = Depends(get_session)):
+    lead = session.get(JobLead, lead_id)
+    if not lead:
+        raise HTTPException(404, "Lead not found")
+    lead.pinned = body.pinned
+    session.add(lead)
+    session.commit()
+    return {"saved": True}
 
 
 @router.delete("/{lead_id}")

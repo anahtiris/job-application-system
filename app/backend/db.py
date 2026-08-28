@@ -52,6 +52,7 @@ class JobLead(SQLModel, table=True):
     company_research: Optional[str] = None
     application_id: Optional[str] = None
     cover_letter_required: bool = True
+    pinned: bool = False
     created_at: datetime = Field(default_factory=now_utc)
     updated_at: datetime = Field(default_factory=now_utc)
     deleted_at: Optional[datetime] = None
@@ -88,6 +89,7 @@ class Application(SQLModel, table=True):
     fit_score: Optional[int] = None  # frozen from the source lead at approval time
     fit_verdict: Optional[str] = None  # strong | maybe | skip — frozen from the source lead at approval time
     cover_letter_required: bool = True
+    pinned: bool = False
     created_at: datetime = Field(default_factory=now_utc)
     updated_at: datetime = Field(default_factory=now_utc)
     deleted_at: Optional[datetime] = None
@@ -97,13 +99,13 @@ def create_db():
     SQLModel.metadata.create_all(engine)
     # Safe migration for columns added after initial schema
     with engine.connect() as conn:
-        for col_def in ["resume_docx_path TEXT", "cover_letter_docx_path TEXT", "cover_letter_notes TEXT", "interview_prep_json TEXT", "interview_debrief_md TEXT", "source_url TEXT", "interview_date TEXT", "interview_notes_json TEXT", "interview_rounds_json TEXT", "fit_analysis_json TEXT", "deleted_at DATETIME", "fit_score INTEGER", "fit_verdict TEXT", "cover_letter_required BOOLEAN DEFAULT 1"]:
+        for col_def in ["resume_docx_path TEXT", "cover_letter_docx_path TEXT", "cover_letter_notes TEXT", "interview_prep_json TEXT", "interview_debrief_md TEXT", "source_url TEXT", "interview_date TEXT", "interview_notes_json TEXT", "interview_rounds_json TEXT", "fit_analysis_json TEXT", "deleted_at DATETIME", "fit_score INTEGER", "fit_verdict TEXT", "cover_letter_required BOOLEAN DEFAULT 1", "pinned BOOLEAN DEFAULT 0"]:
             try:
                 conn.execute(text(f"ALTER TABLE application ADD COLUMN {col_def}"))
                 conn.commit()
             except Exception:
                 pass
-        for col_def in ["raw_text TEXT", "deleted_at DATETIME", "cover_letter_required BOOLEAN DEFAULT 1"]:
+        for col_def in ["raw_text TEXT", "deleted_at DATETIME", "cover_letter_required BOOLEAN DEFAULT 1", "pinned BOOLEAN DEFAULT 0"]:
             try:
                 conn.execute(text(f"ALTER TABLE joblead ADD COLUMN {col_def}"))
                 conn.commit()

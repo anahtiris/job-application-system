@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Trash2, Search, Download, ChevronDown } from "lucide-react";
+import { Trash2, Search, Download, ChevronDown, Pin } from "lucide-react";
 import { toast } from "sonner";
 import { FlipClock } from "@anahtiris/flipclock";
 import "@anahtiris/flipclock/dist/flipclock.css";
@@ -24,6 +24,7 @@ interface Application {
   language: string;
   fit_score: number | null;
   fit_verdict: string | null;
+  pinned: boolean;
 }
 
 // Which backend statuses each filter option covers
@@ -49,7 +50,7 @@ type FitLabel = (typeof FIT_LABELS)[number];
 const ACTIVE_STATUSES = new Set(["Applied", "Interview", "Offer"]);
 
 // Shared column grid for both header and rows
-const COL_GRID_CLS = "grid-cols-[2fr_2fr_90px_130px_90px_66px]";
+const COL_GRID_CLS = "grid-cols-[2fr_2fr_90px_130px_90px_36px_66px]";
 
 type FilterLabel = (typeof FILTER_LABELS)[number];
 
@@ -322,6 +323,16 @@ export default function ApplicationsPage() {
     }
   };
 
+  const handleTogglePin = async (id: string, pinned: boolean) => {
+    setApps((prev) => prev.map((a) => (a.id === id ? { ...a, pinned } : a)));
+    try {
+      await api.patch(`/api/tracker/${id}/pin`, { pinned });
+    } catch {
+      toast.error("Pin update failed");
+      setApps((prev) => prev.map((a) => (a.id === id ? { ...a, pinned: !pinned } : a)));
+    }
+  };
+
   const confirmApply = async () => {
     if (!pendingApply) return;
     try {
@@ -371,6 +382,7 @@ export default function ApplicationsPage() {
     }
     return true;
   }).sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
     const ra = STATUS_RANK[a.status] ?? 99;
     const rb = STATUS_RANK[b.status] ?? 99;
     if (ra !== rb) return ra - rb;
@@ -499,6 +511,7 @@ export default function ApplicationsPage() {
           {colHeader("Status")}
           {colHeader("Date")}
           <div />
+          <div />
         </div>
 
         {/* Rows */}
@@ -555,6 +568,19 @@ export default function ApplicationsPage() {
                 {/* Date */}
                 <div className="text-[13px] text-text-tertiary font-mono">
                   {shortDate(app.date_applied)}
+                </div>
+
+                {/* Pin */}
+                <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                  <button
+                    aria-label={app.pinned ? "Unpin" : "Pin"}
+                    onClick={() => handleTogglePin(app.id, !app.pinned)}
+                    className={`w-[26px] h-[26px] rounded-[5px] flex items-center justify-center border-none bg-transparent cursor-pointer transition-colors ${
+                      app.pinned ? "text-custom" : "text-text-tertiary hover:text-custom"
+                    }`}
+                  >
+                    <Pin size={14} fill={app.pinned ? "currentColor" : "none"} />
+                  </button>
                 </div>
 
                 {/* Delete */}
