@@ -12,6 +12,8 @@ description: How to tailor the resume template DOCX to a specific job descriptio
 - Do not exaggerate or invent anything.
 - Reorder skills groups, update the profile summary, and surface keywords from the job description.
 - Deprioritise or omit sections that are irrelevant to the role to keep it to one page.
+- Don't repeat certification codes in the skills line (e.g. write "Azure", not "Azure (AZ-900, AI-900)") — the Certifications section already lists them.
+- Don't fold spoken languages (Thai, English, German) into a tech-stack skills group — keep "Spoken Languages" as its own group/section.
 - If the company has a known brand colour, replace the template accent colour (`1a56a4`) with it throughout the XML.
 
 ## Workflow
