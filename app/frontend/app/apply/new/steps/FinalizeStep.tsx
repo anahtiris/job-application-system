@@ -12,6 +12,17 @@ export function FinalizeStep({ w }: { w: WizardState }) {
           <summary className="flex items-center gap-2 py-[9px] px-[13px] cursor-pointer list-none text-[12px] font-medium font-shell text-text-secondary">
             <span className="text-text-tertiary transition-transform group-open:rotate-90">›</span>
             Job description
+            {w.sourceUrl && (
+              <a
+                href={w.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-[11px] text-text-tertiary hover:text-text-secondary underline"
+              >
+                View posting ↗
+              </a>
+            )}
             <span className="ml-auto" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
               <CopyButton text={`${w.company} - ${w.jobTitle}\n\n${w.jd}`} title="Copy job description" />
             </span>

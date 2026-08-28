@@ -77,6 +77,7 @@ export function useApplicationWizard() {
   const [companyAddress, setCompanyAddress] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const finalsBaselineRef = useRef<{ resume: string; cl: string; address: string } | null>(null);
+  const pendingFinalsFlushRef = useRef<(() => Promise<unknown>) | null>(null);
   const hadExistingPdfRef = useRef(false);
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
 
@@ -152,21 +153,30 @@ export function useApplicationWizard() {
     }
     const baseline = finalsBaselineRef.current;
     if (resumeMd === baseline.resume && clMd === baseline.cl && companyAddress === baseline.address) {
+      pendingFinalsFlushRef.current = null;
       return;
     }
     setAutoSaveStatus("saving");
-    const timer = setTimeout(async () => {
-      await api.put("/api/application/finals", {
+    const save = () => {
+      finalsBaselineRef.current = { resume: resumeMd, cl: clMd, address: companyAddress };
+      pendingFinalsFlushRef.current = null;
+      return api.put("/api/application/finals", {
         application_id: appId,
         resume_md: resumeMd,
         cover_letter_md: clMd,
         company_address: companyAddress,
       });
-      finalsBaselineRef.current = { resume: resumeMd, cl: clMd, address: companyAddress };
-      setAutoSaveStatus("saved");
-    }, 1500);
+    };
+    pendingFinalsFlushRef.current = save;
+    const timer = setTimeout(() => { save().then(() => setAutoSaveStatus("saved")); }, 1500);
     return () => clearTimeout(timer);
   }, [step, resumeMd, clMd, companyAddress, appId]);
+
+  // Flush a pending finals autosave immediately when leaving step 4 or unmounting,
+  // so navigating away within the 1500ms debounce window doesn't silently drop the edit.
+  useEffect(() => {
+    return () => { pendingFinalsFlushRef.current?.(); };
+  }, [step]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
