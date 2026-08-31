@@ -158,7 +158,6 @@ export default function LeadsPage() {
 
   // Read persisted filters after mount only: reading localStorage during render
   // makes the server and client markup diverge and breaks hydration.
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot hydration of persisted UI state
   useEffect(() => {
     const read = (key: string): string[] => {
       try {
@@ -168,9 +167,13 @@ export default function LeadsPage() {
         return [];
       }
     };
+    /* eslint-disable react-hooks/set-state-in-effect -- one-shot hydration of
+       persisted UI state; localStorage is unreadable during render, so this is
+       the external-store sync the rule exempts, and it runs once on mount */
     setStatusFilters(read("leads.statusFilters"));
     setFitFilters(read("leads.fitFilters"));
     setFiltersHydrated(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => {
