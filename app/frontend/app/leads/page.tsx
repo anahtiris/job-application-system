@@ -5,6 +5,7 @@ import { Trash2, Search, Check, CheckCheck, ChevronDown, Pin } from "lucide-reac
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { pillBtnCls, useClickOutside, statusChipStyleCls, verdictStyleCls } from "@/components/ui-kit";
+import { FIT_VERDICTS, leadStatusRank } from "@/lib/status";
 
 type Lead = {
   id: string;
@@ -20,12 +21,9 @@ type Lead = {
   created_at: string;
 };
 
-const STATUS_TABS = ["new", "analyzing", "analyzed", "approved", "applied", "rejected"] as const;
 const CLAUDE_PROMPT = "process my captured jobs";
 
 const COL_GRID_CLS = "grid-cols-[2fr_2fr_64px_100px_90px_36px_70px_66px]";
-
-const FIT_VERDICTS = ["strong", "maybe", "skip"] as const;
 
 const selectCls = "text-[12px] font-medium py-1 px-2.5 rounded-full border-[0.5px] border-border-tertiary bg-background-secondary text-text-secondary font-shell cursor-pointer outline-none capitalize";
 
@@ -99,7 +97,7 @@ function StatusFilterDropdown({
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, open, () => setOpen(false));
 
-  const options = STATUS_TABS.filter((s) => counts[s] > 0);
+  const options = Object.keys(counts).sort((a, b) => leadStatusRank(a) - leadStatusRank(b));
   const toggle = (v: string) =>
     onChange(selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v]);
 
@@ -139,15 +137,7 @@ export default function LeadsPage() {
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilters, setStatusFilters] = useState<string[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const stored = localStorage.getItem("leads.statusFilters");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [copying, setCopying] = useState(false);
   const [bulkAnalyzing, setBulkAnalyzing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<string | null>(null);
@@ -155,16 +145,9 @@ export default function LeadsPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvingAll, setApprovingAll] = useState(false);
   const [search, setSearch] = useState("");
-  const [fitFilters, setFitFilters] = useState<string[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const stored = localStorage.getItem("leads.fitFilters");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [fitFilters, setFitFilters] = useState<string[]>([]);
   const [capturedCollapsed, setCapturedCollapsed] = useState(false);
+  const [filtersHydrated, setFiltersHydrated] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -173,13 +156,32 @@ export default function LeadsPage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time data fetch; the loading flag inside load() is intentional
   useEffect(() => { load(); }, []);
 
+  // Read persisted filters after mount only: reading localStorage during render
+  // makes the server and client markup diverge and breaks hydration.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot hydration of persisted UI state
   useEffect(() => {
-    localStorage.setItem("leads.statusFilters", JSON.stringify(statusFilters));
-  }, [statusFilters]);
+    const read = (key: string): string[] => {
+      try {
+        const stored = localStorage.getItem(key);
+        return stored ? JSON.parse(stored) : [];
+      } catch {
+        return [];
+      }
+    };
+    setStatusFilters(read("leads.statusFilters"));
+    setFitFilters(read("leads.fitFilters"));
+    setFiltersHydrated(true);
+  }, []);
 
   useEffect(() => {
+    if (!filtersHydrated) return;
+    localStorage.setItem("leads.statusFilters", JSON.stringify(statusFilters));
+  }, [statusFilters, filtersHydrated]);
+
+  useEffect(() => {
+    if (!filtersHydrated) return;
     localStorage.setItem("leads.fitFilters", JSON.stringify(fitFilters));
-  }, [fitFilters]);
+  }, [fitFilters, filtersHydrated]);
 
   const handleApprove = async (leadId: string) => {
     setApprovingId(leadId);
@@ -229,8 +231,14 @@ export default function LeadsPage() {
     }
   };
 
-  const counts = STATUS_TABS.reduce<Record<string, number>>((acc, s) => {
-    acc[s] = leads.filter((l) => l.status === s).length;
+  // Derived from the leads actually fetched, not from a hardcoded status list, so
+  // a status added on the backend stays filterable instead of vanishing from the
+  // dropdown. `captured` is excluded because it has its own section above.
+  // NOTE: this assumes GET /api/leads/ returns every lead. If that endpoint ever
+  // becomes paginated, these options would only reflect the current page.
+  const counts = leads.reduce<Record<string, number>>((acc, l) => {
+    if (l.status === "captured") return acc;
+    acc[l.status] = (acc[l.status] ?? 0) + 1;
     return acc;
   }, {});
 

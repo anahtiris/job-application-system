@@ -1,3 +1,5 @@
+import type { FitVerdict, KnownLeadStatus } from "@/lib/status";
+
 // ─── Fonts ─────────────────────────────────────────────────────────────────────
 
 export const monoFontCls = "font-mono";
@@ -44,12 +46,17 @@ export function skillStatusStyleCls(status: string): string {
   }
 }
 
+// Exhaustive over FitVerdict: adding a verdict without a color is a type error.
+const VERDICT_STYLES: Record<FitVerdict, string> = {
+  strong: "bg-badge-interview-bg text-badge-interview-fg",
+  skip:   "bg-badge-passed-bg text-badge-passed-fg",
+  maybe:  "bg-custom-l text-custom-d",
+};
+
+// Accepts a bare string because the API types verdicts as string; unknown values
+// fall back rather than throwing.
 export function verdictStyleCls(verdict: string): string {
-  switch (verdict) {
-    case "strong": return "bg-badge-interview-bg text-badge-interview-fg";
-    case "skip":   return "bg-badge-passed-bg text-badge-passed-fg";
-    default:       return "bg-custom-l text-custom-d";
-  }
+  return VERDICT_STYLES[verdict as FitVerdict] ?? "bg-custom-l text-custom-d";
 }
 
 export function goalAlignStyleCls(alignment: string): string {
@@ -60,16 +67,22 @@ export function goalAlignStyleCls(alignment: string): string {
   }
 }
 
+// Exhaustive over KnownLeadStatus: adding a lead status without a color is a
+// type error, so a new backend status can never render silently unstyled.
+const LEAD_STATUS_STYLES: Record<KnownLeadStatus, string> = {
+  approved:  "bg-badge-interview-bg text-badge-interview-fg",
+  applied:   "bg-badge-offer-bg text-badge-offer-fg",
+  rejected:  "bg-badge-passed-bg text-badge-passed-fg",
+  analyzed:  "bg-badge-analyzed-bg text-badge-analyzed-fg",
+  analyzing: "bg-custom-l text-custom-d",
+  new:       "bg-badge-responded-bg text-badge-responded-fg",
+  captured:  "bg-background-secondary text-text-tertiary",
+};
+
+// Accepts a bare string because the API types statuses as string; unknown values
+// fall back to the neutral chip rather than throwing.
 export function statusChipStyleCls(status: string): string {
-  switch (status) {
-    case "approved":  return "bg-badge-interview-bg text-badge-interview-fg";
-    case "applied":   return "bg-badge-offer-bg text-badge-offer-fg";
-    case "rejected":  return "bg-badge-passed-bg text-badge-passed-fg";
-    case "analyzed":  return "bg-badge-analyzed-bg text-badge-analyzed-fg";
-    case "analyzing": return "bg-custom-l text-custom-d";
-    case "new":       return "bg-badge-responded-bg text-badge-responded-fg";
-    default:          return "bg-background-secondary text-text-tertiary";
-  }
+  return LEAD_STATUS_STYLES[status as KnownLeadStatus] ?? "bg-background-secondary text-text-tertiary";
 }
 
 // Color classes for an application's *display* label (e.g. "Applied", "Interview").

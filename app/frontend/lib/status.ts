@@ -27,3 +27,23 @@ export function formatDate(d: string | null | undefined): string {
     day: "numeric", month: "short", year: "numeric",
   }).format(new Date(d + "T00:00:00"));
 }
+
+// ─── Lead statuses ─────────────────────────────────────────────────────────────
+
+// Display order for lead statuses. This is an ORDERING HINT ONLY — it must never
+// gate which statuses are visible. Filter options are derived from the leads
+// actually fetched, so a status added on the backend still shows up here (sorted
+// last) instead of silently disappearing from the UI.
+export const LEAD_STATUS_ORDER = [
+  "captured", "new", "analyzing", "analyzed", "approved", "applied", "rejected",
+] as const;
+export type KnownLeadStatus = (typeof LEAD_STATUS_ORDER)[number];
+
+// Sort key for a lead status. Unknown (newly added backend) statuses sort last.
+export function leadStatusRank(status: string): number {
+  const i = (LEAD_STATUS_ORDER as readonly string[]).indexOf(status);
+  return i === -1 ? LEAD_STATUS_ORDER.length : i;
+}
+
+export const FIT_VERDICTS = ["strong", "maybe", "skip"] as const;
+export type FitVerdict = (typeof FIT_VERDICTS)[number];
