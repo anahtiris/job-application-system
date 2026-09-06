@@ -34,6 +34,24 @@ The point is to bound context/token usage per run and keep the last item's outpu
 
 This convention generalizes the captured-jobs batch mode (see "Batch mode" under the leads pipeline below) to every repetitive workflow.
 
+## Expired-posting rule
+
+Job boards keep dead postings online. Before spending any work on an item, check whether the posting is still open. This applies to **every** workflow that touches a posting: captured-job triage, job analysis, CV/cover-letter generation, batch generation, interview prep.
+
+**Detection.** Look for a closed-posting marker in `raw_text` (leads) or `job_description` (applications). Common wording, not exhaustive:
+
+- DE: "nicht mehr verfügbar", "Stellenanzeige ist nicht mehr aktiv", "Bewerbungsfrist abgelaufen", "Diese Stelle wurde besetzt", "Anzeige wurde deaktiviert"
+- EN: "no longer accepting applications", "this job has expired", "position has been filled", "applications are closed"
+
+**On a hit:**
+
+1. **Stop immediately.** Do not analyze, do not research the company, do not generate or write anything for that item. Skip every remaining step for it.
+2. **Soft-delete it.** `DELETE /api/leads/{id}` for a lead, `DELETE /api/tracker/{id}` for an application. Both are soft deletes: the row moves to `/trash` and stays restorable. Never hard-delete via `/api/trash/`.
+3. **Do not interrupt the batch.** Move on to the next item without asking.
+4. **Report at the end of the batch only**, in one block: which items were skipped, the company/title of each, and the exact phrase that triggered the match. This lets a false positive be spotted and restored from `/trash`.
+
+The marker is evidence, not proof. Quote the phrase in the report rather than paraphrasing it, so a wrong match is obvious. When the wording is ambiguous (e.g. a related-jobs sidebar mentioning a filled role, or a board's generic footer), treat the item as **open** and process it normally; a wasted analysis is cheaper than a silently deleted live posting.
+
 ## Key commands
 
 ```bash
