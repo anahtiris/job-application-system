@@ -6,6 +6,8 @@ resume_master_de.md
 # Template files contain personal details — ignore content but keep folder structure
 templates/**/*.docx
 templates/**/*.pdf
+# ...except the dummy templates a fresh clone starts from (no personal data)
+!templates/**/*.example.docx
 
 # Generated application output folders (contain tailored docs with PII)
 /Application/
