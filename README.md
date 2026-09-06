@@ -140,7 +140,17 @@ type check on every push and pull request.
 1. Go to **Settings** → configure which model handles each role (parser / writer / reviewer / research) using `provider/model` format (e.g. `anthropic/claude-sonnet-4-6`, `ollama/qwen3.6:latest`).
 2. Go to **Settings** → paste your persona description (your personal review guardrails).
 3. Go to **Skills** → add your skills with tier ratings (1=Core, 2=Proficient, 3=Familiar, 4=Exposure) and evidence snippets. Or, once a master resume is uploaded (step 5), generate the inventory automatically: **Copy prompt for Claude** (Claude reads your resume and interviews you on anything ambiguous) or **Extract with Ollama** (one offline pass that flags low-confidence guesses for review) — both on the Setup and Skills pages. Re-running never overwrites edits you've made.
-4. Drop your CV and cover letter DOCX templates into `templates/resume/` and `templates/cover-letter/`. The CV template holds your full resume layout; on export, only the **Profile summary** and **Skills** sections are replaced with the tailored content (located by their section heading text — `PROFESSIONAL SUMMARY` / `TECHNICAL SKILLS` in EN, `PROFIL` / `TECHNISCHE KENNTNISSE` in DE). Experience and other sections render straight from the template.
+4. Set up your DOCX templates in `templates/resume/` and `templates/cover-letter/`. Start from the committed dummy templates — they already satisfy the exporter's contract:
+
+   ```bash
+   cp templates/resume/resume_en.example.docx          templates/resume/resume_en.docx
+   cp templates/resume/resume_de.example.docx          templates/resume/resume_de.docx
+   cp templates/cover-letter/cover_letter.example.docx templates/cover-letter/cover_letter.docx
+   ```
+
+   Then edit each file, replacing the dummy content (Jane Doe, Example GmbH, …) with your own. The CV template holds your full resume layout; on export, only the **Profile summary** and **Skills** sections are replaced with the tailored content (located by their section heading text — `PROFESSIONAL SUMMARY` / `TECHNICAL SKILLS` in EN, `PROFIL` / `TECHNISCHE KENNTNISSE` in DE). Experience and other sections render straight from the template.
+
+   The exporter matches literal strings, not `{{placeholders}}`, so an arbitrary CV template from the web will export but silently drop the tailored content. **Read [`templates/README.md`](templates/README.md) before bringing your own design** — it lists every string the code anchors on. `examples/resume_master.example.md` and `examples/resume_master_de.example.md` are matching dummy master resumes if you want to try the pipeline end to end before uploading your real one.
 5. Go to **Setup** → upload your master resume (EN and/or DE). Your name is auto-extracted for PDF file naming. The resume is structured automatically on upload if an LLM parser model is configured. If none is available, the raw text is saved and the page offers a **Copy prompt for Claude** button to structure it via Claude Code instead.
 6. Go to **Settings** → set your notice period (Immediately, 2 weeks, 1–6 months, or a custom date) — used to compute the availability date in generated cover letters.
 
@@ -188,7 +198,10 @@ app/
     components/     ReviewPanel, Nav, shared UI
 browser-extension/  Chrome Manifest V3 — one-click job capture
 data/               persona.md, skills.json  (gitignored — see examples/)
-templates/          Base DOCX files  (gitignored, .gitkeep preserves folders)
+templates/          Base DOCX files  (gitignored except *.example.docx)
+  README.md         Template contract — required headings and placeholders
+examples/           Dummy master resumes (EN/DE) for a fresh clone
+scripts/            batch_generate.py, make_example_templates.py
 applications/       Per-company output folders  (gitignored)
 resume_master.md    Canonical EN resume  (source of truth, never modify)
 resume_master_de.md Canonical DE resume
